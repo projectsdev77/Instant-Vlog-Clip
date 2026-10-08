@@ -95,7 +95,7 @@ export function ExportSheet({ project, timeline, onClose }: { project: Project; 
           </div>
           <video src={state.url} controls playsInline className="mx-auto max-h-[45vh] rounded-[var(--radius-control)] bg-black" />
           <div className="flex gap-2">
-            <Button block size="lg" onClick={() => share(state.result)}>
+            <Button size="lg" className="flex-1" onClick={() => share(state.result)}>
               <Share2 className="size-4" /> Share
             </Button>
             <Button size="lg" variant="secondary" onClick={() => download(state.result)}>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Check, RotateCcw } from 'lucide-react'
+import { Check, RotateCcw, X } from 'lucide-react'
 import { AiError } from '@/ai'
 import { Button } from '@/components/ui/Button'
 import { Progress } from '@/components/ui/Progress'
@@ -52,10 +52,11 @@ export function GenerateStep() {
           {STAGES.map((s, i) => {
             const done = i < stageIdx
             const active = i === stageIdx && !error
+            const failed = i === stageIdx && !!error
             return (
-              <li key={s.id} className={cn('flex items-center gap-3 text-[15px]', !done && !active && 'text-muted')}>
-                <span className={cn('grid size-6 shrink-0 place-items-center rounded-full', done ? 'bg-success text-white' : active ? 'bg-accent-soft text-accent' : 'bg-surface-2')}>
-                  {done ? <Check className="size-3.5" /> : active ? <Spinner className="size-3.5" /> : null}
+              <li key={s.id} className={cn('flex items-center gap-3 text-[15px]', !done && !active && !failed && 'text-muted')}>
+                <span className={cn('grid size-6 shrink-0 place-items-center rounded-full', done ? 'bg-success text-white' : failed ? 'bg-danger text-white' : active ? 'bg-accent-soft text-accent' : 'bg-surface-2')}>
+                  {done ? <Check className="size-3.5" /> : failed ? <X className="size-3.5" /> : active ? <Spinner className="size-3.5" /> : null}
                 </span>
                 <span className="flex-1">{s.label}</span>
                 {active && progress.detail && <span className="text-xs text-muted">{progress.detail}</span>}
