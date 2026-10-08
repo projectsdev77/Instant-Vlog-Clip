@@ -1,0 +1,562 @@
+<title>Instant Vlog Clip Design Handoff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single reading column (~68ch) with full-width screenshot strips that break out of it, like a production brief pinned next to a contact sheet. */
+:root {
+  --paper: #f4f5f7;
+  --sheet: #ffffff;
+  --ink: #15171c;
+  --ink-2: #4a505c;
+  --line: #dde0e6;
+  --rec: #d93a3a;          /* the record-light red: section markers, the one accent */
+  --rec-soft: #fbe9e8;
+  --frame: #1c1f26;        /* phone bezel around screenshots */
+  --ok: #1f8a4c;
+  --display: 'Bricolage Grotesque', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --col: 68ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111318; --sheet: #191c22; --ink: #eceef2; --ink-2: #a3a9b5; --line: #2c313b;
+    --rec: #f06a62; --rec-soft: #3a1f1f; --frame: #000000; --ok: #4cc27c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111318; --sheet: #191c22; --ink: #eceef2; --ink-2: #a3a9b5; --line: #2c313b;
+  --rec: #f06a62; --rec-soft: #3a1f1f; --frame: #000000; --ok: #4cc27c; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 17px/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+.col { max-width: var(--col); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.12; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.2rem; font-weight: 700; }
+p { margin: 0; }
+a { color: inherit; text-decoration-color: var(--rec); text-underline-offset: 3px; }
+code, .mono { font-family: var(--mono); font-size: 0.85em; }
+code { background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.35em; }
+strong { font-weight: 700; }
+
+.eyebrow { font: 600 0.75rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--rec); display: flex; align-items: center; gap: 0.5em; }
+.eyebrow::before { content: ""; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--rec); }
+
+header.top { display: grid; gap: 18px; padding-bottom: 36px; border-bottom: 1px solid var(--line); }
+header.top .lede { font-size: 1.2rem; color: var(--ink-2); max-width: 60ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; font: 0.85rem/1.4 var(--mono); color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 600; }
+
+nav.toc { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { font-size: 0.9rem; text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); }
+nav.toc a:hover, nav.toc a:focus-visible { border-color: var(--rec); }
+
+section { padding-top: 64px; display: grid; gap: 20px; scroll-margin-top: 16px; }
+section > .col { display: grid; gap: 14px; }
+ul.plain, ol.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.muted { color: var(--ink-2); }
+
+.callout { background: var(--sheet); border: 1px solid var(--line); border-left: 4px solid var(--rec); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.checklist li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.checklist li::before { content: ""; width: 16px; height: 16px; margin-top: 5px; border: 2px solid var(--ink-2); border-radius: 4px; }
+
+/* flow strip */
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font: 600 0.9rem/1 var(--body); }
+.flow span { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.flow i { font-style: normal; color: var(--ink-2); }
+.flow span.k { border-color: var(--rec); }
+
+/* screen blocks */
+.screen { display: grid; gap: 18px; padding: 28px 0; border-top: 1px solid var(--line); }
+.screen:first-of-type { border-top: 0; }
+.screen-head { display: grid; gap: 6px; max-width: var(--col); }
+.route { font: 0.8rem/1 var(--mono); color: var(--ink-2); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 28px; }
+.facts > div { min-width: 0; display: grid; gap: 6px; align-content: start; }
+.facts h4 { margin: 0; font: 600 0.72rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.facts ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 0.95rem; }
+
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; }
+.shots.wide { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+figure.shot { margin: 0; display: grid; gap: 8px; }
+figure.shot button { all: unset; cursor: zoom-in; display: block; border-radius: 22px; background: var(--frame); padding: 6px; box-shadow: 0 1px 0 var(--line); }
+.wide figure.shot button { border-radius: 10px; padding: 4px; }
+figure.shot button:focus-visible { outline: 3px solid var(--rec); outline-offset: 2px; }
+figure.shot img { display: block; width: 100%; max-width: 100%; border-radius: 16px; aspect-ratio: 390 / 844; object-fit: cover; object-position: top; background: var(--line); }
+.wide figure.shot img { aspect-ratio: 1280 / 860; border-radius: 6px; }
+figcaption { font-size: 0.85rem; line-height: 1.35; color: var(--ink-2); }
+figcaption b { color: var(--ink); font-weight: 600; display: block; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.72rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.85rem; white-space: nowrap; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
+
+/* safe-zone diagram */
+.zones { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.zones svg { width: 100%; max-width: 260px; height: auto; display: block; }
+@media (max-width: 640px) { .zones { grid-template-columns: 1fr; } }
+
+/* lightbox */
+dialog#lb { border: 0; padding: 0; background: transparent; max-width: min(92vw, 1200px); max-height: 92vh; }
+dialog#lb::backdrop { background: rgb(0 0 0 / 0.8); }
+dialog#lb img { display: block; max-width: 100%; max-height: 88vh; border-radius: 12px; }
+dialog#lb button { position: absolute; top: 8px; right: 8px; font: 600 0.9rem var(--body); background: var(--sheet); color: var(--ink); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+
+footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--ink-2); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Design handoff · v1</span>
+    <h1>Instant Vlog Clip</h1>
+    <p class="lede">A mobile-first web app that turns a pile of phone clips into a short narrated vlog: add clips, write a few lines or let AI write them, pick a voice or record your own, and get a vertical video with captions, a title and music.</p>
+    <div class="meta">
+      <span><b>Status</b> working prototype, placeholder UI</span>
+      <span><b>Platform</b> web, phone first</span>
+      <span><b>Branding</b> to come from the client</span>
+      <span><b>Language</b> English</span>
+    </div>
+    <nav class="toc" aria-label="Contents">
+      <a href="#brief">The brief</a>
+      <a href="#deliverables">What we need</a>
+      <a href="#flow">Flow</a>
+      <a href="#screens">Screens</a>
+      <a href="#video">The video itself</a>
+      <a href="#tokens">Tokens</a>
+      <a href="#components">Components</a>
+      <a href="#copy">Copy</a>
+      <a href="#rules">Rules &amp; constraints</a>
+    </nav>
+  </header>
+
+  <section id="brief">
+    <div class="col">
+      <span class="eyebrow">The brief</span>
+      <h2>Design the app around one feeling: “that was too easy.”</h2>
+      <p>The app works end to end today, but every screen uses a plain placeholder look built only to prove the flow. Your job is to give it a real visual identity and polish every screen and state listed below. Layout and flow can change where you see a better way; the steps and the information on each screen are what the product needs.</p>
+      <p><strong>Who uses it.</strong> Casual creators who film a lot on their phones and never edit: travellers, students, small business owners, “day in my life” posters. They post to TikTok, Instagram Reels and YouTube Shorts. They are not editors and should never see a timeline.</p>
+      <p><strong>What makes it different.</strong> The video is cut to a short first-person story (the script), read aloud by an AI voice or by the user. That’s what separates it from “random highlights” apps.</p>
+      <div class="callout">
+        <strong>The client will send name, logo and brand colours later.</strong>
+        <p class="muted">Design a system where the brand can drop in: keep the brand colour, logo and wordmark in a few clearly named tokens and slots. “Instant Vlog Clip” is the working name.</p>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Principles to design by</h3>
+      <ul class="plain">
+        <li><strong>Instant first, perfect second.</strong> The first result arrives with no decisions. Every option has a good default and can be skipped.</li>
+        <li><strong>The video is the hero.</strong> On the editor, the preview is the biggest thing on screen; everything else supports it.</li>
+        <li><strong>Edit by tapping and talking, not timelines.</strong> Changes happen on scene cards and by typing a request to the AI.</li>
+        <li><strong>“Your videos stay on this device.”</strong> Users’ footage is never uploaded. This is a real promise worth showing where it reassures (home, export, sign-in).</li>
+        <li><strong>Phone first.</strong> Every screen must work one-handed at 390px wide. Desktop is a centred column today and can stay that way.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="deliverables">
+    <div class="col">
+      <span class="eyebrow">What we need from you</span>
+      <h2>Deliverables</h2>
+      <ul class="checklist">
+        <li><span><strong>Visual direction</strong>: one or two options for type, colour and overall feel, before detailed screens.</span></li>
+        <li><span><strong>All screens and states</strong> in the <a href="#screens">inventory</a>, at 390×844 (phone). Desktop for home, script and editor at 1280 wide.</span></li>
+        <li><span><strong>Light and dark</strong> versions. The app follows the phone’s setting.</span></li>
+        <li><span><strong>Component sheet</strong>: buttons, chips, inputs, cards, bottom sheet, progress, toasts, step bar, scene card, clip tile (list in <a href="#components">Components</a>).</span></li>
+        <li><span><strong>Design tokens</strong> mapped to the <a href="#tokens">existing token names</a>, or a new list we can swap in.</span></li>
+        <li><span><strong>Caption and title styles for the video</strong>: 4–6 presets with exact specs (see <a href="#video">The video itself</a>). These are burned into users’ exported videos, so they matter as much as the app UI.</span></li>
+        <li><span><strong>Motion notes</strong> for the few moments that deserve it: generating progress, scene change, export complete.</span></li>
+        <li><span><strong>App icon and favicon</strong> placeholders (final once branding arrives).</span></li>
+      </ul>
+      <p class="muted">Figma is ideal. Name frames by the screen and state names used here (for example “Voice / Record / Teleprompter recording”) so we can match them to code.</p>
+    </div>
+  </section>
+
+  <section id="flow">
+    <div class="col">
+      <span class="eyebrow">Flow</span>
+      <h2>Five steps, always visible</h2>
+      <p>Each vlog moves through five steps shown as a step bar at the top. Users can go back to any step they’ve reached. A typical run takes about three minutes.</p>
+    </div>
+    <div class="flow" aria-label="User flow">
+      <span>Home</span><i>→</i>
+      <span class="k">1 Clips</span><i>→</i>
+      <span class="k">2 Script</span><i>→</i>
+      <span class="k">3 Voice</span><i>→</i>
+      <span class="k">4 Make</span><i>→</i>
+      <span class="k">5 Edit</span><i>→</i>
+      <span>Export &amp; share</span>
+    </div>
+    <div class="col">
+      <p class="muted">Shortcut: on Script, “No script” skips Voice and makes a music-only montage. Sign-in appears only when a guest has used their free vlog.</p>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="col">
+      <span class="eyebrow">Screen inventory</span>
+      <h2>Every screen and state</h2>
+      <p>Screenshots are the current placeholder UI, captured from the working app with test footage (the colour bars are test videos, not real clips). Tap any image to enlarge it.</p>
+    </div>
+
+    <article class="screen" id="s-home">
+      <div class="screen-head">
+        <span class="route">/</span>
+        <h3>Home</h3>
+        <p>First impression and the list of the user’s vlogs. One clear action: start a new vlog.</p>
+      </div>
+      <div class="facts">
+        <div><h4>Content</h4><ul><li>Product name and a one-line promise</li><li>“New vlog” primary button</li><li>“Your videos stay on this device” reassurance</li><li>Grid of past vlogs: cover frame, title, last edited, length</li><li>Sign in / account (live mode only), “Demo AI” badge in demo mode</li></ul></div>
+        <div><h4>States</h4><ul><li>First visit (no vlogs)</li><li>With vlogs</li><li>Delete vlog (confirm, then remove)</li></ul></div>
+        <div><h4>Open questions for you</h4><ul><li>Should the empty home show an example of an output video to set expectations?</li><li>Desktop: is a centred column right, or a wider gallery?</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/01-home-empty.jpg" alt="Home, first visit" loading="lazy"></button><figcaption><b>First visit</b>No vlogs yet</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/27-home-with-vlogs.jpg" alt="Home with vlogs" loading="lazy"></button><figcaption><b>With vlogs</b>Cover, title, date, length</figcaption></figure>
+      </div>
+      <div class="shots wide">
+        <figure class="shot"><button type="button"><img src="screens/28-desktop-home.jpg" alt="Home on desktop" loading="lazy"></button><figcaption><b>Desktop</b>1280 wide</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-clips">
+      <div class="screen-head">
+        <span class="route">/p/:id/clips · step 1</span>
+        <h3>Clips</h3>
+        <p>Pick videos from the phone’s gallery (or drag them in on desktop). Each clip is read on the device; thumbnails appear one by one.</p>
+      </div>
+      <div class="facts">
+        <div><h4>Content</h4><ul><li>Heading + one line: “Messy is fine”</li><li>Big “Choose videos” target</li><li>Clip tiles: thumbnail, duration, star (“must include”), remove</li><li>“Similar” badge on near-duplicate clips</li><li>Footer: “6 clips · 0:43 of 10:00 max” + Continue</li></ul></div>
+        <div><h4>States</h4><ul><li>Empty</li><li>Importing (per-tile spinner)</li><li>Ready, one starred</li><li>Tile error: “This browser can’t decode … video”</li><li>Limits hit: toast (30 clips, 10 min, 4 GB)</li></ul></div>
+        <div><h4>Limits &amp; formats</h4><ul><li>MP4, MOV, WebM</li><li>Up to 30 clips, 10 minutes, 4 GB</li><li>Vertical or horizontal; horizontal clips get cropped to vertical automatically</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/02-clips-empty.jpg" alt="Clips, empty" loading="lazy"></button><figcaption><b>Empty</b>Choose videos</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/03-clips-importing.jpg" alt="Clips importing" loading="lazy"></button><figcaption><b>Importing</b>Tiles fill in one by one</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/04-clips-ready.jpg" alt="Clips ready" loading="lazy"></button><figcaption><b>Ready</b>First clip starred, one marked Similar</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-script">
+      <div class="screen-head">
+        <span class="route">/p/:id/script · step 2</span>
+        <h3>Script</h3>
+        <p>The story, as short first-person lines, one per moment. The user writes them, or taps “Write it for me” and AI writes them from what’s in the clips. Each line becomes a scene and is read aloud.</p>
+      </div>
+      <div class="facts">
+        <div><h4>Content</h4><ul><li>Title (shown big at the start of the video)</li><li>“What’s it about?” optional prompt</li><li>Line list: drag to reorder, remove, Enter adds a line</li><li>Write it for me / Rewrite with AI · Polish my lines</li><li>“About 0:13 spoken” estimate</li><li>Settings chips: Format, Length, Vibe</li><li>Footer: No script · Continue</li></ul></div>
+        <div><h4>States</h4><ul><li>Empty (one blank line with an example placeholder)</li><li>AI writing (buttons busy)</li><li>Filled</li><li>“Replace your lines?” confirm before rewriting</li></ul></div>
+        <div><h4>Settings values</h4><ul><li>Format: Vertical 9:16 (default), Square 1:1, Wide 16:9</li><li>Length: Auto (default), 15s, 30s, 60s</li><li>Vibe: Auto, Chill, Upbeat, Cinematic, Funny, Aesthetic</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/05-script-empty.jpg" alt="Script, empty" loading="lazy"></button><figcaption><b>Empty</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/06-script-writing.jpg" alt="Script, AI writing" loading="lazy"></button><figcaption><b>AI writing</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/07-script-filled.jpg" alt="Script filled" loading="lazy"></button><figcaption><b>Filled</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/08-script-settings.jpg" alt="Script settings" loading="lazy"></button><figcaption><b>Settings</b>Format, length, vibe</figcaption></figure>
+      </div>
+      <div class="shots wide">
+        <figure class="shot"><button type="button"><img src="screens/30-desktop-script.jpg" alt="Script on desktop" loading="lazy"></button><figcaption><b>Desktop</b></figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-voice">
+      <div class="screen-head">
+        <span class="route">/p/:id/voice · step 3</span>
+        <h3>Voice</h3>
+        <p>Who tells the story: an AI voice, the user’s own voice, or nobody (lines appear as captions only).</p>
+      </div>
+      <div class="facts">
+        <div><h4>AI voice</h4><ul><li>Six voices: Ava, Leo, Mia, Sam (American), Grace, Oliver (British)</li><li>Each has a one-line description and a play button that reads the user’s first line</li></ul></div>
+        <div><h4>Record my own</h4><ul><li>List of lines with Record / Redo and play</li><li>Teleprompter: one line at a time, big text, a large record button, a live level meter, timer, Previous / Skip</li><li>Auto-advances after each take</li><li>Footer counts “2 of 7 lines recorded”; Continue waits until all are done</li></ul></div>
+        <div><h4>States</h4><ul><li>AI selected, preview loading / playing</li><li>Record list, partly recorded</li><li>Teleprompter idle / recording / saving</li><li>Microphone blocked (toast)</li><li>No voiceover</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/09-voice-ai.jpg" alt="Voice, AI voices" loading="lazy"></button><figcaption><b>AI voice</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/10-voice-record.jpg" alt="Voice, record list" loading="lazy"></button><figcaption><b>Record my own</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/11-teleprompter.jpg" alt="Teleprompter idle" loading="lazy"></button><figcaption><b>Teleprompter</b>Ready</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/12-teleprompter-recording.jpg" alt="Teleprompter recording" loading="lazy"></button><figcaption><b>Teleprompter</b>Recording</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/13-voice-record-progress.jpg" alt="Record list progress" loading="lazy"></button><figcaption><b>Partly recorded</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/15-voice-none.jpg" alt="No voiceover" loading="lazy"></button><figcaption><b>No voiceover</b></figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-make">
+      <div class="screen-head">
+        <span class="route">/p/:id/generate · step 4</span>
+        <h3>Make</h3>
+        <p>The AI builds the vlog. Usually under a minute. This is the one waiting moment in the product, so it deserves care: honest stages, real progress, and something pleasant to look at.</p>
+      </div>
+      <div class="facts">
+        <div><h4>Stages (in order)</h4><ul><li>Watching your clips (shows “3 of 6 clips”)</li><li>Voicing your script (“2 of 7 lines”)</li><li>Picking the best moments</li><li>Cutting it together</li><li>Adding captions &amp; music</li></ul></div>
+        <div><h4>States</h4><ul><li>In progress</li><li>Error: the failed stage is marked, with a plain message, Try again and Go back</li><li>On success it moves straight to Edit</li></ul></div>
+        <div><h4>Idea space</h4><ul><li>Clip thumbnails or the title animating while it works</li><li>A sign-in prompt can appear here when a guest runs out of free vlogs</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/16-generate-progress.jpg" alt="Making the vlog" loading="lazy"></button><figcaption><b>In progress</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/14-generate-error.jpg" alt="Make error" loading="lazy"></button><figcaption><b>Error</b>Lines not recorded</figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-edit">
+      <div class="screen-head">
+        <span class="route">/p/:id/edit · step 5</span>
+        <h3>Edit</h3>
+        <p>The vlog plays right away. Below it are the scenes (one per script line) and three panels for the whole video. At the bottom, users can type a change for the AI (“open with the sunset”). Undo and redo walk through versions.</p>
+      </div>
+      <div class="facts">
+        <div><h4>Always visible</h4><ul><li>Undo / redo, note about the current version, Export</li><li>Phone-shaped preview with play / scrub / time</li><li>Tabs: Scenes, Voice, Music, Style</li><li>“Tell the AI” input with suggestion chips</li></ul></div>
+        <div><h4>Scene sheet (tap a scene)</h4><ul><li>Edit the narration line (re-voices just that line)</li><li>Each shot: thumbnail, range, clip-sound toggle (off / quiet / full)</li><li>Swap: grid of other good moments</li><li>Trim: start / end sliders</li><li>Move earlier / later, Delete scene</li></ul></div>
+        <div><h4>Panels</h4><ul><li>Voice: switch AI voice, voice volume</li><li>Music: five tracks + No music, volume (music dips under speech automatically)</li><li>Style: title text, caption style presets</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/17-editor-scenes.jpg" alt="Editor with scenes" loading="lazy"></button><figcaption><b>Scenes</b>Default view</figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/18-scene-sheet.jpg" alt="Scene sheet" loading="lazy"></button><figcaption><b>Scene sheet</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/19-scene-swap.jpg" alt="Swap a shot" loading="lazy"></button><figcaption><b>Swap shot</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/20-scene-trim.jpg" alt="Trim a shot" loading="lazy"></button><figcaption><b>Trim shot</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/21-editor-voice.jpg" alt="Voice panel" loading="lazy"></button><figcaption><b>Voice panel</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/22-editor-music.jpg" alt="Music panel" loading="lazy"></button><figcaption><b>Music panel</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/23-editor-style.jpg" alt="Style panel" loading="lazy"></button><figcaption><b>Style panel</b></figcaption></figure>
+      </div>
+      <div class="shots wide">
+        <figure class="shot"><button type="button"><img src="screens/29-desktop-editor.jpg" alt="Editor on desktop" loading="lazy"></button><figcaption><b>Desktop</b>Could use the width: preview left, scenes and panels right</figcaption></figure>
+      </div>
+      <div class="col callout">
+        <strong>Known weak spots to solve</strong>
+        <ul class="plain">
+          <li>On a phone the sticky “Tell the AI” bar and the tabs compete for space. Consider collapsing Tell the AI into a button that opens a sheet.</li>
+          <li>The scene sheet covers the preview; users can’t see the change they’re making. A shorter sheet or a mini preview inside it would help.</li>
+          <li>Scene cards show the first shot only; a scene can have up to three shots.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="screen" id="s-export">
+      <div class="screen-head">
+        <span class="route">Export sheet (from Edit)</span>
+        <h3>Export &amp; share</h3>
+        <p>The video is rendered on the phone itself. Then the native share sheet opens (save to Photos, TikTok, Instagram…) or, on desktop, it downloads.</p>
+      </div>
+      <div class="facts">
+        <div><h4>States</h4><ul><li>Ready: size, length, “made on this device, nothing is uploaded”</li><li>Rendering: progress %, “Keep this tab open”, Cancel</li><li>Done: playable result, file size, Share, Save</li><li>Error: message + Try again</li></ul></div>
+        <div><h4>Facts</h4><ul><li>1080×1920 for vertical, 30 fps, MP4 (WebM on some browsers)</li><li>A 30 s vlog takes roughly 20–40 s to render</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/24-export-ready.jpg" alt="Export ready" loading="lazy"></button><figcaption><b>Ready</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/25-export-rendering.jpg" alt="Export rendering" loading="lazy"></button><figcaption><b>Rendering</b></figcaption></figure>
+        <figure class="shot"><button type="button"><img src="screens/26-export-done.jpg" alt="Export done" loading="lazy"></button><figcaption><b>Done</b></figcaption></figure>
+      </div>
+    </article>
+
+    <article class="screen" id="s-signin">
+      <div class="screen-head">
+        <span class="route">Sign-in sheet (any screen)</span>
+        <h3>Sign in</h3>
+        <p>Guests get one free vlog. After that, or when a daily limit is hit, this sheet explains why and offers an email sign-in link (Google sign-in can be switched on).</p>
+      </div>
+      <div class="facts">
+        <div><h4>States</h4><ul><li>Enter email</li><li>Sending</li><li>“Check your email for a sign-in link”</li><li>Error</li><li>Signed in: email + sign out on Home</li></ul></div>
+      </div>
+      <div class="shots">
+        <figure class="shot"><button type="button"><img src="screens/31-sign-in.jpg" alt="Sign in sheet" loading="lazy"></button><figcaption><b>Sign in</b></figcaption></figure>
+      </div>
+    </article>
+  </section>
+
+  <section id="video">
+    <div class="col">
+      <span class="eyebrow">The video itself</span>
+      <h2>Titles and captions are part of your design</h2>
+      <p>Every exported vlog carries a big title for the first three seconds and captions of the narration, a few words at a time, with the word being spoken highlighted. These are drawn into the video pixels, so they become what users post. Please design them as a small set of presets with exact specs.</p>
+    </div>
+    <div class="zones">
+      <svg viewBox="0 0 270 480" role="img" aria-labelledby="zt">
+        <title id="zt">Safe zones on a 9:16 frame</title>
+        <rect x="1" y="1" width="268" height="478" rx="14" fill="var(--sheet)" stroke="var(--ink-2)" stroke-width="2"/>
+        <rect x="2" y="2" width="266" height="48" rx="12" fill="var(--rec-soft)"/>
+        <text x="135" y="30" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-2)">top 10% · app UI</text>
+        <rect x="2" y="384" width="266" height="94" rx="12" fill="var(--rec-soft)"/>
+        <text x="135" y="436" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-2)">bottom 20% · captions, buttons</text>
+        <rect x="226" y="180" width="42" height="204" fill="var(--rec-soft)"/>
+        <text x="247" y="282" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-2)" transform="rotate(-90 247 282)">right 15% · likes</text>
+        <rect x="20" y="58" width="230" height="30" rx="4" fill="none" stroke="var(--rec)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="135" y="77" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="var(--ink)">TITLE · 15%</text>
+        <rect x="20" y="320" width="200" height="34" rx="4" fill="none" stroke="var(--rec)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="120" y="341" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="13" fill="var(--ink)">captions · 70%</text>
+      </svg>
+      <div style="display:grid;gap:14px;min-width:0">
+        <p>TikTok, Reels and Shorts cover the top bar, the bottom fifth and a column on the right with their own buttons. Today the title is centred at 15% of the frame height and the captions at 70%, both within 84% of the width. Keep your presets inside those zones.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Element</th><th>Now</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Title</td><td class="num">10% of width</td><td>Wraps up to 3 lines, fades in 0.25 s, out 0.35 s, shows 0–3 s</td></tr>
+              <tr><td>Captions</td><td class="num">7.2% of width</td><td>Up to 4 words / 22 characters per chunk, current word highlighted</td></tr>
+              <tr><td>Extra label</td><td class="num">5% of width</td><td>Optional per scene (a place name, a price)</td></tr>
+              <tr><td>Legibility</td><td>Dark outline</td><td>Must read on any footage: bright sky, snow, night</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Current caption presets</h3>
+      <p class="muted">Rename, replace or add. Each preset needs: font family and weight, title and caption case, text colour, highlight colour, outline or box colour, and corner radius if boxed.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Preset</th><th>Weight</th><th>Case</th><th>Text</th><th>Highlight</th><th>Legibility</th></tr></thead>
+        <tbody>
+          <tr><td>Classic</td><td class="num">800</td><td>Title caps</td><td><span class="swatch" style="background:#ffffff"></span><span class="mono">#FFFFFF</span></td><td><span class="swatch" style="background:#ffd84d"></span><span class="mono">#FFD84D</span></td><td>Black outline, 85%</td></tr>
+          <tr><td>Bold</td><td class="num">900</td><td>All caps</td><td><span class="swatch" style="background:#ffffff"></span><span class="mono">#FFFFFF</span></td><td><span class="swatch" style="background:#4dff9a"></span><span class="mono">#4DFF9A</span></td><td>Black outline, 95%</td></tr>
+          <tr><td>Minimal</td><td class="num">600</td><td>Sentence</td><td><span class="swatch" style="background:#ffffff"></span><span class="mono">#FFFFFF</span></td><td>None</td><td>Soft outline, 45%</td></tr>
+          <tr><td>Box</td><td class="num">800</td><td>Title caps</td><td><span class="swatch" style="background:#111111"></span><span class="mono">#111111</span></td><td><span class="swatch" style="background:#e0218a"></span><span class="mono">#E0218A</span></td><td>White box behind each line</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p class="muted">Also in the video: crossfade, dip-to-black and whip transitions (0.35 s), and three formats: 1080×1920 vertical, 1080×1080 square, 1920×1080 wide. If you want an end card or a watermark for a free plan, design it as an optional overlay.</p>
+    </div>
+  </section>
+
+  <section id="tokens">
+    <div class="col">
+      <span class="eyebrow">Design tokens</span>
+      <h2>Swap these, and the whole app changes</h2>
+      <p>All app colours, radii and the font come from one file, <code>src/index.css</code>. The values below are placeholders. Give us yours by role and we drop them in. Add tokens if your system needs more (for example a second surface or a brand gradient).</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Token</th><th>Role</th><th>Light now</th><th>Dark now</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">--color-bg</td><td>Page background</td><td class="num"><span class="swatch" style="background:#ffffff"></span>#FFFFFF</td><td class="num"><span class="swatch" style="background:#0b0d12"></span>#0B0D12</td></tr>
+          <tr><td class="mono">--color-surface</td><td>Soft fills, tabs, info boxes</td><td class="num"><span class="swatch" style="background:#f6f7f9"></span>#F6F7F9</td><td class="num"><span class="swatch" style="background:#151821"></span>#151821</td></tr>
+          <tr><td class="mono">--color-surface-2</td><td>Secondary buttons, placeholders</td><td class="num"><span class="swatch" style="background:#eceef2"></span>#ECEEF2</td><td class="num"><span class="swatch" style="background:#1e222d"></span>#1E222D</td></tr>
+          <tr><td class="mono">--color-border</td><td>Card and input borders</td><td class="num"><span class="swatch" style="background:#e2e5ea"></span>#E2E5EA</td><td class="num"><span class="swatch" style="background:#2a2f3c"></span>#2A2F3C</td></tr>
+          <tr><td class="mono">--color-fg</td><td>Main text</td><td class="num"><span class="swatch" style="background:#0b0d12"></span>#0B0D12</td><td class="num"><span class="swatch" style="background:#f3f4f6"></span>#F3F4F6</td></tr>
+          <tr><td class="mono">--color-muted</td><td>Secondary text</td><td class="num"><span class="swatch" style="background:#5f6673"></span>#5F6673</td><td class="num"><span class="swatch" style="background:#9aa1ae"></span>#9AA1AE</td></tr>
+          <tr><td class="mono">--color-accent</td><td>Brand / primary actions, selection</td><td class="num"><span class="swatch" style="background:#2563eb"></span>#2563EB</td><td class="num"><span class="swatch" style="background:#4f86ff"></span>#4F86FF</td></tr>
+          <tr><td class="mono">--color-accent-fg</td><td>Text on accent</td><td class="num"><span class="swatch" style="background:#ffffff"></span>#FFFFFF</td><td class="num"><span class="swatch" style="background:#ffffff"></span>#FFFFFF</td></tr>
+          <tr><td class="mono">--color-accent-soft</td><td>Selected chip / card fill</td><td class="num"><span class="swatch" style="background:#e8efff"></span>#E8EFFF</td><td class="num"><span class="swatch" style="background:#1a2747"></span>#1A2747</td></tr>
+          <tr><td class="mono">--color-danger</td><td>Errors, recording, delete</td><td class="num"><span class="swatch" style="background:#dc2626"></span>#DC2626</td><td class="num">same</td></tr>
+          <tr><td class="mono">--color-success</td><td>Done, recorded</td><td class="num"><span class="swatch" style="background:#16a34a"></span>#16A34A</td><td class="num">same</td></tr>
+          <tr><td class="mono">--color-warning</td><td>Star (must include), clip warnings</td><td class="num"><span class="swatch" style="background:#d97706"></span>#D97706</td><td class="num">same</td></tr>
+          <tr><td class="mono">--radius-card</td><td>Cards, sheets, preview</td><td class="num">16px</td><td class="num">—</td></tr>
+          <tr><td class="mono">--radius-control</td><td>Buttons, inputs</td><td class="num">12px</td><td class="num">—</td></tr>
+          <tr><td class="mono">--font-sans</td><td>All UI text</td><td>Inter → system</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="components">
+    <div class="col">
+      <span class="eyebrow">Components</span>
+      <h2>What the app is built from</h2>
+      <p>These exist in code today. Design each with its states (default, hover, pressed, focus, disabled, loading where it applies).</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Component</th><th>Variants / states</th><th>Used on</th></tr></thead>
+        <tbody>
+          <tr><td>Button</td><td>Primary, secondary, ghost, danger · sm / md / lg · icon + label · loading</td><td>Everywhere</td></tr>
+          <tr><td>Chip</td><td>Selected / not · horizontally scrolling group with label</td><td>Script settings, voice switch</td></tr>
+          <tr><td>Text input, auto-growing text area</td><td>Placeholder, focus, disabled, with label + hint</td><td>Script, sign-in, scene sheet</td></tr>
+          <tr><td>Step bar</td><td>Done / current / not reached</td><td>All project screens</td></tr>
+          <tr><td>Sticky footer</td><td>One or two actions + optional hint line</td><td>Every step</td></tr>
+          <tr><td>Clip tile</td><td>Importing, ready, error, starred, similar · duration badge · remove</td><td>Clips</td></tr>
+          <tr><td>Script line row</td><td>Drag handle, text, remove · dragging</td><td>Script</td></tr>
+          <tr><td>Option card (radio)</td><td>Selected / not, icon, title, body</td><td>Voice mode</td></tr>
+          <tr><td>Voice card</td><td>Selected, preview idle / loading / playing</td><td>Voice</td></tr>
+          <tr><td>Record row + teleprompter</td><td>Not recorded / recorded · idle / recording / saving · level meter</td><td>Voice</td></tr>
+          <tr><td>Stage list + progress bar</td><td>Waiting, active (with detail), done, failed</td><td>Make</td></tr>
+          <tr><td>Video player</td><td>Paused, playing, ended, “mixing audio” · scrub bar, time</td><td>Edit</td></tr>
+          <tr><td>Scene card</td><td>Active (playing now), number, length, shot count, line text</td><td>Edit</td></tr>
+          <tr><td>Bottom sheet</td><td>Title, close, scrolling body · centred dialog on desktop</td><td>Scene, export, teleprompter, sign-in</td></tr>
+          <tr><td>Segmented tabs</td><td>Scenes / Voice / Music / Style</td><td>Edit</td></tr>
+          <tr><td>Slider</td><td>Labelled volume slider, trim range</td><td>Edit panels, trim</td></tr>
+          <tr><td>Toast</td><td>Info, error</td><td>Everywhere</td></tr>
+          <tr><td>Badge</td><td>“Demo AI”, “Similar”, duration</td><td>Home, clips</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="copy">
+    <div class="col">
+      <span class="eyebrow">Copy</span>
+      <h2>Voice and messages</h2>
+      <p>Tone: friendly, short, plain. Talk about clips, lines, scenes and voices, never “assets”, “tracks” or “renders”. Feel free to rewrite any of this; here are the messages that exist today so none get missed.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Where</th><th>Message</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>“Your clips, made into a vlog.” · “Your videos stay on this device.”</td></tr>
+          <tr><td>Clips</td><td>“Pick the videos from your day. Messy is fine: we’ll find the best moments and skip the accidental ones.”</td></tr>
+          <tr><td>Clip error</td><td>“This browser can’t decode HEVC video. Try the latest Chrome or Safari.” · “Couldn’t read this video.”</td></tr>
+          <tr><td>Limits</td><td>“You can add up to 30 clips” · “total footage is over 10 minutes” · “total size is over 4 GB”</td></tr>
+          <tr><td>Script</td><td>Placeholders: “I woke up early and grabbed coffee.”, “Then I biked through the park.” · Confirm: “Replace your lines with a new AI script?”</td></tr>
+          <tr><td>Voice</td><td>“Microphone access is needed to record. Check your browser settings.” · “Couldn’t save that take. Try again.”</td></tr>
+          <tr><td>Make error</td><td>“6 lines are not recorded yet. Go back to Voice to record them.” · “None of your clips could be read. Add a few more clips and try again.”</td></tr>
+          <tr><td>Edit</td><td>“Made a simple edit because the AI editor wasn’t available.” · “A vlog needs at least one scene.”</td></tr>
+          <tr><td>Limits (live)</td><td>“You’ve used your free vlog. Sign in to make more.” · “You’ve made 10 vlogs today, the daily limit. Try again tomorrow.”</td></tr>
+          <tr><td>Export</td><td>“Rendering… 42%. Keep this tab open.” · “This browser can’t encode video. Try the latest Chrome or Safari.”</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="rules">
+    <div class="col">
+      <span class="eyebrow">Rules &amp; constraints</span>
+      <h2>Things the build needs from the design</h2>
+      <ul class="plain">
+        <li><strong>Fonts must be web fonts we can bundle</strong> (Google Fonts or a licence that allows web and video embedding). Caption fonts are drawn into exported videos, so check the licence covers that.</li>
+        <li><strong>Touch targets at least 44×44 px.</strong> Primary actions sit in the bottom footer, within thumb reach.</li>
+        <li><strong>Respect the phone’s safe areas</strong> (notch, home bar). The header and footer already pad for them.</li>
+        <li><strong>Contrast</strong>: WCAG AA for text in both themes. Focus states must be visible for keyboard users.</li>
+        <li><strong>Motion</strong>: keep it short and purposeful; provide a reduced-motion fallback for anything that moves.</li>
+        <li><strong>Icons</strong>: the build uses Lucide line icons. Another set is fine if it covers: play, pause, mic, star, scissors, swap, music, palette, film, send, undo, redo, share, download.</li>
+        <li><strong>No timeline UI</strong>, by product decision.</li>
+        <li><strong>Out of scope for now</strong>: marketing site, pricing pages, photos as input, templates, multiple languages, collaboration. Leave room for a future “Templates” entry point on Script and an “Upgrade” spot on Home and Export.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Screenshots captured from the working prototype on 8 Oct 2026 at 390×844 (2×) and 1280×860. The colour-bar videos are generated test clips. Source and screenshots live in the repository under <code>docs/design-handoff/</code>.
+  </footer>
+</div>
+
+<dialog id="lb" aria-label="Screenshot">
+  <img alt="">
+  <button type="button" id="lb-close">Close</button>
+</dialog>
+<script>
+  (function () {
+    const lb = document.getElementById('lb');
+    const img = lb.querySelector('img');
+    document.querySelectorAll('figure.shot button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const src = b.querySelector('img');
+        img.src = src.getAttribute('src');
+        img.alt = src.alt;
+        if (lb.showModal) lb.showModal();
+      });
+    });
+    document.getElementById('lb-close').addEventListener('click', function () { lb.close(); });
+    lb.addEventListener('click', function (e) { if (e.target === lb) lb.close(); });
+  })();
+</script>

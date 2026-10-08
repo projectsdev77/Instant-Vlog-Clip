@@ -365,3 +365,6 @@ Rendering is the riskiest piece, so it's proven before the AI.
 - **Voice mix:** % using AI voice vs own voice vs none (informs where to invest)
 - **Fallback rate:** % of generations hitting the rule-based fallback (target < 2%)
 - **Return rate:** % creating a second vlog within 7 days
+
+## 13. Implementation status
+The MVP flow is built; see the README's "Status and known gaps" for what is verified, what still needs live API and real-device testing, and what is not built yet. Deviations from this spec so far: export runs on the main thread (WebCodecs does the heavy work off-thread), and the music library is generated placeholder tracks until a licensed library is chosen.
