@@ -74,6 +74,8 @@ export type Clip = {
   error?: string
   /** small JPEG data URL */
   thumbnail?: string
+  /** grid of sampled frames sent to the AI instead of video, JPEG data URL */
+  contactSheet?: { dataUrl: string; times: number[] }
   signals?: LocalSignals
   analysis?: ClipAnalysis
   transcript?: Transcript
