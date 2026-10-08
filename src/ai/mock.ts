@@ -29,6 +29,12 @@ function describe(fileName: string): { description: string; tags: string[] } {
   return { description: `${t.join(' ').replace(/^./, (c) => c.toUpperCase())}`, tags: t }
 }
 
+function shortTitle(prompt: string): string {
+  const words = prompt.split(/[.,!?]/)[0].trim().split(/\s+/).slice(0, 6)
+  while (words.length > 1 && /^(the|a|an|in|on|at|of|and|with|to|for)$/i.test(words[words.length - 1])) words.pop()
+  return cap(words.join(' '))
+}
+
 const cap = (s: string) => s.replace(/^./, (c) => c.toUpperCase())
 
 function polishLine(line: string): string {
@@ -197,7 +203,7 @@ export const mockAi: AiService = {
 
   async writeScript(req) {
     await latency()
-    const title = req.title || (req.prompt ? cap(req.prompt.split(/[.,!?]/)[0].split(/\s+/).slice(0, 5).join(' ')) : 'My Day')
+    const title = req.title || (req.prompt ? shortTitle(req.prompt) : 'My Day')
     if (req.mode === 'polish') {
       return { title, lines: req.lines.map(polishLine).filter(Boolean).map((text, i, all) => ({ text, purpose: i === 0 ? 'hook' : i === all.length - 1 ? 'outro' : 'story', visualIntent: text, onScreenText: '' })) }
     }

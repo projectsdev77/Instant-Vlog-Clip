@@ -73,10 +73,19 @@ function processFile(clip: Clip, file: Blob, rejected: string[]) {
   if (!running) void drain()
 }
 
+let idleWaiters: (() => void)[] = []
+
 async function drain() {
   running = true
   while (queue.length) await queue.shift()!()
   running = false
+  idleWaiters.forEach((r) => r())
+  idleWaiters = []
+}
+
+/** Resolves when every queued clip has been read. */
+export function waitForImports(): Promise<void> {
+  return running || queue.length ? new Promise((r) => idleWaiters.push(r)) : Promise.resolve()
 }
 
 async function processOne(clip: Clip, file: Blob, rejected: string[]) {

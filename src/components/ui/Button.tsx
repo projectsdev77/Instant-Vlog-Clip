@@ -28,7 +28,7 @@ export function Button({ variant = 'primary', size = 'md', block, className, typ
     <button
       type={type}
       className={cn(
-        'inline-flex select-none items-center justify-center rounded-[var(--radius-control)] font-medium transition disabled:pointer-events-none disabled:opacity-40',
+        'inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-[var(--radius-control)] font-medium transition disabled:pointer-events-none disabled:opacity-40',
         variants[variant],
         sizes[size],
         block && 'w-full',
