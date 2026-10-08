@@ -47,7 +47,53 @@ async function main() {
   if (UNTIL === 'voice') return
   await page.getByRole('button', { name: 'Make my vlog' }).click()
   await page.waitForURL(/\/generate$/)
-  step('generate opened')
+  await page.waitForTimeout(400)
+  await shot('4-generate')
+  await page.waitForURL(/\/edit$/, { timeout: 90000 })
+  step('vlog generated')
+  await page.waitForFunction(() => !document.body.innerText.includes('Mixing audio'), null, { timeout: 30000 })
+  await page.getByRole('button', { name: 'Play' }).first().click()
+  await page.waitForTimeout(1200)
+  await shot('5-edit-playing')
+  const time = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
+  console.log('  player time:', time)
+  await page.getByRole('button', { name: 'Pause' }).first().click()
+  step('preview plays')
+  if (UNTIL === 'edit') return
+  if (UNTIL === 'seekprobe') {
+    for (const i of [1, 3]) {
+      await page.locator('ol[aria-label=Scenes] li button').nth(i).click()
+      await page.getByRole('button', { name: 'Close' }).click()
+      await page.waitForTimeout(1500)
+      const info = await page.evaluate(() => [...document.querySelectorAll('video')].map((v) => ({ rs: v.readyState, t: v.currentTime.toFixed(2), seeking: v.seeking, paused: v.paused })))
+      console.log(i, JSON.stringify(info))
+      await shot(`seek-${i}`)
+    }
+    return
+  }
+
+  await page.locator('ol[aria-label=Scenes] li button').nth(1).click()
+  await page.waitForSelector('[role=dialog]')
+  await shot('6-scene-sheet')
+  await page.getByRole('button', { name: 'Swap' }).first().click()
+  await page.locator('[role=dialog] ul.grid li button').first().click()
+  await page.waitForTimeout(500)
+  await page.getByRole('button', { name: 'Close' }).click()
+  step('shot swapped')
+  const before = await page.locator('main p[title]').innerText()
+  await page.getByLabel('Tell the AI what to change').fill('open with the sunset')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await page.waitForFunction((b) => document.querySelector('main p[title]')?.textContent !== b, before, { timeout: 30000 })
+  console.log('  note:', await page.locator('main p[title]').innerText())
+  step('tell the AI')
+  await page.getByRole('button', { name: 'Undo' }).click()
+  step('undo')
+  for (const tab of ['Voice', 'Music', 'Style']) {
+    await page.getByRole('button', { name: tab, exact: true }).click()
+    await shot(`7-panel-${tab.toLowerCase()}`)
+  }
+  step('panels')
+  if (UNTIL === 'tweak') return
 }
 
 try {
