@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. The designer's work lands here: every color, radius and font
+ * in the app comes from these variables, so a rebrand is a one-file change.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-bg: #ffffff;
+  --color-surface: #f6f7f9;
+  --color-surface-2: #eceef2;
+  --color-border: #e2e5ea;
+  --color-fg: #0b0d12;
+  --color-muted: #5f6673;
+  --color-accent: #2563eb;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #e8efff;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+}
+
+@layer base {
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg: #0b0d12;
+      --color-surface: #151821;
+      --color-surface-2: #1e222d;
+      --color-border: #2a2f3c;
+      --color-fg: #f3f4f6;
+      --color-muted: #9aa1ae;
+      --color-accent: #4f86ff;
+      --color-accent-soft: #1a2747;
+    }
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
