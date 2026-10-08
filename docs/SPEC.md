@@ -170,7 +170,6 @@ After the model returns the EDL, code **validates and repairs** it:
 - **MVP: English.** Script writing, AI voices, captions and transcription are tuned and tested in English.
 - **Built to expand:** every project carries a `language`; prompts, voice choice and caption fonts are keyed off it, and the chosen TTS/STT providers are multilingual. Adding a language means enabling it, picking voices and QA, not new code.
 - Caption rendering is built with RTL and CJK in mind (fonts, line breaking) so those languages don't need a renderer change later.
-- Which languages come next is a client decision (§11).
 
 ## 6. Technical architecture
 
@@ -348,14 +347,16 @@ Rendering is the riskiest piece, so it's proven before the AI.
 | M3 | Script, voice & tweak UX | Script editor, voice picker, record-your-own teleprompter, scene cards, swap/trim, per-line re-voice, "Tell the AI", version history |
 | M4 | Accounts & launch | Auth, quotas, onboarding, error states, analytics |
 
-## 11. Open questions for the client
-1. **Name & branding:** is "Instant Vlog Clip" the product name? Any logo or colors?
-2. **Voices:** any preference on voice style or provider? OK that AI voices are stock voices (no cloning)?
-3. **Languages:** after English, which languages matter most?
-4. **Monetization:** free, paid, or free plus paid? Watermark on free exports?
-5. **Accounts:** OK to require sign-in after one free trial vlog?
-6. **Model cost vs quality:** OK with roughly $0.40–$1.00 total AI cost per vlog, or should parts use cheaper models?
-7. **Music:** do they have a library or license, or do we source one?
+## 11. Open questions
+**Settled:**
+- Name & branding: the client will provide them later. The UI uses neutral design tokens so branding drops in.
+- Languages: English only for now (§5.6).
+- Pricing: decided by the project owner, not the client. The spec only needs per-user usage limits (§8) and the AI cost per vlog (§6.5) as input.
+- Voices: **[D]** we pick ~6 stock English AI voices (mix of male/female, calm/energetic, American/British) plus "record your own". No voice cloning.
+
+**Still open:**
+1. **Accounts:** require sign-in after one free trial vlog?
+2. **Music:** does the client have a library or license, or do we source one?
 
 ## 12. Success metrics
 - **Time to first vlog:** median < 3 min from opening the app to exported video
