@@ -15,6 +15,8 @@ import { redo, tellAi, undo } from './editActions'
 import { MusicPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
 import { SceneSheet } from './SceneSheet'
 import { useEditorData } from './useEditorData'
+import { AiError } from '@/ai'
+import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 
 const PANELS: { id: PanelId; label: string; icon: typeof Film }[] = [
   { id: 'scenes', label: 'Scenes', icon: Film },
@@ -48,7 +50,8 @@ export function EditStep() {
       await tellAi(text.trim())
       setFeedback('')
     } catch (e) {
-      toast((e as Error).message, 'error')
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
+      else toast((e as Error).message, 'error')
     } finally {
       setThinking(false)
     }

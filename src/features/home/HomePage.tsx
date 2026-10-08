@@ -8,6 +8,7 @@ import { createProject, deleteProject } from '@/store/projectStore'
 import { stepPath } from '@/features/project/steps'
 import type { Project } from '@/domain/types'
 import { aiMode } from '@/ai'
+import { AccountButton } from '@/features/auth/AccountButton'
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -27,7 +28,7 @@ export function HomePage() {
           </span>
           Instant Vlog Clip
         </div>
-        {aiMode === 'mock' && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">Demo AI</span>}
+        {aiMode === 'mock' ? <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">Demo AI</span> : <AccountButton />}
       </header>
 
       <section className="mb-10">

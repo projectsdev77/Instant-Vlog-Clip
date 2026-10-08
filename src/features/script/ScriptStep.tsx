@@ -19,6 +19,8 @@ import { StepFooter } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath } from '@/features/project/steps'
 import { generateScript } from './scriptActions'
 import { ASPECTS, LENGTHS, VIBES } from './settingsOptions'
+import { AiError } from '@/ai'
+import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 
 const PLACEHOLDERS = ['I woke up early and grabbed coffee.', 'Then I biked through the park.', 'Met Sam for lunch.', 'Ended the day watching the sunset.']
 
@@ -64,7 +66,8 @@ export function ScriptStep() {
     try {
       await generateScript(mode)
     } catch (e) {
-      toast((e as Error).message, 'error')
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
+      else toast((e as Error).message, 'error')
     } finally {
       setBusy(null)
     }

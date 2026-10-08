@@ -11,7 +11,7 @@ import { ANALYZE_SYSTEM, analyzeUserText, PLAN_SYSTEM, planUserText, SCRIPT_SYST
 import { analyzeClipSchema, planSchema, scriptSchema } from '../_shared/schemas.ts'
 import { claudeJson, RefusalError } from './claude.ts'
 import { synthesize, transcribe } from './elevenlabs.ts'
-import { authorize, QuotaError, AuthError } from './quota.ts'
+import { authorize, QuotaError, AuthError, type UsageKind } from './quota.ts'
 
 const CORS = {
   'access-control-allow-origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -65,8 +65,15 @@ async function handle(req: AiAction) {
   }
 }
 
-/** Generating a vlog is the unit users are limited on; other calls are part of one. */
-const COUNTED_ACTIONS = new Set(['write-script', 'plan-edit'])
+/**
+ * Users are limited per vlog: the first plan of an edit counts as a generation,
+ * "Tell the AI" changes count as revisions, everything else as plain calls.
+ */
+function usageKind(body: AiAction): UsageKind {
+  if (body.action !== 'plan-edit') return 'call'
+  if (body.payload.feedback) return 'revision'
+  return body.payload.previousIssues?.length ? 'call' : 'generation'
+}
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -78,7 +85,7 @@ Deno.serve(async (request) => {
     return fail('bad_request', 'Invalid JSON', 400)
   }
   try {
-    await authorize(request, COUNTED_ACTIONS.has(body.action) ? body.action : null)
+    await authorize(request, usageKind(body))
     return json(await handle(body))
   } catch (e) {
     if (e instanceof AuthError) return fail('auth', e.message, 401)

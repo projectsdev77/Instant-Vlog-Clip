@@ -1,0 +1,7 @@
+# Minimal Supabase project config. Run `supabase init` to get the full default file if you need it.
+project_id = "instant-vlog-clip"
+
+[functions.ai]
+# The function checks the caller itself (signed-in user or guest), so the
+# platform only needs to see the project's anon key or a user JWT.
+verify_jwt = true

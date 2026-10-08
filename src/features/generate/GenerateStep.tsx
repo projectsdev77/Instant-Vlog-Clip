@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { useProject } from '@/store/projectStore'
 import { generateVlog, STAGES, type Progress as P } from '@/pipeline/generate'
 import { stepPath } from '@/features/project/steps'
+import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 
 export function GenerateStep() {
   const project = useProject((s) => s.project)
@@ -24,7 +25,8 @@ export function GenerateStep() {
       await generateVlog(setProgress)
       navigate(stepPath(project.id, 'edit'), { replace: true })
     } catch (e) {
-      setError(e instanceof AiError && e.code === 'quota' ? e.message : (e as Error).message || 'Something went wrong.')
+      setError((e as Error).message || 'Something went wrong.')
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
     }
   }, [project, navigate])
 
