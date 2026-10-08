@@ -1,49 +1,36 @@
-# Autovlog (Instant Vlog Clip) — Product & Technical Spec
+# Instant Vlog Clip — Product & Technical Spec
 
-**Status:** Draft v0.2 · **Date:** 2026-10-08
+**Status:** Draft v0.3 · **Date:** 2026-10-08
 **Client brief (verbatim):** "Turn raw footage into polished vlog videos automatically. User adds clips, maybe a quick script with AI — then mini-vlog created based on clips and script."
-**Reference:** https://instant-vlog-creator.lovable.app, the client's Lovable landing page (reviewed 2026-10-08, findings in §2; screenshots in [docs/reference/](reference/)).
+**Inspiration:** https://instant-vlog-creator.lovable.app, an example mock the client shared to show the idea (screenshots in [docs/reference/](reference/)). We are **not** using or rebuilding that page. We take the product ideas from it that make sense to build (§2).
 
-Everything beyond the brief and the landing page is a product decision made in this document. Decisions are marked **[D]** so they're easy to find and override.
+Everything beyond the brief is a product decision made in this document. Decisions are marked **[D]** so they're easy to find and override.
 
-> **v0.2 changes:** reviewed the landing page. **Voiceover** (AI or your own voice) and **multiple languages** moved from P1 into the MVP, because the page promises them. The script is now narration-first. Added the landing page's visual style, a working waitlist (the current one discards signups) and a name question.
+> **v0.3 changes:** the example mock is inspiration only, not a deliverable. Removed everything about porting that page (waitlist, branding, its visual style). Kept the product ideas worth building: **voiceover** (AI or your own voice) stays in the MVP, and the script stays narration-first. Multi-language is scaled back to "English at launch, built so more languages are a configuration change".
 
 ---
 
 ## 1. Product in one paragraph
 
-Autovlog is a web app that turns a pile of phone clips into a short, narrated, shareable vlog in about a minute. The user drops in their clips and writes a few bullet points about their day, or lets AI write them. The app turns those into a short first-person script, voices it (AI voice, or the user records their own), picks the best moments from each clip, cuts them to the narration, adds synced captions, a title and music, and exports a ready-to-post vertical MP4. The user can tweak the result (reorder, trim, edit lines, swap music or voice) but never has to touch a timeline.
+Instant Vlog Clip is a web app that turns a pile of phone clips into a short, narrated, shareable vlog in about a minute. The user drops in their clips and writes a few bullet points about their day, or lets AI write them. The app turns those into a short first-person script, voices it (AI voice, or the user records their own), picks the best moments from each clip, cuts them to the narration, adds synced captions, a title and music, and exports a ready-to-post vertical MP4. The user can tweak the result (reorder, trim, edit lines, swap music or voice) but never has to touch a timeline.
 
-## 2. What the client's landing page promises
+## 2. Ideas taken from the example mock
 
-The landing page is a marketing site with a waitlist. There's no app mock yet. Its promises to users are the product's real requirements, so every claim is mapped below.
+The client's example mock (a landing page) shows the idea they have in mind. We don't build that page. We use it to understand the product they picture and pick what to implement.
 
-| Landing page says | What we build | Where |
+| Idea in the example | Decision | Where |
 |---|---|---|
-| "Turn your clips into a vlog, instantly" / "Ready in 60 seconds" | Background clip analysis + fast pipeline; target **< 60 s** from Generate to preview | §4.3, §8 |
-| "Upload your clips: select videos from your messy phone gallery" | Mobile-first picker, handles lots of mixed clips, auto-discards junk shots | §4.1, §5.1 |
-| "Add your script: write your story or let AI generate it" | Bullet-point script editor + "Write it for me" | §4.2, §5.2 |
-| "Voiceover included: AI-generated or record your own voice" | AI voices (TTS) **and** in-app voice recording, in the **MVP** | §4.2, §5.3 |
-| "AI Magic, Auto Edit: cuts, captions, and adds music" | Edit planner + word-synced captions + music with ducking | §5.4, §5.5 |
-| "Captions & music auto-synced" | Captions timed to the narration word by word; music ducks under voice | §5.5 |
-| "Perfect for TikTok, Reels, and Shorts" | 9:16 by default, safe-zone-aware caption placement, 1080×1920 export | §4.5, §5.5 |
-| "Multiple languages: 20+" | Script, voice and captions in the user's chosen language, in the **MVP** | §5.6 |
-| "Works with your footage" (vs Pictory/InVideo stock footage) | No stock footage; your clips only | §9 |
-| "Made for creators" (vs Visla corporate) | Casual, personal, first-person tone and styles | §2a, §5.2 |
-| "Instant AI editing" (vs CapCut/Adobe Rush "too manual") | No timeline; scene cards + "Tell the AI" | §4.4 |
-| Price "0", "No credit card required" | Free at launch; monetization TBD | §11 |
-
-**Visual mockups on the page** set the expected look of the output:
-- A big bold **title at the top** of the frame ("TRIP TO PARIS", "MY DAY IN NYC")
-- **Subtitle-style captions** in the lower third showing the narration ("So I arrived in Paris yesterday…")
-- A **voice waveform** motif
-- The script mock shows **first-person bullet points** ("I woke up early and grabbed coffee." / "I biked through the park." / "Met Sam for lunch.") and a **Generate VO** button with a mic icon
-
-**Issues found on the landing page** (to fix with the client):
-1. **The waitlist doesn't save anything.** The form waits 1.5 s, shows "You're on the list! 🎉" and discards the name and email. Every signup so far is lost. Fixed in M0 (§10).
-2. **The name isn't settled.** The page says **Autovlog**, but its title and meta tags say **Autoroll** with domain autoroll.ai, and the repo is "Instant Vlog Clip". This spec uses *Autovlog* until the client confirms (§11).
-3. The "Complete Solution" image shows a dark, pro multi-track timeline editor, which contradicts the "no manual editing" pitch. It should be replaced with a real product screenshot once we have one.
-4. Footer says © 2024 and lists a placeholder-looking contact email.
+| Clips → vlog "instantly", "ready in 60 seconds" | **MVP.** Background clip analysis while the user writes the script; target **< 60 s** from Generate to preview | §4.3, §8 |
+| Pick videos "from your messy phone gallery" | **MVP.** Mobile-first picker; junk/duplicate shots detected and deprioritized | §4.1, §5.1 |
+| "Write your story or let AI generate it" | **MVP.** Bullet-point script editor + "Write it for me" + "Polish" | §4.2, §5.2 |
+| Voiceover: "AI-generated or record your own voice" | **MVP.** It's what makes this feel like a real vlog rather than a montage, and it's feasible | §4.3, §5.3 |
+| Auto cuts, captions and music, "auto-synced" | **MVP.** Edit cut to the narration, word-synced captions, music ducking | §5.4, §5.5 |
+| Made for TikTok, Reels and Shorts | **MVP.** 9:16 default, safe-zone-aware text, 1080×1920 export | §4.5, §5.5 |
+| Output look: bold title on top, narration captions in the lower third | **MVP.** The default style preset | §5.5 |
+| Works with *your* footage, not stock | **MVP** by design; no stock footage | §9 |
+| For creators, not corporate; no manual timeline | **MVP.** Casual first-person tone; scene cards instead of a timeline | §4.4, §5.2 |
+| "20+ languages" | **Partly.** English at launch; pipeline language-aware from day one so adding languages is configuration + QA, not a rebuild | §5.6, §9 |
+| Marketing page, waitlist, pricing | **Not ours.** Out of scope | §9 |
 
 ## 2a. Who it's for
 
@@ -70,7 +57,7 @@ They are **not** professional editors. They want a good-looking, narrated result
 Add clips → Add your script (write / AI / skip) → Pick a voice → Generate → Preview & tweak → Share
 ```
 
-This mirrors the landing page's four steps: Upload → Script → AI Magic → Share.
+Same four-step shape as the example mock: Upload → Script → AI Magic → Share.
 
 ### 4.1 Upload your clips
 - Drag-and-drop on desktop; native picker on mobile (camera-roll access).
@@ -80,7 +67,7 @@ This mirrors the landing page's four steps: Upload → Script → AI Magic → S
 - "Messy gallery" handling: accidental recordings, pocket shots and near-duplicates are detected and quietly deprioritized (§5.1). The user can remove clips or star them as **Must include**.
 
 ### 4.2 Add your script
-One screen, modeled on the landing page mock:
+One screen, following the shape of the example mock:
 
 - **Title** field (e.g. "My Day in NYC"). AI suggests one if left blank. Shown as the on-screen title.
 - **Script box** with bullet points, first person, one line per moment. Placeholder: *"I woke up early and grabbed coffee."*
@@ -89,7 +76,7 @@ One screen, modeled on the landing page mock:
   - **Polish**: AI rewrites the user's own bullets into natural spoken narration, keeping their meaning and voice.
   - **Skip narration**: music + title + text captions only, no voice.
 - **Settings chips** with defaults:
-  - Language: auto-detected from the browser, changeable (§5.6) **[D]**
+  - Language: English at launch (§5.6) **[D]**
   - Format: **9:16** (default) · 1:1 · 16:9 **[D]**
   - Length: **Auto** (fits the narration, typically 20–60 s) · 15s · 30s · 60s **[D]**
   - Vibe: **Auto** · Chill · Upbeat · Cinematic · Funny · Aesthetic. Drives music and cut pace. **[D]**
@@ -98,7 +85,7 @@ One screen, modeled on the landing page mock:
 - **Voice:** a short list of AI voices (male/female, a few styles; tap to preview a line of *their* script) **or 🎙 Record my own**.
   - Record mode shows a teleprompter: one line at a time, tap to record, re-record any line. Each line is a separate take, so mistakes are cheap to fix.
 - **Generate:** a progress screen with honest stages: *Watching your clips → Voicing your script → Picking the best moments → Cutting it together → Adding captions & music.*
-- Target: **under 60 s** from Generate to playable preview (10 clips, ~3 min footage, recent phone or laptop). This matches the "ready in 60 seconds" promise.
+- Target: **under 60 s** from Generate to playable preview (10 clips, ~3 min footage, recent phone or laptop). 
 
 ### 4.4 Preview & tweak
 Layout: phone-shaped player on top, **scene strip** below, with one card per script line in order.
@@ -112,7 +99,7 @@ Each **scene card** lets you:
 **Global controls:**
 - Voice: switch AI voice or re-record; voice volume
 - Music: pick by vibe, volume, or none
-- Caption & title style: 4–6 presets matching the landing-page look (bold title on top, subtitle captions in the lower third) **[D]**
+- Caption & title style: 4–6 presets; the default is a bold title on top with narration captions in the lower third **[D]**
 - Original clip audio: auto (kept for clips where the user is talking to camera, otherwise muted under the narration)
 
 **"Tell the AI" box:** plain-language feedback that re-runs the edit planner with the current plan as context. Examples: "Make it punchier", "Open with the Eiffel Tower", "Less of me talking". Every version is kept for undo.
@@ -174,31 +161,31 @@ After the model returns the EDL, code **validates and repairs** it:
 
 ### 5.5 Captions, title, music & polish (deterministic, not AI)
 - **Captions** = the narration, timed word by word from voice timestamps, shown a few words at a time in the lower third, with the current word highlighted. **[D]**
-- **Title** big and bold at the top for the first ~3 s (landing-page style), optional to keep it pinned.
+- **Title** big and bold at the top for the first ~3 s, optional to keep it pinned.
 - **Music:** licensed library tagged by vibe/BPM; auto-ducks under the voice; fades at the end.
 - Cut pace by vibe: Upbeat = more shots per line and hard cuts; Chill/Cinematic = longer shots and soft crossfades.
 - Gentle per-clip brightness/contrast normalization so cuts don't jump. **[D]**
 
-### 5.6 Languages
-- **MVP:** the full pipeline (script writing, AI voice, captions, recorded-voice transcription) works in every language that **both** the TTS and STT providers support well. That's 20+ with current multilingual providers, which matches the landing page.
-- **[D]** QA effort goes to a launch set first (e.g. English, Spanish, Portuguese, French, German, Hindi, Arabic, Japanese, Korean, Chinese). The rest are marked "beta" in the language picker.
-- Caption rendering supports RTL scripts (Arabic, Hebrew) and CJK line breaking from day one, with bundled fonts covering them.
-- UI translation (app interface) is P1. MVP UI is English.
+### 5.6 Languages **[D]**
+- **MVP: English.** Script writing, AI voices, captions and transcription are tuned and tested in English.
+- **Built to expand:** every project carries a `language`; prompts, voice choice and caption fonts are keyed off it, and the chosen TTS/STT providers are multilingual. Adding a language means enabling it, picking voices and QA, not new code.
+- Caption rendering is built with RTL and CJK in mind (fonts, line breaking) so those languages don't need a renderer change later.
+- Which languages come next is a client decision (§11).
 
 ## 6. Technical architecture
 
 ### 6.1 Stack **[D]**
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | React + Vite + TypeScript, Tailwind, shadcn/ui | Same stack as the client's Lovable landing page, so it can be merged into this codebase as-is |
+| Frontend | React + Vite + TypeScript, Tailwind, shadcn/ui | Mainstream, fast to build, large ecosystem, accessible components |
 | State | Zustand | Simple, fits an editor-like app |
 | Local storage | IndexedDB (Dexie) for project data; OPFS for media files | Projects survive refresh; raw video never uploaded |
 | Video I/O | WebCodecs + **Mediabunny** (demux/mux MP4/MOV/WebM) | Hardware-accelerated decode/encode in the browser; fast and no server render cost |
 | Fallback decode | ffmpeg.wasm (lazy-loaded) | Codecs the browser can't decode (e.g. HEVC on some Windows Chrome) |
 | Audio | Web Audio API / OfflineAudioContext; MediaRecorder for voice recording | Mixing, ducking, loudness, recording |
-| Backend | Supabase: Auth, Postgres (waitlist, users, quotas), Edge Functions | AI calls go through Edge Functions so API keys never reach the browser |
+| Backend | Supabase: Auth, Postgres (users, quotas), Edge Functions | AI calls go through Edge Functions so API keys never reach the browser |
 | LLM | Anthropic Claude via `@anthropic-ai/sdk` in Edge Functions | Vision + script writing + structured JSON output |
-| Text-to-speech | Multilingual TTS with word timestamps, behind an interface (provider TBD, e.g. ElevenLabs) | AI voiceover in 20+ languages |
+| Text-to-speech | Multilingual TTS with word timestamps, behind an interface (provider TBD, e.g. ElevenLabs) | AI voiceover; multilingual so more languages are easy to add |
 | Speech-to-text | Multilingual Whisper-class STT with word timestamps, behind an interface (provider TBD) | On-camera speech + recorded voiceover timings |
 | Music | Curated, licensed royalty-free library (~30 tracks, tagged by vibe/BPM) in Supabase Storage | Licensing safety |
 
@@ -254,13 +241,12 @@ For horizontal clips in a 9:16 vlog, the renderer crops around the moment's **fo
 - A capability check on first load shows a friendly message if the device can't record or export.
 
 ### 6.7 Visual design **[D]**
-The app inherits the landing page's look so the marketing and the product feel like one thing:
-- Light, airy background with soft blue/cyan glows; white rounded cards with subtle shadows
-- **Blue → cyan gradient** for primary buttons and accents (matching "Join the Waitlist" and "Instantly.")
-- Bold, tight sans-serif headlines; grey secondary text
-- Gradient-filled square icons (mic, sparkles, bolt)
-- Phone-frame preview of the vlog, like the landing page mockups
-- The landing page itself is ported into this codebase as the marketing home (`/`), with the app at `/create`
+Our own design system, built for a mobile-first creator tool:
+- Clean, light UI that keeps attention on the video; dark mode supported
+- One bright accent color for primary actions; everything else neutral
+- Phone-frame preview of the vlog as the centerpiece of the editor
+- Large touch targets and bottom-sheet controls on mobile
+- Brand name, logo and colors to be confirmed with the client (§11). The design tokens make a rebrand a one-file change.
 
 ## 7. Data model
 
@@ -323,7 +309,7 @@ type EditPlan = {
 };
 ```
 
-Server-side (Supabase) stores only the **waitlist, accounts, usage counters and (optionally) project metadata/EDLs**, never video.
+Server-side (Supabase) stores only **accounts, usage counters and (optionally) project metadata/EDLs**, never video.
 
 ## 8. Non-functional requirements
 - **Speed:** preview in < 60 s after Generate for typical input; thumbnails in < 2 s; a single line's voice regenerates in < 3 s.
@@ -336,9 +322,10 @@ Server-side (Supabase) stores only the **waitlist, accounts, usage counters and 
 ## 9. Scope
 
 ### MVP (v1.0)
-Everything in §4–§8: working waitlist, clip upload with background analysis, script (write / AI / polish / skip), **AI voiceover + record your own**, **20+ languages** for script/voice/captions, AI edit cut to narration, title + word-synced captions, music, smart crop, scene-card tweaks, "Tell the AI" revisions, on-device export, share sheet, auth + quotas, local projects.
+Everything in §4–§8: clip upload with background analysis, script (write / AI / polish / skip), **AI voiceover + record your own**, English (language-ready pipeline), AI edit cut to narration, title + word-synced captions, music, smart crop, scene-card tweaks, "Tell the AI" revisions, on-device export, share sheet, auth + quotas, local projects.
 
 ### P1 (fast follow)
+- More languages for script, voice and captions
 - Photos as Ken-Burns shots
 - Beat-synced cuts to music
 - Per-frame subject tracking for crops
@@ -348,35 +335,32 @@ Everything in §4–§8: working waitlist, clip upload with background analysis,
 - Cloud project sync across devices
 
 ### Out of scope (for now)
-Stock footage (by design: "works with your footage") · multi-track pro timeline · voice cloning · collaboration · direct posting via TikTok/IG APIs · server-side rendering · native mobile apps.
+Stock footage (by design) · marketing site / waitlist · multi-track pro timeline · voice cloning · collaboration · direct posting via TikTok/IG APIs · server-side rendering · native mobile apps.
 
 ## 10. Milestones **[D]**
 Rendering is the riskiest piece, so it's proven before the AI.
 
 | # | Milestone | Outcome |
 |---|---|---|
-| M0 | Foundations + waitlist | Repo, CI, design system from the landing page, landing page ported with a **working waitlist** (Supabase), app shell, add/remove clips, local persistence, capability check |
-| M1 | Render engine | Hand-written EDL + audio file → real-time preview → MP4 export with crop, title, word captions (incl. RTL/CJK), music ducking, transitions, on iPhone, Android and desktop |
+| M0 | Foundations | Repo, CI, design system, app shell, add/remove clips, local persistence, capability check |
+| M1 | Render engine | Hand-written EDL + audio file → real-time preview → MP4 export with crop, title, word captions, music ducking, transitions, on iPhone, Android and desktop |
 | M2 | AI pipeline | Frame sampling + contact sheets, STT, clip analysis, script writer, TTS, edit planner, validation/repair, fallback edit; cost measured |
 | M3 | Script, voice & tweak UX | Script editor, voice picker, record-your-own teleprompter, scene cards, swap/trim, per-line re-voice, "Tell the AI", version history |
-| M4 | Accounts & launch | Auth, quotas, languages QA, onboarding, error states, analytics, real product screenshots on the landing page |
+| M4 | Accounts & launch | Auth, quotas, onboarding, error states, analytics |
 
 ## 11. Open questions for the client
-1. **Name:** Autovlog, Autoroll (title tags + autoroll.ai), or Instant Vlog Clip? Do they own the domain?
-2. **Waitlist:** the current form doesn't save signups. OK to fix it now (M0)? Is there an email tool they want signups sent to (Mailchimp, Loops, etc.)?
-3. **Monetization:** the page says free / no credit card. Free forever at launch, or free plus paid later? Watermark?
-4. **Voices:** any preference on voice style or provider? OK that AI voices are stock voices (no cloning)?
-5. **Languages:** which ones matter most for launch QA?
-6. **Accounts:** OK to require sign-in after one free trial vlog?
-7. **Model cost vs quality:** OK with roughly $0.40–$1.00 total AI cost per vlog, or should parts use cheaper models?
-8. **Music:** do they have a library or license, or do we source one?
-9. **Early-access perks:** the page promises them. What are they?
+1. **Name & branding:** is "Instant Vlog Clip" the product name? Any logo or colors?
+2. **Voices:** any preference on voice style or provider? OK that AI voices are stock voices (no cloning)?
+3. **Languages:** after English, which languages matter most?
+4. **Monetization:** free, paid, or free plus paid? Watermark on free exports?
+5. **Accounts:** OK to require sign-in after one free trial vlog?
+6. **Model cost vs quality:** OK with roughly $0.40–$1.00 total AI cost per vlog, or should parts use cheaper models?
+7. **Music:** do they have a library or license, or do we source one?
 
 ## 12. Success metrics
-- **Time to first vlog:** median < 3 min from landing to exported video
+- **Time to first vlog:** median < 3 min from opening the app to exported video
 - **Export rate:** % of generated vlogs that get exported (target > 60%)
 - **"Good first try" rate:** % exported with ≤ 2 tweaks
 - **Voice mix:** % using AI voice vs own voice vs none (informs where to invest)
 - **Fallback rate:** % of generations hitting the rule-based fallback (target < 2%)
 - **Return rate:** % creating a second vlog within 7 days
-- **Waitlist → activated:** % of waitlist signups who create a vlog in their first week of access

@@ -1,4 +1,4 @@
-# Autovlog (Instant Vlog Clip)
+# Instant Vlog Clip
 
 Turn raw footage into polished, narrated mini vlogs automatically. Add your clips, write or AI-generate a quick script, pick a voice (or record your own), and get a ready-to-post vertical video with captions and music.
 
