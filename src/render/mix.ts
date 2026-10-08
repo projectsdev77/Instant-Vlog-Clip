@@ -105,17 +105,30 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
   }
 
   const out = await ctx.startRendering()
-  limit(out)
+  normalize(out)
   return out
 }
 
-/** Soft limiter so stacked sources never clip. */
-function limit(buf: AudioBuffer) {
+/**
+ * Brings the mix to a consistent loudness (about -16 dBFS RMS, close to what
+ * social apps expect) and soft-limits peaks so nothing clips.
+ */
+export function normalize(buf: AudioBuffer, targetDb = -16) {
+  let sum = 0
+  let n = 0
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c)
+    for (let i = 0; i < d.length; i++) sum += d[i] * d[i]
+    n += d.length
+  }
+  const rms = Math.sqrt(sum / Math.max(1, n))
+  const gain = rms > 1e-5 ? Math.min(8, dbToGain(targetDb) / rms) : 1
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const d = buf.getChannelData(c)
     for (let i = 0; i < d.length; i++) {
-      const x = d[i]
-      if (x > 0.9 || x < -0.9) d[i] = Math.tanh(x)
+      const x = d[i] * gain
+      // linear below the knee, smooth tanh curve above it
+      d[i] = Math.abs(x) <= 0.8 ? x : Math.sign(x) * (0.8 + 0.19 * Math.tanh((Math.abs(x) - 0.8) / 0.19))
     }
   }
 }

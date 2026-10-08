@@ -94,6 +94,25 @@ async function main() {
   }
   step('panels')
   if (UNTIL === 'tweak') return
+
+  await page.getByRole('button', { name: 'Export', exact: true }).click()
+  const t0 = Date.now()
+  await page.getByRole('button', { name: 'Export video' }).click()
+  for (let k = 0; k < 36; k++) {
+    if (await page.locator('text=/Ready ·/').count()) break
+    const txt = await page.locator('[role=dialog]').innerText().catch(() => '')
+    if (k % 3 === 0) console.log('  export:', txt.replace(/\s+/g, ' ').slice(0, 120))
+    await page.waitForTimeout(5000)
+  }
+  await page.waitForSelector('text=/Ready ·/', { timeout: 1000 })
+  console.log(`  exported in ${((Date.now() - t0) / 1000).toFixed(1)}s:`, await page.locator('text=/Ready ·/').innerText())
+  await shot('8-exported')
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Save' }).click()
+  const file = await download
+  await file.saveAs(`${OUT}/${file.suggestedFilename()}`)
+  console.log('  saved', file.suggestedFilename())
+  step('exported')
 }
 
 try {
