@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Instant Vlog Clip Design Handoff</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,6 +117,21 @@ dialog#lb button { position: absolute; top: 8px; right: 8px; font: 600 0.9rem va
 
 footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--ink-2); }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  body { font-size: 11pt; background: #fff; }
+  .wrap { padding-block: 0; max-width: none; }
+  section { padding-top: 28px; }
+  .screen { break-inside: auto; }
+  .screen-head, .facts, figure.shot, tr, .callout, .zones { break-inside: avoid; }
+  .shots { grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .shots.wide { grid-template-columns: repeat(3, 1fr); }
+  section { padding-top: 22px; gap: 12px; }
+  .screen { padding: 18px 0; gap: 12px; }
+  figure.shot button { box-shadow: none; }
+  nav.toc, dialog { display: none; }
+  a { text-decoration: none; }
+}
 </style>
 
 <div class="wrap">
