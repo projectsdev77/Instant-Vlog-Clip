@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { create } from 'zustand'
-import { aiMode } from '@/ai'
+import { aiMode } from '@/ai/mode'
 import { supabase } from '@/lib/supabase'
 
 /** Sign-in exists only when the app talks to real AI through Supabase. */

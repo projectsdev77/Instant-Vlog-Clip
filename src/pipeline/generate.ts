@@ -25,9 +25,10 @@ export const STAGES: { id: Stage; label: string }[] = [
 export type Progress = { stage: Stage; detail?: string; fraction?: number }
 
 export function planContext(p: Project, clips = useProject.getState().clips): PlanContext {
+  const lines = p.script?.lines.filter((l) => l.text.trim()) ?? []
   return {
     clips: clips.filter((c) => c.status !== 'error' && c.durationSec > 0),
-    script: p.voice.mode === 'none' && !p.script?.lines.length ? undefined : p.script,
+    script: lines.length ? { ...p.script!, lines } : undefined,
     voiceMode: p.voice.mode,
     settings: p.settings,
     title: p.title || p.script?.title || 'My vlog',

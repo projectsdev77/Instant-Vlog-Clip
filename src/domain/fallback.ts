@@ -49,11 +49,12 @@ export function planFallback(ctx: PlanContext): EditPlan {
   const narrated = ctx.voiceMode !== 'none'
   const transition = vibeTransition(ctx.settings)
 
-  const take = (score: (c: Candidate) => number): Candidate | undefined => {
+  const take = (score: (c: Candidate) => number, opts: { fresh?: boolean } = {}): Candidate | undefined => {
     let best: Candidate | undefined
     let bestScore = -Infinity
     for (const c of candidates) {
       const overlaps = usedRanges.some((r) => r.clipId === c.clip.id && c.moment.start < r.out && c.moment.end > r.in)
+      if (overlaps && opts.fresh) continue
       const s = score(c) - (usedClips.get(c.clip.id) ?? 0) * 0.35 - (overlaps ? 1 : 0) + (c.clip.mustInclude && !usedClips.has(c.clip.id) ? 0.6 : 0)
       if (s > bestScore) {
         best = c
@@ -99,9 +100,9 @@ export function planFallback(ctx: PlanContext): EditPlan {
     const picks: Candidate[] = []
     let acc = 0
     while (acc < total - 0.3) {
-      const c = take((c) => c.moment.score)
-      // Stop when only already-used footage is left rather than repeating it.
-      if (!c || usedRanges.some((r) => r.clipId === c.clip.id && c.moment.start < r.out && c.moment.end > r.in)) break
+      // Only unused footage; stop when it runs out rather than repeating shots.
+      const c = take((c) => c.moment.score, { fresh: true })
+      if (!c) break
       const shotLen = Math.min(len, total - acc)
       picks.push(c)
       const shot = pick(c, shotLen, scenes.length ? transition : 'cut')

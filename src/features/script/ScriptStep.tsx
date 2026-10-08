@@ -83,7 +83,7 @@ export function ScriptStep() {
   const go = async (skipScript: boolean) => {
     const cleaned = lines.filter((l) => l.text.trim())
     if (skipScript) {
-      await updateProject({ script: undefined, voice: { ...project.voice, mode: 'none' }, step: 'generate' })
+      await updateProject((p) => ({ script: { title: p.title, lines: [] }, voice: { ...p.voice, mode: 'none' }, step: 'generate' }))
       navigate(stepPath(project.id, 'generate'))
       return
     }

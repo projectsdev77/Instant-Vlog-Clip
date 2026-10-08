@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test-clips": "scripts/make-test-clips.sh",
+    "e2e": "node e2e/flow.mjs && node e2e/variants.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

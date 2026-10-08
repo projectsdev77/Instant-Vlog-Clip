@@ -11,7 +11,7 @@ function normalize(values: number[]): number[] {
 }
 
 /** Ranks windows of a clip from on-device signals (used when AI analysis is missing). */
-export function momentsFromSignals(clip: Clip, maxMoments = 3): Moment[] {
+export function momentsFromSignals(clip: Clip, maxMoments = Math.max(2, Math.min(6, Math.ceil(clip.durationSec / 3)))): Moment[] {
   const s = clip.signals
   const dur = clip.durationSec
   if (!s || s.sampleTimes.length === 0) return evenMoments(clip, maxMoments)

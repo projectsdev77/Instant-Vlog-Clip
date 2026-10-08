@@ -7,7 +7,7 @@ import { formatDuration, relativeDate } from '@/lib/format'
 import { createProject, deleteProject } from '@/store/projectStore'
 import { stepPath } from '@/features/project/steps'
 import type { Project } from '@/domain/types'
-import { aiMode } from '@/ai'
+import { aiMode } from '@/ai/mode'
 import { AccountButton } from '@/features/auth/AccountButton'
 
 export function HomePage() {
