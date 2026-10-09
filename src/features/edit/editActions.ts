@@ -66,14 +66,13 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
   )
 }
 
+/** Trims edit the current version in place (no new version). */
 export async function trimShot(sceneIndex: number, shotIndex: number, inPoint: number, outPoint: number) {
-  const { plan } = requireEdit()
-  await commit(
-    mapScenes(plan, (scenes) =>
-      scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? { ...x, in: inPoint, out: outPoint } : x)) })),
-    ),
-    'Trimmed a shot',
+  const { project, plan } = requireEdit()
+  const changed = mapScenes(plan, (scenes) =>
+    scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? { ...x, in: inPoint, out: outPoint } : x)) })),
   )
+  await state().replaceCurrentEdit(refitPlan(changed, planContext(project)))
 }
 
 export async function setShotAudio(sceneIndex: number, shotIndex: number, clipAudio: 'mute' | 'duck' | 'full') {
@@ -92,7 +91,7 @@ export async function editLine(lineId: string, text: string) {
   const fresh = state().project!
   const line = fresh.script!.lines.find((l) => l.id === lineId)!
   if (fresh.voice.mode === 'ai') await voiceLine(line, fresh.voice.voiceId, fresh.settings.language)
-  await commit(plan, 'Edited a line')
+  await commit(plan, 'Rewrote a line')
 }
 
 export async function changeVoice(voiceId: string) {
@@ -105,7 +104,7 @@ export async function tellAi(feedback: string) {
   const { project, plan } = requireEdit()
   const { plan: next, usedFallback } = await planWithAi(planContext(project), { feedback, current: plan })
   if (usedFallback) throw new Error("The AI editor isn't available right now. Try again in a moment.")
-  await state().pushEdit({ ...next, createdBy: 'ai', note: next.note || feedback })
+  await state().pushEdit({ ...next, createdBy: 'ai', note: `“${feedback}”` })
 }
 
 export async function regenerate() {

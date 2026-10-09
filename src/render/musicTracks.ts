@@ -8,6 +8,7 @@ import type { Vibe } from '@/domain/types'
 export type MusicTrack = {
   id: string
   name: string
+  description: string
   vibes: Vibe[]
   bpm: number
   /** chord roots in semitones from A3 (220 Hz), one per bar */
@@ -19,11 +20,11 @@ export type MusicTrack = {
 }
 
 export const TRACKS: MusicTrack[] = [
-  { id: 'sunny-steps', name: 'Sunny Steps', vibes: ['upbeat', 'funny', 'auto'], bpm: 116, progression: [3, 10, 0, 8], mode: 'major', style: 'pluck' },
-  { id: 'slow-morning', name: 'Slow Morning', vibes: ['chill', 'aesthetic', 'auto'], bpm: 84, progression: [0, 5, 8, 3], mode: 'major', style: 'pad' },
-  { id: 'city-lights', name: 'City Lights', vibes: ['cinematic', 'aesthetic'], bpm: 92, progression: [0, 8, 3, 10], mode: 'minor', style: 'pad' },
-  { id: 'good-energy', name: 'Good Energy', vibes: ['upbeat', 'funny'], bpm: 124, progression: [5, 0, 7, 3], mode: 'major', style: 'pulse' },
-  { id: 'golden-hour', name: 'Golden Hour', vibes: ['chill', 'cinematic', 'auto'], bpm: 96, progression: [8, 3, 10, 5], mode: 'major', style: 'pluck' },
+  { id: 'sunny-day', name: 'Sunny Day', description: 'Upbeat acoustic', vibes: ['upbeat', 'funny', 'auto'], bpm: 116, progression: [3, 10, 0, 8], mode: 'major', style: 'pluck' },
+  { id: 'lofi-walk', name: 'Lo-fi Walk', description: 'Chill beats', vibes: ['chill', 'aesthetic', 'auto'], bpm: 84, progression: [0, 5, 8, 3], mode: 'major', style: 'pad' },
+  { id: 'golden-hour', name: 'Golden Hour', description: 'Warm synths', vibes: ['chill', 'cinematic', 'auto'], bpm: 96, progression: [8, 3, 10, 5], mode: 'major', style: 'pluck' },
+  { id: 'city-pop', name: 'City Pop', description: 'Bright and bouncy', vibes: ['upbeat', 'funny'], bpm: 124, progression: [5, 0, 7, 3], mode: 'major', style: 'pulse' },
+  { id: 'soft-piano', name: 'Soft Piano', description: 'Gentle, cinematic', vibes: ['cinematic', 'aesthetic'], bpm: 92, progression: [0, 8, 3, 10], mode: 'minor', style: 'pad' },
 ]
 
 export function trackById(id: string | null | undefined): MusicTrack | undefined {

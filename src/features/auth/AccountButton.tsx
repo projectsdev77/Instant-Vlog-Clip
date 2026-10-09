@@ -1,4 +1,3 @@
-import { LogOut, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { authEnabled, signOut, useAuthSheet, useSession } from './auth'
 
@@ -8,15 +7,15 @@ export function AccountButton() {
   if (!authEnabled) return null
   if (!session)
     return (
-      <Button size="sm" variant="secondary" onClick={() => show()}>
-        <UserRound className="size-4" /> Sign in
+      <Button size="sm" className="h-10" onClick={() => show()}>
+        Sign in
       </Button>
     )
   return (
-    <div className="flex items-center gap-2 text-xs text-muted">
-      <span className="hidden max-w-40 truncate sm:inline">{session.user.email}</span>
-      <Button size="sm" variant="ghost" onClick={() => void signOut()} aria-label="Sign out">
-        <LogOut className="size-4" />
+    <div className="flex items-center gap-1 rounded-full bg-black/28 py-1 pr-1 pl-3.5 text-[13px] font-medium">
+      <span className="max-w-40 truncate">{session.user.email}</span>
+      <Button size="sm" variant="text" className="h-8 px-3" onClick={() => void signOut()}>
+        Sign out
       </Button>
     </div>
   )

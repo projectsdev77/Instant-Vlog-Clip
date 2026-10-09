@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#050505}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#ff7a3d;text-decoration:none}a:hover{color:#ffa06e}
+input,textarea,button{font-family:inherit}
+input::placeholder{color:rgba(255,255,255,.4)}
+input[type=range]{accent-color:#ff5a1f;width:100%}
+@keyframes ivspin{to{transform:rotate(360deg)}}
+@keyframes ivsweep{0%{transform:translateX(-30%)}100%{transform:translateX(30%)}}
+@keyframes ivfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes ivpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,79,79,.5)}50%{box-shadow:0 0 0 16px rgba(255,79,79,0)}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;justify-content:center;align-items:center;padding:{{ stagePad }};background:#050505">
+<div data-screen-label="{{ screenLabel }}" style="position:relative;flex:none;width:{{ frameW }};height:{{ frameH }};border-radius:{{ frameR }};overflow:hidden;background:#09090a;color:#fff;box-shadow:{{ frameShadow }};container-type:inline-size">
+<div ref="{{ scrollRef }}" style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden">
+<div style="position:relative;min-height:100%;display:flex;flex-direction:column">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;left:0;right:0;top:0;height:{{ heroBgH }};overflow:hidden;pointer-events:none;background:radial-gradient(ellipse 75% 85% at 30% 10%,#ffa25a 0%,#ff6a24 26%,#e2440d 46%,#7a1c03 72%,#1a0602 100%)">
+    <div style="position:absolute;left:0;right:0;top:250px;height:2px;background:linear-gradient(90deg,rgba(255,220,190,0),rgba(255,220,190,.4),rgba(255,220,190,0));filter:blur(1px)"></div>
+    <div style="position:absolute;left:0;right:0;top:520px;height:1px;background:linear-gradient(90deg,rgba(255,220,190,0),rgba(255,220,190,.25),rgba(255,220,190,0))"></div>
+    <div style="position:absolute;right:-60px;top:120px;width:600px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(26,6,2,.55) 0%,rgba(26,6,2,0) 70%)"></div>
+    <div style="position:absolute;inset:0;opacity:.22;mix-blend-mode:overlay;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;height:240px;background:linear-gradient(180deg,rgba(9,9,10,0) 0%,rgba(9,9,10,.8) 60%,#09090a 100%)"></div>
+  </div>
+
+  <div style="position:relative;width:100%;max-width:1120px;margin:0 auto;padding:{{ homeHeadPad }};display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <div style="width:36px;height:36px;flex:none;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e2440d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M17 4v16M3 8h4M17 8h4M3 12h18M3 16h4M17 16h4"></path><rect x="3" y="3" width="18" height="18" rx="3"></rect></svg></div>
+      <span style="font-weight:700;font-size:17px;letter-spacing:-0.01em;white-space:nowrap">Instant Vlog Clip</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <sc-if value="{{ notPhone }}"><span style="height:34px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.22);font-size:13px;font-weight:600;display:flex;align-items:center;white-space:nowrap">Demo AI</span></sc-if>
+      <sc-if value="{{ signedOut }}"><button onClick="{{ openSignin }}" style="height:40px;padding:0 18px;border-radius:999px;border:0;background:#fff;color:#0c0c0c;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;flex:none">Sign in</button></sc-if>
+      <sc-if value="{{ isSignedIn }}">
+        <div style="display:flex;align-items:center;gap:6px;height:40px;padding:0 6px 0 14px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.22)">
+          <span style="font-size:13px;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ signedIn }}</span>
+          <button onClick="{{ signOut }}" style="height:30px;padding:0 12px;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Sign out</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="position:relative;width:100%;max-width:1120px;margin:0 auto;padding:{{ heroPad }};display:flex;flex-wrap:wrap;align-items:center;gap:24px">
+    <div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:20px">
+      <div style="font-size:clamp(46px,6.6cqw,84px);font-weight:800;line-height:.96;letter-spacing:-0.05em;text-wrap:balance">Your clips, made into a vlog.</div>
+      <div style="color:rgba(255,255,255,.92);font-size:clamp(16px,1.5cqw,18px);line-height:1.55;max-width:460px;text-wrap:pretty">Add the videos from your day, say what happened, and get a narrated mini vlog with captions and music in about a minute.</div>
+      <sc-if value="{{ notPhone }}">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:22px;margin-top:12px">
+          <button onClick="{{ newVlog }}" style="height:62px;padding:0 8px 0 30px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:18px;display:flex;align-items:center;gap:20px;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 14px 34px rgba(60,12,0,.35)" style-hover="transform:translateY(-1px)" style-active="transform:scale(.98)">New vlog<span style="width:46px;height:46px;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.9);font-size:14px;font-weight:500"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Your videos stay on this device.</div>
+        </div>
+      </sc-if>
+    </div>
+    <div style="position:relative;flex:{{ fanFlex }};height:{{ fanH }};min-width:0">
+      <div style="position:absolute;left:50%;top:0;width:520px;height:500px;margin-left:-260px;transform:scale({{ fanScale }});transform-origin:top center">
+        <div onClick="{{ hf.c.onOpen }}" style="position:absolute;left:18px;top:96px;width:186px;aspect-ratio:9/16;border-radius:22px;overflow:hidden;transform:rotate(-11deg);background:{{ hf.c.bg }};box-shadow:0 0 0 1.5px rgba(255,255,255,.2),0 30px 60px rgba(30,6,0,.55);cursor:pointer">
+          <div style="position:absolute;left:24%;top:16%;width:52%;height:58%;border-radius:50%;background:#050505;filter:blur(16px);opacity:.4"></div>
+          <div style="position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.8))"></div>
+          <span style="position:absolute;left:12px;bottom:12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px">{{ hf.c.dur }}</span>
+        </div>
+        <div onClick="{{ hf.b.onOpen }}" style="position:absolute;left:316px;top:88px;width:186px;aspect-ratio:9/16;border-radius:22px;overflow:hidden;transform:rotate(10deg);background:{{ hf.b.bg }};box-shadow:0 0 0 1.5px rgba(255,255,255,.2),0 30px 60px rgba(30,6,0,.55);cursor:pointer">
+          <div style="position:absolute;left:24%;top:16%;width:52%;height:58%;border-radius:50%;background:#050505;filter:blur(16px);opacity:.4"></div>
+          <div style="position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.8))"></div>
+          <span style="position:absolute;left:12px;bottom:12px;font-size:12px;font-weight:700;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px">{{ hf.b.dur }}</span>
+        </div>
+        <div style="position:absolute;left:118px;top:36px;width:228px;aspect-ratio:9/16;border-radius:26px;background:{{ hf.a.bg }};filter:blur(22px);opacity:.45;transform:translateX(-34px) rotate(-2deg)"></div>
+        <div onClick="{{ hf.a.onOpen }}" style="position:absolute;left:146px;top:20px;width:228px;aspect-ratio:9/16;border-radius:26px;overflow:hidden;transform:rotate(-2deg);background:{{ hf.a.bg }};box-shadow:0 0 0 1.5px rgba(255,255,255,.28),0 44px 90px rgba(30,6,0,.65);cursor:pointer" style-hover="transform:rotate(-2deg) translateY(-6px)">
+          <div style="position:absolute;left:24%;top:16%;width:52%;height:58%;border-radius:50%;background:#050505;filter:blur(16px);opacity:.4"></div>
+          <div style="position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.8))"></div>
+          <span style="position:absolute;top:14px;left:14px;background:#fff;color:#0c0c0c;font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;letter-spacing:.04em">{{ hf.tag }}</span>
+          <div style="position:absolute;left:50%;top:42%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.3)"><svg width="20" height="20" viewBox="0 0 24 24" fill="#0c0c0c"><path d="M8 5.5v13l11-6.5z"></path></svg></div>
+          <div style="position:absolute;left:16px;right:16px;bottom:16px;display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:16px;font-weight:700;line-height:1.2">{{ hf.a.title }}</span>
+            <span style="color:rgba(255,255,255,.78);font-size:12px;font-weight:500">{{ hf.a.when }} · {{ hf.a.dur }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:relative;width:100%;max-width:1120px;margin:0 auto;padding:{{ homeStepsPad }};display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="color:#ff7a3d;font-size:13px;font-weight:700">#01</span><span style="font-size:16px;font-weight:600">Add your clips</span><span style="color:rgba(255,255,255,.6);font-size:14px">Messy is fine. We skip the accidental ones.</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="color:#ff7a3d;font-size:13px;font-weight:700">#02</span><span style="font-size:16px;font-weight:600">Say what happened</span><span style="color:rgba(255,255,255,.6);font-size:14px">Write a few lines, or let AI write them.</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="color:#ff7a3d;font-size:13px;font-weight:700">#03</span><span style="font-size:16px;font-weight:600">Get your vlog</span><span style="color:rgba(255,255,255,.6);font-size:14px">Narrated, captioned and set to music.</span></div>
+  </div>
+
+  <sc-if value="{{ hasVlogs }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative;width:100%;max-width:1120px;margin:0 auto;padding:{{ homeGridPad }};display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:26px;font-weight:700;letter-spacing:-0.02em">Your vlogs</span><span style="color:rgba(255,255,255,.55);font-size:14px;font-weight:600">{{ vlogCount }} made</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px">
+        <sc-for list="{{ vlogCards }}" as="v" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+            <div onClick="{{ v.onOpen }}" style="position:relative;aspect-ratio:9/16;border-radius:20px;overflow:hidden;background:{{ v.bg }};cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.08)" style-hover="filter:brightness(1.08)">
+              <div style="position:absolute;left:25%;top:18%;width:50%;height:62%;border-radius:50%;background:#050505;filter:blur(14px);opacity:.4"></div>
+              <span style="position:absolute;left:10px;bottom:10px;font-size:12px;font-weight:700;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px">{{ v.dur }}</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ v.title }}</span>
+                <span style="color:rgba(255,255,255,.55);font-size:13px">{{ v.when }}</span>
+              </div>
+              <button aria-label="Delete vlog" onClick="{{ v.onMore }}" style="width:44px;height:44px;margin:-8px -10px 0 0;flex:none;border:0;border-radius:50%;background:transparent;color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:rgba(255,255,255,.08);color:#fff"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+            </div>
+          </div>
+        </sc-for>
+        <div onClick="{{ newVlog }}" style="aspect-ratio:9/16;border-radius:20px;border:1.5px dashed rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;color:rgba(255,255,255,.7)" style-hover="border-color:#ff5a1f;color:#fff">
+          <span style="width:48px;height:48px;border-radius:50%;background:rgba(255,90,31,.16);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span>
+          <span style="font-size:14px;font-weight:600">New vlog</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ noVlogs }}">
+    <div style="position:relative;width:100%;max-width:1120px;margin:0 auto;padding:{{ homeGridPad }};display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:22px;font-weight:700;letter-spacing:-0.02em">Your vlogs will show up here</span>
+      <span style="color:rgba(255,255,255,.6);font-size:15px;line-height:1.5;max-width:520px">The covers above are examples. Tap one to see what a finished vlog looks like, or start your own. It takes about three minutes.</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isPhone }}">
+    <div style="position:sticky;bottom:0;z-index:4;margin-top:auto;padding:28px 16px 30px;background:linear-gradient(180deg,rgba(9,9,10,0),#09090a 40%);display:flex;flex-direction:column;align-items:center;gap:12px">
+      <button onClick="{{ newVlog }}" style="width:100%;height:60px;padding:0 8px 0 28px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;box-shadow:0 14px 34px rgba(0,0,0,.45)">New vlog<span style="width:44px;height:44px;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></button>
+      <div style="display:flex;align-items:center;gap:7px;color:rgba(255,255,255,.75);font-size:13px;font-weight:500"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Your videos stay on this device.</div>
+    </div>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ inFlow }}">
+  <sc-if value="{{ showWash }}"><div style="position:absolute;left:50%;top:-120px;width:900px;height:520px;margin-left:-450px;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,106,36,.26) 0%,rgba(9,9,10,0) 62%)"></div></sc-if>
+  <div style="position:sticky;top:0;z-index:6;background:rgba(9,9,10,.84);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06)">
+    <div style="width:100%;max-width:1120px;margin:0 auto;padding:{{ flowHeadPad }};display:flex;align-items:center;gap:14px">
+      <button onClick="{{ goHome }}" aria-label="Home" style="display:flex;align-items:center;gap:10px;height:44px;padding:0;border:0;background:transparent;color:#fff;cursor:pointer;flex:none">
+        <span style="width:34px;height:34px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e2440d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M17 4v16M3 8h4M17 8h4M3 12h18M3 16h4M17 16h4"></path><rect x="3" y="3" width="18" height="18" rx="3"></rect></svg></span>
+        <sc-if value="{{ notPhone }}"><span style="font-weight:700;font-size:16px;white-space:nowrap">Instant Vlog Clip</span></sc-if>
+      </button>
+      <sc-if value="{{ notPhone }}">
+        <div style="flex:1;display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="5">
+            <button onClick="{{ s.onClick }}" style="height:40px;padding:0 15px;border:0;border-radius:999px;background:{{ s.bg }};color:{{ s.fg }};box-shadow:{{ s.ring }};font-size:14px;font-weight:{{ s.fw }};display:flex;align-items:center;gap:8px;cursor:{{ s.cursor }};white-space:nowrap;flex:none">
+              <sc-if value="{{ s.done }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+              <sc-if value="{{ s.cur }}"><span style="color:#c2340a">{{ s.n }}</span></sc-if>
+              {{ s.label }}
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isPhone }}">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+          <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.75)">{{ stepCompact }}</span>
+          <div style="display:flex;gap:4px"><sc-for list="{{ steps }}" as="s" hint-placeholder-count="5"><span onClick="{{ s.onClick }}" style="flex:1;height:4px;border-radius:2px;background:{{ s.seg }}"></span></sc-for></div>
+        </div>
+      </sc-if>
+      <span style="height:30px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22);font-size:12px;font-weight:600;display:flex;align-items:center;white-space:nowrap;flex:none">Demo AI</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ isClips }}">
+    <div style="position:relative;flex:1;width:100%;max-width:1120px;margin:0 auto;padding:{{ pagePad }};display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#ff7a3d">Step 1 of 5</span>
+        <span style="font-size:clamp(32px,3.4cqw,40px);font-weight:800;letter-spacing:-0.035em;line-height:1.05">Add your clips</span>
+        <span style="font-size:16px;color:rgba(255,255,255,.65);line-height:1.5">Messy is fine. We skip the shaky and accidental bits.</span>
+      </div>
+      <sc-if value="{{ clipsEmpty }}">
+        <button onClick="{{ addClips }}" style="min-height:{{ dropH }};border-radius:28px;border:1.5px dashed rgba(255,255,255,.2);background:rgba(255,255,255,.02);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 20px;cursor:pointer" style-hover="border-color:#ff5a1f;background:rgba(255,90,31,.05)">
+          <span style="width:72px;height:72px;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 34px rgba(255,90,31,.38)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2.5"></rect><path d="M16 10l5-3v10l-5-3"></path></svg></span>
+          <span style="font-size:22px;font-weight:700;letter-spacing:-0.02em">Choose videos</span>
+          <span style="font-size:15px;color:rgba(255,255,255,.62)">{{ dropHint }}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,.45)">MP4, MOV or WebM · up to 30 clips, 10 minutes, 4 GB</span>
+        </button>
+      </sc-if>
+      <sc-if value="{{ hasClips }}">
+        <span style="font-size:14px;color:rgba(255,255,255,.6)">{{ starHint }}</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax({{ tileMin }},1fr));gap:12px">
+          <sc-for list="{{ tiles }}" as="c" hint-placeholder-count="6">
+            <div style="position:relative;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:{{ c.bg }};box-shadow:{{ c.ring }}">
+              <div style="position:absolute;inset:auto 0 0 0;height:45%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.7))"></div>
+              <sc-if value="{{ c.importing }}">
+                <div style="position:absolute;inset:0;background:rgba(9,9,10,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+                  <span style="width:28px;height:28px;border-radius:50%;border:2.5px solid rgba(255,255,255,.16);border-top-color:#ff5a1f;animation:ivspin .9s linear infinite"></span>
+                  <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7)">Reading…</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ c.error }}">
+                <div style="position:absolute;inset:0;background:rgba(42,12,12,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;text-align:center">
+                  <span style="width:32px;height:32px;border-radius:50%;background:#ff4f4f;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a0404" stroke-width="3.2" stroke-linecap="round"><path d="M12 7v6M12 17h.01"></path></svg></span>
+                  <span style="font-size:12px;line-height:1.4;color:#fff">{{ c.msg }}</span>
+                  <button onClick="{{ c.onRemove }}" style="height:32px;padding:0 12px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Remove</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ c.ready }}">
+                <button aria-label="Must include" onClick="{{ c.onStar }}" style="position:absolute;top:6px;left:6px;width:36px;height:36px;border:0;border-radius:50%;background:{{ c.starBg }};display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="{{ c.starFill }}" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 2.8l2.8 6 6.5.8-4.8 4.5 1.2 6.5L12 17.5l-5.7 3.1 1.2-6.5L2.7 9.6l6.5-.8z"></path></svg></button>
+                <button aria-label="Remove clip" onClick="{{ c.onRemove }}" style="position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+                <span style="position:absolute;left:8px;bottom:8px;font-size:11px;font-weight:700;background:rgba(0,0,0,.5);padding:3px 7px;border-radius:999px;font-variant-numeric:tabular-nums">{{ c.durL }}</span>
+                <sc-if value="{{ c.similarB }}"><span style="position:absolute;right:8px;bottom:8px;height:22px;padding:0 8px;border-radius:999px;background:rgba(9,9,10,.75);color:#ff8a52;font-size:11px;font-weight:700;display:flex;align-items:center">Similar</span></sc-if>
+              </sc-if>
+            </div>
+          </sc-for>
+          <button onClick="{{ addClips }}" style="aspect-ratio:9/16;border-radius:16px;border:1.5px dashed rgba(255,255,255,.2);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:rgba(255,255,255,.75);cursor:pointer" style-hover="border-color:#ff5a1f;color:#fff">
+            <span style="width:40px;height:40px;border-radius:50%;background:rgba(255,90,31,.16);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span>
+            <span style="font-size:13px;font-weight:600">Add clips</span>
+          </button>
+        </div>
+      </sc-if>
+    </div>
+    <div style="position:sticky;bottom:0;z-index:4;margin-top:auto;padding:{{ footPad }};background:linear-gradient(180deg,rgba(9,9,10,0),#09090a 32%)">
+      <div style="max-width:1040px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:14px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;min-width:0">{{ clipsSummary }}</span>
+        <button onClick="{{ toScript }}" disabled="{{ clipsLocked }}" style="height:52px;padding:0 26px;border:0;border-radius:999px;background:{{ clipsBtn.bg }};color:{{ clipsBtn.fg }};font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap;flex:none">Continue</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isScript }}">
+    <div style="position:relative;flex:1;width:100%;max-width:1120px;margin:0 auto;padding:{{ pagePad }};display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#ff7a3d">Step 2 of 5</span>
+        <span style="font-size:clamp(32px,3.4cqw,40px);font-weight:800;letter-spacing:-0.035em;line-height:1.05">Say what happened</span>
+        <span style="font-size:16px;color:rgba(255,255,255,.65);line-height:1.5;max-width:560px">One short line per moment. Each line becomes a scene and is read aloud.</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:14px;font-weight:600">Title</span>
+            <input value="{{ title }}" onChange="{{ onTitle }}" placeholder="A sunny Saturday in the park" style="height:56px;padding:0 18px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-size:17px;font-weight:600" style-focus="box-shadow:inset 0 0 0 1.5px #ff5a1f,0 0 0 4px rgba(255,90,31,.18)">
+            <span style="font-size:13px;color:rgba(255,255,255,.5)">Shown big at the start of your vlog.</span>
+          </div>
+          <div style="padding:18px;border-radius:24px;background:#141313;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:14px;font-weight:600">What’s it about? <span style="color:rgba(255,255,255,.45);font-weight:500">Optional</span></span>
+              <input value="{{ about }}" onChange="{{ onAbout }}" placeholder="a lazy park day, coffee and a bike ride" style="height:52px;padding:0 16px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-size:15px" style-focus="box-shadow:inset 0 0 0 1.5px #ff5a1f,0 0 0 4px rgba(255,90,31,.18)">
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <sc-if value="{{ aiIdle }}">
+                <sc-if value="{{ linesEmpty }}">
+                  <button onClick="{{ writeAI }}" style="height:48px;padding:0 20px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;flex:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>Write it for me</button>
+                </sc-if>
+                <sc-if value="{{ linesFilled }}">
+                  <button onClick="{{ writeAI }}" style="height:48px;padding:0 20px;border:0;border-radius:999px;background:#1e1c1b;color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:#262321"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>Rewrite with AI</button>
+                  <button onClick="{{ polishAI }}" style="height:48px;padding:0 20px;border:0;border-radius:999px;background:#1e1c1b;color:#fff;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:#262321">Polish my lines</button>
+                </sc-if>
+              </sc-if>
+              <sc-if value="{{ aiBusyAny }}">
+                <div style="height:48px;padding:0 20px;border-radius:999px;background:#1e1c1b;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600"><span style="width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.16);border-top-color:#ff5a1f;animation:ivspin .9s linear infinite"></span>{{ aiBusyLabel }}</div>
+              </sc-if>
+            </div>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <span style="font-size:18px;font-weight:700">Your lines</span>
+            <span style="font-size:13px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">{{ spoken }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ lineRows }}" as="l" hint-placeholder-count="4">
+              <div onDragOver="{{ l.onDragOver }}" onDrop="{{ l.onDrop }}" style="display:flex;align-items:center;gap:6px;border-radius:18px;background:{{ l.rowBg }}">
+                <span draggable="true" onDragStart="{{ l.onDragStart }}" aria-label="Drag to reorder" style="width:28px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);cursor:grab"><svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor"><circle cx="4" cy="3" r="1.6"></circle><circle cx="10" cy="3" r="1.6"></circle><circle cx="4" cy="9" r="1.6"></circle><circle cx="10" cy="9" r="1.6"></circle><circle cx="4" cy="15" r="1.6"></circle><circle cx="10" cy="15" r="1.6"></circle></svg></span>
+                <input value="{{ l.text }}" onChange="{{ l.onChange }}" onKeyDown="{{ l.onKey }}" placeholder="{{ l.ph }}" style="flex:1;min-width:0;height:52px;padding:0 16px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-size:15px" style-focus="box-shadow:inset 0 0 0 1.5px #ff5a1f,0 0 0 4px rgba(255,90,31,.18)">
+                <button aria-label="Remove line" onClick="{{ l.onRemove }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:transparent;color:rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="color:#fff;background:rgba(255,255,255,.06)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+              </div>
+            </sc-for>
+            <button onClick="{{ addLineEnd }}" style="align-self:flex-start;height:44px;margin-left:34px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:#ff7a3d;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;cursor:pointer" style-hover="background:rgba(255,90,31,.08)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Add line</button>
+            <span style="margin-left:34px;font-size:13px;color:rgba(255,255,255,.45)">Press Enter for a new line. Drag the dots to reorder.</span>
+          </div>
+        </div>
+        <div style="flex:1 1 300px;min-width:0;max-width:{{ sideMax }};position:{{ sidePos }};top:96px;padding:22px;border-radius:24px;background:#141313;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:14px;font-weight:700">Format</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ fmtChips }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.bd }};font-size:14px;font-weight:{{ o.fw }};cursor:pointer;white-space:nowrap;flex:none">{{ o.label }}</button></sc-for></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:14px;font-weight:700">Length</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ lenChips }}" as="o" hint-placeholder-count="4"><button onClick="{{ o.onClick }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.bd }};font-size:14px;font-weight:{{ o.fw }};cursor:pointer;white-space:nowrap;flex:none">{{ o.label }}</button></sc-for></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:14px;font-weight:700">Vibe</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ vibeChips }}" as="o" hint-placeholder-count="6"><button onClick="{{ o.onClick }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.bd }};font-size:14px;font-weight:{{ o.fw }};cursor:pointer;white-space:nowrap;flex:none">{{ o.label }}</button></sc-for></div>
+          </div>
+          <span style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">Auto picks from your clips. You can change all of this later.</span>
+        </div>
+      </div>
+    </div>
+    <div style="position:sticky;bottom:0;z-index:4;margin-top:auto;padding:{{ footPad }};background:linear-gradient(180deg,rgba(9,9,10,0),#09090a 32%)">
+      <div style="max-width:1040px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <button onClick="{{ noScriptGo }}" style="height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.8);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;flex:none" style-hover="color:#fff">No script, just music</button>
+        <button onClick="{{ toVoice }}" disabled="{{ scriptLocked }}" style="height:52px;padding:0 26px;border:0;border-radius:999px;background:{{ scriptBtn.bg }};color:{{ scriptBtn.fg }};font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap;flex:none">Continue</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isVoice }}">
+    <div style="position:relative;flex:1;width:100%;max-width:1120px;margin:0 auto;padding:{{ pagePad }};display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#ff7a3d">Step 3 of 5</span>
+        <span style="font-size:clamp(32px,3.4cqw,40px);font-weight:800;letter-spacing:-0.035em;line-height:1.05">Who tells the story?</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+        <sc-for list="{{ modes }}" as="m" hint-placeholder-count="3">
+          <button onClick="{{ m.onClick }}" style="display:flex;gap:14px;align-items:center;padding:18px;border:0;border-radius:20px;background:{{ m.bg }};box-shadow:{{ m.ring }};color:#fff;text-align:left;cursor:pointer">
+            <span style="width:42px;height:42px;flex:none;border-radius:12px;background:{{ m.iconBg }};display:flex;align-items:center;justify-content:center">
+              <sc-if value="{{ m.isAi }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"></path></svg></sc-if>
+              <sc-if value="{{ m.isRec }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></sc-if>
+              <sc-if value="{{ m.isNone }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M7 12h4M13 12h4M7 15h10"></path></svg></sc-if>
+            </span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font-size:16px;font-weight:700">{{ m.title }}</span><span style="font-size:14px;color:rgba(255,255,255,.62);line-height:1.4">{{ m.desc }}</span></span>
+            <sc-if value="{{ m.sel }}"><span style="width:24px;height:24px;flex:none;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if>
+          </button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ modeAi }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:14px;color:rgba(255,255,255,.6);line-height:1.5">Play reads your first line: “{{ firstLine }}”</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">
+            <sc-for list="{{ voiceCards }}" as="v" hint-placeholder-count="6">
+              <div onClick="{{ v.onPick }}" style="display:flex;align-items:center;gap:14px;padding:12px 12px 12px 14px;border-radius:20px;background:{{ v.bg }};box-shadow:{{ v.ring }};cursor:pointer">
+                <span style="width:44px;height:44px;flex:none;border-radius:50%;background:{{ v.avBg }};color:{{ v.avFg }};display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800">{{ v.initial }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">{{ v.name }} <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5)">{{ v.acc }}</span></span><span style="font-size:13px;color:rgba(255,255,255,.62)">{{ v.desc }}</span></span>
+                <button aria-label="Play sample" onClick="{{ v.onPlay }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:{{ v.playBg }};display:flex;align-items:center;justify-content:center;cursor:pointer">
+                  <sc-if value="{{ v.idle }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="{{ v.playFg }}"><path d="M8 5.5v13l11-6.5z"></path></svg></sc-if>
+                  <sc-if value="{{ v.loading }}"><span style="width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(0,0,0,.15);border-top-color:#c2340a;animation:ivspin .9s linear infinite"></span></sc-if>
+                  <sc-if value="{{ v.playing }}"><span style="display:flex;gap:3px;align-items:center"><span style="width:3px;height:14px;border-radius:2px;background:#c2340a;animation:ivfloat .8s ease-in-out infinite"></span><span style="width:3px;height:9px;border-radius:2px;background:#c2340a;animation:ivfloat .8s ease-in-out .2s infinite"></span><span style="width:3px;height:16px;border-radius:2px;background:#c2340a;animation:ivfloat .8s ease-in-out .4s infinite"></span></span></sc-if>
+                </button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ modeRec }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+            <span style="font-size:14px;color:rgba(255,255,255,.6);line-height:1.5;max-width:480px">Read one line at a time. The teleprompter moves on by itself after each take.</span>
+            <button onClick="{{ openTeleNext }}" style="height:48px;padding:0 20px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;flex:none"><span style="width:10px;height:10px;border-radius:50%;background:#ff4f4f"></span>Open teleprompter</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ recRows }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;gap:12px;align-items:center;padding:10px 10px 10px 14px;border-radius:18px;background:#141313">
+                <sc-if value="{{ r.done }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;background:#2fbf71;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06140b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if>
+                <sc-if value="{{ r.notDone }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:rgba(255,255,255,.6)">{{ r.n }}</span></sc-if>
+                <span style="flex:1;min-width:0;font-size:15px;line-height:1.4">{{ r.text }}</span>
+                <sc-if value="{{ r.done }}"><button aria-label="Play take" onClick="{{ r.onPlay }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M8 5.5v13l11-6.5z"></path></svg></button></sc-if>
+                <button onClick="{{ r.onRec }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:{{ r.btnBg }};color:{{ r.btnFg }};font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none">{{ r.btn }}</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ modeNone }}">
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center;padding:22px;border-radius:24px;background:#141313">
+          <div style="position:relative;width:120px;aspect-ratio:9/16;flex:none;border-radius:16px;overflow:hidden;background:linear-gradient(170deg,#f4dcae 0%,#d9a55e 28%,#6f7d3c 62%,#1c2414 100%);container-type:inline-size">
+            <div style="position:absolute;left:8%;right:8%;top:62%;display:flex;justify-content:center"><span style="font-size:9cqw;font-weight:800;padding:.2em .45em;border-radius:.4em;background:rgba(0,0,0,.6);text-align:center;line-height:1.25">So here’s a <span style="color:#ffa25a">sunny</span></span></div>
+          </div>
+          <div style="flex:1 1 240px;display:flex;flex-direction:column;gap:6px"><span style="font-size:18px;font-weight:700">Captions do the talking</span><span style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.5">Your lines appear on screen as captions. Music plays the whole way through.</span></div>
+        </div>
+      </sc-if>
+    </div>
+    <div style="position:sticky;bottom:0;z-index:4;margin-top:auto;padding:{{ footPad }};background:linear-gradient(180deg,rgba(9,9,10,0),#09090a 32%)">
+      <div style="max-width:1040px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:14px;color:rgba(255,255,255,.7);min-width:0">{{ voiceSummary }}</span>
+        <button onClick="{{ toMake }}" disabled="{{ voiceLocked }}" style="height:52px;padding:0 24px;border:0;border-radius:999px;background:{{ voiceBtn.bg }};color:{{ voiceBtn.fg }};box-shadow:{{ voiceBtn.sh }};font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap;flex:none">Make my vlog</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isMake }}">
+    <div style="position:relative;flex:1;overflow:hidden;display:flex;justify-content:center;min-height:{{ makeMinH }}">
+      <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 70% at 50% 0%,#ffa25a 0%,#ff6a24 22%,#e2440d 40%,#7a1c03 64%,#09090a 100%)">
+        <div style="position:absolute;left:-20%;right:-20%;top:32%;height:2px;background:linear-gradient(90deg,rgba(255,220,190,0),rgba(255,220,190,.55),rgba(255,220,190,0));filter:blur(1px);animation:ivsweep 3.2s ease-in-out infinite alternate"></div>
+        <div style="position:absolute;left:-20%;right:-20%;top:46%;height:1px;background:linear-gradient(90deg,rgba(255,220,190,0),rgba(255,220,190,.3),rgba(255,220,190,0));animation:ivsweep 4.4s ease-in-out infinite alternate-reverse"></div>
+        <div style="position:absolute;inset:0;opacity:.22;mix-blend-mode:overlay;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"></div>
+      </div>
+      <div style="position:relative;width:100%;max-width:560px;padding:{{ makePad }};display:flex;flex-direction:column;align-items:center;gap:26px">
+        <div style="display:flex;justify-content:center;height:{{ makeThumbH }}">
+          <sc-for list="{{ makeThumbs }}" as="m" hint-placeholder-count="4">
+            <div style="transform:rotate({{ m.rot }});margin:0 -10px">
+              <div style="width:{{ makeThumbW }};aspect-ratio:9/16;border-radius:16px;background:{{ m.bg }};box-shadow:0 0 0 1.5px rgba(255,255,255,.22),0 24px 50px rgba(30,6,0,.55);animation:ivfloat 3s ease-in-out infinite;animation-delay:{{ m.delay }}"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+          <span style="font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85)">Making your vlog</span>
+          <span style="font-size:clamp(30px,3.6cqw,44px);font-weight:800;letter-spacing:-0.04em;line-height:1.05;text-wrap:balance">{{ makeTitle }}</span>
+        </div>
+        <div style="width:100%;padding:22px;border-radius:24px;background:rgba(9,9,10,.66);backdrop-filter:blur(16px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column;gap:12px">
+          <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden"><div style="width:{{ makePct }};height:100%;border-radius:3px;background:linear-gradient(90deg,#e2440d,#ffa25a);transition:width .2s"></div></div>
+          <sc-for list="{{ makeStages }}" as="g" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:14px;min-height:40px">
+              <sc-if value="{{ g.done }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;background:#2fbf71;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06140b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if>
+              <sc-if value="{{ g.cur }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;border:2.5px solid rgba(255,90,31,.25);border-top-color:#ff5a1f;animation:ivspin .9s linear infinite"></span></sc-if>
+              <sc-if value="{{ g.wait }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;background:rgba(255,255,255,.07)"></span></sc-if>
+              <sc-if value="{{ g.fail }}"><span style="width:30px;height:30px;flex:none;border-radius:50%;background:#ff4f4f;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1a0404" stroke-width="3.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span></sc-if>
+              <span style="flex:1;min-width:0;font-size:16px;font-weight:{{ g.fw }};color:{{ g.fg }}">{{ g.label }}</span>
+              <span style="font-size:13px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;white-space:nowrap">{{ g.count }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ makeFailed }}">
+          <div style="width:100%;padding:18px;border-radius:20px;background:#2a1414;box-shadow:inset 0 0 0 1px rgba(255,79,79,.35);display:flex;flex-direction:column;gap:14px">
+            <span style="font-size:15px;line-height:1.5">{{ makeErr }}</span>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <button onClick="{{ retryMake }}" style="height:48px;padding:0 22px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;flex:none">Try again</button>
+              <button onClick="{{ backFromMake }}" style="height:48px;padding:0 20px;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;flex:none">Go back</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ makeRunning }}"><span style="font-size:14px;color:rgba(255,255,255,.6);text-align:center">Usually under a minute. Everything happens on this device.</span></sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEdit }}">
+    <div style="position:relative;flex:1;width:100%;max-width:1120px;margin:0 auto;padding:{{ editPad }};display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button aria-label="Undo" onClick="{{ undo }}" disabled="{{ undoOff }}" style="width:44px;height:44px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:{{ undoFg }};display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></button>
+        <button aria-label="Redo" onClick="{{ redo }}" disabled="{{ redoOff }}" style="width:44px;height:44px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:{{ redoFg }};display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"></path><path d="M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button>
+        <span style="flex:1;min-width:0;font-size:13px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ versionNote }}</span>
+        <sc-if value="{{ notPhone }}"><button onClick="{{ openExport }}" style="height:48px;padding:0 24px;border:0;border-radius:999px;background:#ff5a1f;color:#fff;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 12px 30px rgba(255,90,31,.35)" style-hover="background:#ff6a32">Export video</button></sc-if>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+        <div style="flex:{{ pvColFlex }};position:{{ pvPos }};top:{{ pvTop }};z-index:3;background:{{ pvColBg }};padding:{{ pvColPad }};display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div onClick="{{ togglePlay }}" style="position:relative;width:{{ pvW }};aspect-ratio:9/16;border-radius:24px;overflow:hidden;background:{{ pvBg }};box-shadow:0 0 0 1.5px rgba(255,255,255,.14),0 30px 60px rgba(0,0,0,.5);cursor:pointer;container-type:inline-size;transition:width .2s">
+            <div style="position:absolute;left:22%;top:18%;width:56%;height:60%;border-radius:50%;background:#050505;filter:blur(18px);opacity:.38"></div>
+            <sc-if value="{{ showTitle }}">
+              <div style="position:absolute;left:8%;right:8%;top:11%;display:flex;justify-content:center;text-align:center"><span style="font-size:10cqw;line-height:1.05;letter-spacing:-0.02em;font-weight:{{ cap.weight }};color:{{ cap.color }};text-shadow:{{ cap.shadow }};text-transform:{{ cap.tt }};background:{{ cap.box }};padding:{{ cap.pad }};border-radius:.25em;text-wrap:balance">{{ titleText }}</span></div>
+            </sc-if>
+            <sc-if value="{{ hasCap }}">
+              <div style="position:absolute;left:8%;right:8%;top:66%;display:flex;justify-content:center">
+                <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:0 .26em;font-size:7.2cqw;line-height:1.25;font-weight:{{ cap.weight }};text-transform:{{ cap.tt }};text-shadow:{{ cap.shadow }};background:{{ cap.box }};padding:{{ cap.pad }};border-radius:.35em">
+                  <sc-for list="{{ capWords }}" as="w" hint-placeholder-count="3"><span style="color:{{ w.color }}">{{ w.w }}</span></sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ paused }}"><div style="position:absolute;left:50%;top:45%;width:18cqw;height:18cqw;max-width:60px;max-height:60px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.3)"><svg width="40%" height="40%" viewBox="0 0 24 24" fill="#0c0c0c"><path d="M8 5.5v13l11-6.5z"></path></svg></div></sc-if>
+          </div>
+          <div style="width:{{ pvW }};display:flex;align-items:center;gap:10px;transition:width .2s">
+            <button aria-label="Play or pause" onClick="{{ togglePlay }}" style="width:40px;height:40px;flex:none;border:0;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer">
+              <sc-if value="{{ paused }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0c0c0c"><path d="M8 5.5v13l11-6.5z"></path></svg></sc-if>
+              <sc-if value="{{ playing }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="#0c0c0c"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></sc-if>
+            </button>
+            <sc-if value="{{ pvFull }}">
+              <div onClick="{{ onScrub }}" style="flex:1;height:20px;display:flex;align-items:center;cursor:pointer"><div style="width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden"><div style="width:{{ scrubW }};height:100%;background:#ff5a1f"></div></div></div>
+            </sc-if>
+            <span style="font-size:12px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;white-space:nowrap">{{ timeL }}</span>
+          </div>
+        </div>
+
+        <div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:16px;padding-bottom:{{ panelPadB }}">
+          <sc-if value="{{ noScene }}">
+            <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:#141313">
+              <sc-for list="{{ tabs }}" as="b" hint-placeholder-count="4"><button onClick="{{ b.onClick }}" style="flex:1;height:44px;border:0;border-radius:999px;background:{{ b.bg }};color:{{ b.fg }};font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">{{ b.label }}</button></sc-for>
+            </div>
+            <sc-if value="{{ tabScenes }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ sceneCards }}" as="s" hint-placeholder-count="5">
+                  <button onClick="{{ s.onOpen }}" style="display:flex;gap:12px;align-items:center;padding:10px 12px 10px 10px;border:0;border-radius:18px;background:{{ s.cardBg }};box-shadow:{{ s.ring }};color:#fff;text-align:left;cursor:pointer" style-hover="filter:brightness(1.12)">
+                    <span style="position:relative;width:48px;aspect-ratio:9/16;flex:none;border-radius:10px;background:{{ s.bg }}"></span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                      <span style="font-size:15px;font-weight:600;line-height:1.35">{{ s.line }}</span>
+                      <span style="display:flex;align-items:center;gap:8px">
+                        <span style="display:flex;gap:3px"><sc-for list="{{ s.shots }}" as="x" hint-placeholder-count="1"><span style="width:14px;height:20px;border-radius:4px;background:{{ x.bg }};box-shadow:0 0 0 1px rgba(255,255,255,.15)"></span></sc-for></span>
+                        <span style="font-size:12px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">{{ s.meta }}</span>
+                      </span>
+                    </span>
+                    <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.45)">{{ s.n }}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tabVoice }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-if value="{{ usingRecording }}"><span style="font-size:14px;color:rgba(255,255,255,.62);line-height:1.5;padding:4px 2px">You’re using your own recordings. Pick a voice below to switch to AI.</span></sc-if>
+                <sc-for list="{{ voiceRows }}" as="v" hint-placeholder-count="6">
+                  <button onClick="{{ v.onClick }}" style="display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border:0;border-radius:16px;background:{{ v.bg }};box-shadow:{{ v.ring }};color:#fff;text-align:left;cursor:pointer">
+                    <span style="width:36px;height:36px;flex:none;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-weight:800">{{ v.initial }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">{{ v.name }}</span><span style="font-size:13px;color:rgba(255,255,255,.55)">{{ v.desc }}</span></span>
+                    <sc-if value="{{ v.sel }}"><span style="width:22px;height:22px;flex:none;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if>
+                  </button>
+                </sc-for>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:18px;background:#141313;margin-top:4px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:600">Voice volume</span><span style="font-size:13px;color:rgba(255,255,255,.55)">{{ voiceVol }}%</span></div><input type="range" min="0" max="100" value="{{ voiceVol }}" onChange="{{ onVoiceVol }}"></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tabMusic }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ musicRows }}" as="m" hint-placeholder-count="6">
+                  <button onClick="{{ m.onClick }}" style="display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border:0;border-radius:16px;background:{{ m.bg }};box-shadow:{{ m.ring }};color:#fff;text-align:left;cursor:pointer">
+                    <span style="width:36px;height:36px;flex:none;border-radius:10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg></span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">{{ m.name }}</span><span style="font-size:13px;color:rgba(255,255,255,.55)">{{ m.desc }}</span></span>
+                    <sc-if value="{{ m.sel }}"><span style="width:22px;height:22px;flex:none;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if>
+                  </button>
+                </sc-for>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:18px;background:#141313;margin-top:4px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:600">Music volume</span><span style="font-size:13px;color:rgba(255,255,255,.55)">{{ musicVol }}%</span></div><input type="range" min="0" max="100" value="{{ musicVol }}" onChange="{{ onMusicVol }}"><span style="font-size:13px;color:rgba(255,255,255,.5)">Music dips under your voice automatically.</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tabStyle }}">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:14px;font-weight:600">Title</span><input value="{{ title }}" onChange="{{ onTitle }}" placeholder="My vlog" style="height:52px;padding:0 16px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-size:15px;font-weight:600" style-focus="box-shadow:inset 0 0 0 1.5px #ff5a1f,0 0 0 4px rgba(255,90,31,.18)"><span style="font-size:13px;color:rgba(255,255,255,.5)">Shows for the first 3 seconds.</span></div>
+                <span style="font-size:14px;font-weight:600">Captions</span>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+                  <sc-for list="{{ presetCards }}" as="p" hint-placeholder-count="5">
+                    <button onClick="{{ p.onClick }}" style="display:flex;flex-direction:column;gap:10px;padding:8px 8px 12px;border:0;border-radius:18px;background:#141313;box-shadow:{{ p.ring }};color:#fff;text-align:left;cursor:pointer">
+                      <span style="position:relative;height:96px;border-radius:12px;overflow:hidden;background:linear-gradient(170deg,#a9b6c3 0%,#64738a 38%,#2a3240 74%,#111418 100%);display:flex;align-items:center;justify-content:center;padding:0 8px">
+                        <span style="font-size:16px;line-height:1.2;font-weight:{{ p.weight }};color:{{ p.color }};text-shadow:{{ p.shadow }};text-transform:{{ p.tt }};background:{{ p.box }};padding:{{ p.pad }};border-radius:6px;text-align:center">so here’s a <span style="color:{{ p.hl }}">sunny</span></span>
+                      </span>
+                      <span style="display:flex;flex-direction:column;gap:2px;padding:0 4px"><span style="font-size:14px;font-weight:700">{{ p.name }}</span><span style="font-size:12px;color:rgba(255,255,255,.55)">{{ p.desc }}</span></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ sceneOpenB }}">
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <button onClick="{{ closeScene }}" style="height:44px;padding:0 14px 0 8px;border:0;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg>All scenes</button>
+                <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.6)">Scene {{ se.n }} of {{ se.of }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:14px;font-weight:600">Narration</span>
+                <input value="{{ se.line }}" onChange="{{ se.onLine }}" onFocus="{{ se.onFocus }}" onBlur="{{ se.onBlur }}" placeholder="No line, music only" style="height:52px;padding:0 16px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-size:15px" style-focus="box-shadow:inset 0 0 0 1.5px #ff5a1f,0 0 0 4px rgba(255,90,31,.18)">
+                <span style="font-size:13px;color:rgba(255,255,255,.5)">Changing this re-voices just this line.</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:14px;font-weight:600">Shots</span>
+                <sc-for list="{{ se.shots }}" as="x" hint-placeholder-count="2">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px;border-radius:16px;background:#141313">
+                    <span style="width:36px;aspect-ratio:9/16;flex:none;border-radius:8px;background:{{ x.bg }}"></span>
+                    <span style="flex:1 1 90px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:600">Shot {{ x.n }}</span><span style="font-size:12px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">{{ x.range }}</span></span>
+                    <span style="display:flex;align-items:center;gap:4px;padding:3px;border-radius:999px;background:#1e1c1b">
+                      <span style="font-size:12px;color:rgba(255,255,255,.55);padding:0 6px 0 8px">Clip sound</span>
+                      <sc-for list="{{ x.opts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="height:34px;padding:0 11px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};font-size:12px;font-weight:700;cursor:pointer">{{ o.label }}</button></sc-for>
+                    </span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:14px;font-weight:600">Swap for another good moment</span>
+                <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px">
+                  <sc-for list="{{ se.alts }}" as="a" hint-placeholder-count="6"><button aria-label="Use this moment" onClick="{{ a.onClick }}" style="aspect-ratio:9/16;border:0;border-radius:10px;background:{{ a.bg }};box-shadow:{{ a.ring }};cursor:pointer"></button></sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;background:#141313">
+                <span style="font-size:14px;font-weight:600">Trim</span>
+                <div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.6)"><span>Start</span><span style="font-variant-numeric:tabular-nums">{{ se.startL }}</span></div><input type="range" min="0" max="90" value="{{ se.start }}" onChange="{{ se.onStart }}"></div>
+                <div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.6)"><span>End</span><span style="font-variant-numeric:tabular-nums">{{ se.endL }}</span></div><input type="range" min="10" max="100" value="{{ se.end }}" onChange="{{ se.onEnd }}"></div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button onClick="{{ se.onEarlier }}" disabled="{{ se.earlierOff }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:#1e1c1b;color:{{ se.earlierFg }};font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none">Move earlier</button>
+                <button onClick="{{ se.onLater }}" disabled="{{ se.laterOff }}" style="height:44px;padding:0 16px;border:0;border-radius:999px;background:#1e1c1b;color:{{ se.laterFg }};font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none">Move later</button>
+                <button onClick="{{ se.onDelete }}" style="height:44px;padding:0 14px;margin-left:auto;border:0;border-radius:999px;background:transparent;color:#ff4f4f;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Delete scene</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ notPhone }}">
+            <div style="position:sticky;bottom:16px;display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:24px;background:rgba(20,19,19,.92);backdrop-filter:blur(14px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 14px 34px rgba(0,0,0,.4)">
+              <div style="display:flex;align-items:center;gap:10px;height:52px;padding:0 4px 0 18px;border-radius:999px;background:#1e1c1b">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>
+                <input value="{{ aiText }}" onChange="{{ onAiText }}" onKeyDown="{{ onAiKey }}" placeholder="Tell the AI: “open with the sunset”" style="flex:1;min-width:0;height:100%;border:0;outline:none;background:transparent;color:#fff;font-size:15px">
+                <sc-if value="{{ aiWorking }}"><span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center"><span style="width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.16);border-top-color:#ff5a1f;animation:ivspin .9s linear infinite"></span></span></sc-if>
+                <sc-if value="{{ aiReady }}"><button aria-label="Send" onClick="{{ sendAI }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"></path></svg></button></sc-if>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ aiChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.onClick }}" style="height:36px;padding:0 13px;border:0;border-radius:999px;background:#1e1c1b;color:rgba(255,255,255,.82);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:#262321;color:#fff">{{ c.label }}</button></sc-for></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+    <sc-if value="{{ isPhone }}">
+      <div style="position:sticky;bottom:0;z-index:5;margin-top:auto;padding:16px 16px 30px;background:linear-gradient(180deg,rgba(9,9,10,0),#09090a 30%);display:flex;gap:10px">
+        <button onClick="{{ openAISheet }}" style="flex:1;min-width:0;height:54px;padding:0 18px;border:0;border-radius:999px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>Tell the AI</button>
+        <button onClick="{{ openExport }}" style="height:54px;padding:0 22px;border:0;border-radius:999px;background:#ff5a1f;color:#fff;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;flex:none;box-shadow:0 12px 30px rgba(255,90,31,.35)">Export</button>
+      </div>
+    </sc-if>
+  </sc-if>
+</sc-if>
+
+</div>
+</div>
+
+<sc-if value="{{ teleOpen }}">
+  <div style="position:absolute;inset:0;z-index:40;background:#09090a;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:{{ teleHeadPad }}">
+      <button aria-label="Close" onClick="{{ teleClose }}" style="width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+      <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,.75)">{{ teleNum }}</span>
+      <span style="min-width:44px;text-align:right;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ teleTimerFg }}">{{ teleTimer }}</span>
+    </div>
+    <div style="flex:1;width:100%;max-width:820px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;justify-content:center;gap:28px">
+      <span style="font-size:clamp(17px,2cqw,22px);color:rgba(255,255,255,.3);line-height:1.4">{{ telePrevLine }}</span>
+      <span style="font-size:clamp(34px,4.6cqw,56px);font-weight:800;letter-spacing:-0.03em;line-height:1.12;text-wrap:balance">{{ teleLine }}</span>
+      <span style="font-size:clamp(17px,2cqw,22px);color:rgba(255,255,255,.3);line-height:1.4">{{ teleNextLine }}</span>
+    </div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:4px;height:56px">
+      <sc-for list="{{ levels }}" as="lv" hint-placeholder-count="28"><span style="width:4px;border-radius:2px;height:{{ lv.h }};background:{{ lv.c }};transition:height .1s"></span></sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 24px 40px">
+      <span style="font-size:14px;color:rgba(255,255,255,.65)">{{ teleStatus }}</span>
+      <div style="display:flex;align-items:center;gap:28px">
+        <button onClick="{{ telePrev }}" style="height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.8);font-size:15px;font-weight:600;cursor:pointer">Previous</button>
+        <button aria-label="Record" onClick="{{ teleRec }}" style="width:84px;height:84px;border:4px solid #fff;border-radius:50%;background:#ff4f4f;display:flex;align-items:center;justify-content:center;cursor:pointer;animation:{{ teleAnim }}">
+          <sc-if value="{{ teleRecording }}"><span style="width:26px;height:26px;border-radius:6px;background:#fff"></span></sc-if>
+          <sc-if value="{{ teleSaving }}"><span style="width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;animation:ivspin .9s linear infinite"></span></sc-if>
+        </button>
+        <button onClick="{{ teleSkip }}" style="height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.8);font-size:15px;font-weight:600;cursor:pointer">Skip</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sheetOpen }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:{{ sheetAlign }};justify-content:center;padding:{{ sheetPad }}">
+    <div onClick="{{ stop }}" style="width:100%;max-width:{{ sheetMax }};max-height:92%;overflow:auto;border-radius:{{ sheetR }};background:#141313;box-shadow:0 -24px 60px rgba(0,0,0,.6);padding:{{ sheetInnerPad }};display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ isPhone }}"><div style="width:36px;height:4px;flex:none;border-radius:2px;background:rgba(255,255,255,.2);align-self:center"></div></sc-if>
+
+      <sc-if value="{{ sheetExport }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">{{ expTitle }}</span><button aria-label="Close" onClick="{{ closeSheet }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+        <sc-if value="{{ expReady }}">
+          <div style="display:flex;gap:14px;align-items:center;padding:12px;border-radius:18px;background:#1e1c1b">
+            <span style="width:54px;aspect-ratio:9/16;flex:none;border-radius:10px;background:{{ pvBg0 }}"></span>
+            <span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ titleText }}</span><span style="font-size:13px;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums">{{ expRes }} · 30 fps · MP4</span><span style="font-size:13px;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums">{{ expLen }} · {{ expSize }}</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.8);font-size:14px;font-weight:500"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Made on this device. Nothing is uploaded.</div>
+          <button onClick="{{ startExport }}" style="height:56px;border:0;border-radius:999px;background:#ff5a1f;color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 12px 30px rgba(255,90,31,.35)" style-hover="background:#ff6a32">Export video</button>
+        </sc-if>
+        <sc-if value="{{ expRendering }}">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:44px;font-weight:800;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ pctL }}</span><span style="font-size:13px;color:rgba(255,255,255,.55)">{{ expLen }} · {{ expRes }}</span></div>
+          <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:{{ pctW }};height:100%;border-radius:3px;background:linear-gradient(90deg,#e2440d,#ffa25a)"></div></div>
+          <span style="font-size:14px;color:rgba(255,255,255,.65);line-height:1.5">Keep this tab open. A 30-second vlog takes about half a minute.</span>
+          <button onClick="{{ cancelExport }}" style="height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer">Cancel</button>
+        </sc-if>
+        <sc-if value="{{ expDone }}">
+          <div style="display:flex;justify-content:center"><div style="position:relative;width:170px;aspect-ratio:9/16;border-radius:20px;overflow:hidden;background:{{ pvBg0 }};box-shadow:0 0 0 1.5px rgba(255,255,255,.2),0 24px 50px rgba(0,0,0,.5)"><div style="position:absolute;left:50%;top:45%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="#0c0c0c"><path d="M8 5.5v13l11-6.5z"></path></svg></div></div></div>
+          <div style="display:flex;justify-content:center"><span style="height:28px;padding:0 11px;border-radius:999px;background:rgba(47,191,113,.14);color:#4fd88d;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#4fd88d"></span>Ready · {{ expSizeExact }}</span></div>
+          <button onClick="{{ shareVideo }}" style="height:56px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:16px;cursor:pointer">{{ shareLabel }}</button>
+          <button onClick="{{ saveVideo }}" style="height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer">{{ saveLabel }}</button>
+        </sc-if>
+        <sc-if value="{{ expError }}">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;background:#2a1414;box-shadow:inset 0 0 0 1px rgba(255,79,79,.35)"><span style="width:8px;height:8px;border-radius:50%;background:#ff4f4f;flex:none"></span><span style="font-size:14px;line-height:1.45">Export stopped at 60%. Your browser ran low on memory. Close other tabs and try again.</span></div>
+          <button onClick="{{ startExport }}" style="height:56px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:16px;cursor:pointer">Try again</button>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ sheetSignin }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">{{ signinTitle }}</span><button aria-label="Close" onClick="{{ closeSheet }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+        <sc-if value="{{ signinForm }}">
+          <span style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.5">Guests get one free vlog. Sign in with your email to keep making them. Your videos still stay on this device.</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input value="{{ email }}" onChange="{{ onEmail }}" onKeyDown="{{ onEmailKey }}" type="email" placeholder="you@example.com" style="height:56px;padding:0 18px;border:0;outline:none;border-radius:16px;background:#1e1c1b;box-shadow:{{ emailRing }};color:#fff;font-size:16px">
+            <sc-if value="{{ signinError }}"><span style="font-size:13px;color:#ff7a7a">That doesn’t look like an email address.</span></sc-if>
+          </div>
+          <button onClick="{{ sendLink }}" style="height:56px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer">
+            <sc-if value="{{ signinSending }}"><span style="width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(0,0,0,.15);border-top-color:#c2340a;animation:ivspin .9s linear infinite"></span></sc-if>
+            {{ sendLabel }}
+          </button>
+          <button onClick="{{ googleSignin }}" style="height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer">Continue with Google</button>
+        </sc-if>
+        <sc-if value="{{ signinSent }}">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:8px 0">
+            <span style="width:60px;height:60px;border-radius:50%;background:rgba(255,90,31,.14);display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ff7a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span>
+            <span style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.5">We sent a sign-in link to <strong style="color:#fff">{{ email }}</strong>. Open it on this device.</span>
+          </div>
+          <button onClick="{{ finishSignin }}" style="height:52px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:15px;cursor:pointer">Demo: open the link</button>
+          <button onClick="{{ differentEmail }}" style="height:44px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.75);font-weight:600;font-size:14px;cursor:pointer">Use a different email</button>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ sheetDel }}">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Delete this vlog?</span>
+        <span style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.5">“{{ delTitle }}” will be removed from this device. This can’t be undone.</span>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onClick="{{ confirmDelete }}" style="height:52px;border:0;border-radius:999px;background:#ff4f4f;color:#1a0404;font-weight:700;font-size:16px;cursor:pointer">Delete vlog</button>
+          <button onClick="{{ closeSheet }}" style="height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer">Keep it</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sheetReplace }}">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Replace your lines?</span>
+        <span style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.5">AI will write new lines from your clips. Your {{ filledN }} current lines will be replaced.</span>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onClick="{{ confirmReplace }}" style="height:52px;border:0;border-radius:999px;background:#fff;color:#0c0c0c;font-weight:700;font-size:16px;cursor:pointer">Replace lines</button>
+          <button onClick="{{ closeSheet }}" style="height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:999px;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer">Keep mine</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sheetAI }}">
+        <span style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Tell the AI</span>
+        <div style="display:flex;align-items:center;gap:8px;height:56px;padding:0 6px 0 18px;border-radius:999px;background:#1e1c1b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
+          <input value="{{ aiText }}" onChange="{{ onAiText }}" onKeyDown="{{ onAiKey }}" placeholder="“open with the sunset”" style="flex:1;min-width:0;height:100%;border:0;outline:none;background:transparent;color:#fff;font-size:16px">
+          <sc-if value="{{ aiWorking }}"><span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center"><span style="width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.16);border-top-color:#ff5a1f;animation:ivspin .9s linear infinite"></span></span></sc-if>
+          <sc-if value="{{ aiReady }}"><button aria-label="Send" onClick="{{ sendAI }}" style="width:44px;height:44px;flex:none;border:0;border-radius:50%;background:#ff5a1f;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"></path></svg></button></sc-if>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ aiChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.onClick }}" style="height:40px;padding:0 14px;border:0;border-radius:999px;background:#1e1c1b;color:rgba(255,255,255,.85);font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex:none">{{ c.label }}</button></sc-for></div>
+        <span style="font-size:13px;color:rgba(255,255,255,.5)">Each change is a new version. Undo takes you back.</span>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}">
+  <div style="position:absolute;left:16px;right:16px;bottom:{{ toastBottom }};z-index:50;display:flex;justify-content:center;pointer-events:none">
+    <div style="max-width:440px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:18px;background:{{ toastBg }};box-shadow:{{ toastRing }};pointer-events:auto">
+      <span style="width:8px;height:8px;border-radius:50%;background:{{ toastDot }};flex:none"></span>
+      <span style="flex:1;font-size:14px;line-height:1.4">{{ toastText }}</span>
+      <sc-if value="{{ toastUndo }}"><button onClick="{{ undoToast }}" style="height:36px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:#ff7a3d;font-size:14px;font-weight:700;cursor:pointer;flex:none">Undo</button></sc-if>
+    </div>
+  </div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Desktop&quot;,&quot;Phone&quot;],&quot;default&quot;:&quot;Desktop&quot;,&quot;tsType&quot;:&quot;'Desktop'|'Phone'&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Home&quot;,&quot;Clips&quot;,&quot;Script&quot;,&quot;Voice&quot;,&quot;Make&quot;,&quot;Edit&quot;],&quot;default&quot;:&quot;Home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;firstVisit&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;simulateErrors&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const BG={day:'linear-gradient(170deg,#f4dcae 0%,#d9a55e 28%,#6f7d3c 62%,#1c2414 100%)',over:'linear-gradient(170deg,#a9b6c3 0%,#64738a 38%,#2a3240 74%,#111418 100%)',mono:'linear-gradient(200deg,#e0e0e0 0%,#8c8c8c 34%,#2c2c2c 72%,#0d0d0d 100%)',gold:'radial-gradient(120% 80% at 70% 25%,#ffd2a1 0%,#ff7a2e 30%,#5a1503 72%,#0a0a0a 100%)',sea:'linear-gradient(175deg,#cfe6ea 0%,#6fa7b4 34%,#2b5763 70%,#0c1a1f 100%)',night:'linear-gradient(180deg,#2b2f4a 0%,#1a1c30 45%,#3a2a2a 80%,#0a0a0f 100%)'};
+const VLOGS=[{id:1,title:'A sunny Saturday in the park',when:'Just now',dur:'0:14',bg:BG.day},{id:2,title:'Rainy café morning',when:'Yesterday',dur:'0:22',bg:BG.over},{id:3,title:'Film walk downtown',when:'Monday',dur:'0:31',bg:BG.mono},{id:4,title:'Lake weekend',when:'Last week',dur:'0:18',bg:BG.sea},{id:5,title:'Night market',when:'Sep 28',dur:'0:26',bg:BG.night}];
+const EX=[{title:'A day at the lake',when:'Example',dur:'0:18',bg:BG.sea},{title:'Rainy café morning',when:'Example',dur:'0:22',bg:BG.over},{title:'Film walk downtown',when:'Example',dur:'0:31',bg:BG.mono}];
+const CLIPS=[{bg:BG.day,secs:8},{bg:BG.over,secs:6},{bg:BG.sea,secs:9},{bg:BG.sea,secs:5,similar:true},{bg:BG.mono,secs:7},{bg:BG.night,secs:8},{bg:BG.over,secs:12,error:true}];
+const LINES=['So here’s a sunny Saturday in the park.','Started with coffee from the cart by the gate.','Then a bike loop around the whole lake.','Found the quiet bench under the big oak.','Dog-watching. Ten out of ten, every one.','Golden hour showed up right on time.','Good day. Same time next week?'];
+const VOICES=[{name:'Ava',acc:'American',desc:'Warm and upbeat'},{name:'Leo',acc:'American',desc:'Calm, low and easy'},{name:'Mia',acc:'American',desc:'Bright and friendly'},{name:'Sam',acc:'American',desc:'Relaxed, like a friend talking'},{name:'Grace',acc:'British',desc:'Soft and clear'},{name:'Oliver',acc:'British',desc:'Dry, a little witty'}];
+const MUSIC=[{name:'Sunny Day',desc:'Upbeat acoustic'},{name:'Lo-fi Walk',desc:'Chill beats'},{name:'Golden Hour',desc:'Warm synths'},{name:'City Pop',desc:'Bright and bouncy'},{name:'Soft Piano',desc:'Gentle, cinematic'},{name:'No music',desc:'Voice and clip sound only'}];
+const PRESETS=[{id:'ember',name:'Ember',desc:'Dark pill, warm highlight',weight:800,tt:'none',color:'#fff',hl:'#FFA25A',shadow:'none',box:'rgba(0,0,0,.6)'},{id:'classic',name:'Classic',desc:'Yellow highlight, outline',weight:800,tt:'capitalize',color:'#fff',hl:'#FFD84D',shadow:'0 0 2px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.85),0 2px 6px rgba(0,0,0,.85)',box:'transparent'},{id:'bold',name:'Bold',desc:'All caps, green pop',weight:800,tt:'uppercase',color:'#fff',hl:'#4DFF9A',shadow:'0 0 2px #000,0 0 3px #000,0 2px 6px rgba(0,0,0,.95)',box:'transparent'},{id:'minimal',name:'Minimal',desc:'Sentence case, soft shadow',weight:600,tt:'none',color:'#fff',hl:'#fff',shadow:'0 1px 8px rgba(0,0,0,.45)',box:'transparent'},{id:'box',name:'Box',desc:'Dark text on white',weight:800,tt:'capitalize',color:'#111',hl:'#E0218A',shadow:'none',box:'#fff'}];
+const AI_CHIPS=['Open with the sunset','Make it punchier','Slow it down','Louder music'];
+const ORDER=['clips','script','voice','make','edit'];
+const LABELS=['Clips','Script','Voice','Make','Edit'];
+const SCN_BG=[BG.day,BG.over,BG.sea,BG.day,BG.mono,BG.gold,BG.night];
+const SCN_DUR=[2.2,2,2,1.8,2,2,2];
+const SCN_SHOTS=[1,2,1,3,1,2,1];
+const ALT=[BG.day,BG.over,BG.sea,BG.mono,BG.night,BG.gold];
+const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+const chip=(label,sel,onClick)=>({label,onClick,bg:sel?'#fff':'transparent',fg:sel?'#0c0c0c':'#fff',bd:sel?'none':'inset 0 0 0 1.5px rgba(255,255,255,.16)',fw:sel?700:500});
+
+class Component extends DCLogic {
+  state={screen:null,reached:0,vlogs:VLOGS.slice(),clips:[],title:'',about:'',lines:[''],aiBusy:null,fmt:'Vertical 9:16',len:'Auto',vibe:'Auto',noScript:false,voiceMode:'ai',voice:'Ava',pv:null,pvState:null,recorded:[],tele:null,levels:[],micOnce:false,stage:0,sub:0,makeFailed:false,failedOnce:false,versions:null,vi:0,t:0,playing:false,tab:'scenes',sceneOpen:null,music:0,musicVol:55,voiceVol:85,preset:'ember',aiText:'',aiWorking:false,sheet:null,exp:'ready',pct:0,expFailedOnce:false,signin:'enter',email:'',signedIn:null,delId:null,toast:null,drag:null};
+  scrollRef=React.createRef();
+  timers={};
+  clear(k){const t=this.timers[k];if(t){clearInterval(t);clearTimeout(t);this.timers[k]=null;}}
+  componentDidMount(){this.applyStart();}
+  componentDidUpdate(pp){if(pp.startScreen!==this.props.startScreen)this.applyStart();}
+  componentWillUnmount(){Object.keys(this.timers).forEach(k=>this.clear(k));}
+  readyClips(){return CLIPS.map((c,i)=>({...c,id:i+1,state:c.error?'error':'ready',starred:i===0}));}
+  applyStart(){
+    const m={Home:'home',Clips:'clips',Script:'script',Voice:'voice',Make:'make',Edit:'edit'};
+    const s=m[this.props.startScreen]||'home';
+    Object.keys(this.timers).forEach(k=>this.clear(k));
+    if(s==='home'){this.setState({screen:'home',sheet:null,tele:null});return;}
+    const i=ORDER.indexOf(s);
+    this.setState({clips:this.readyClips(),title:i>0?'A sunny Saturday in the park':'',lines:i>1?LINES.slice():[''],recorded:[],noScript:false,voiceMode:'ai',reached:i,makeFailed:false,versions:s==='edit'?[{scenes:this.build(LINES,false),note:'First cut'}]:null,vi:0,t:0,sceneOpen:null,sheet:null,tele:null},()=>this.go(s));
+  }
+  lineList(){const f=this.state.lines.filter(l=>l.trim());return f.length?f:LINES;}
+  build(lines,noScript){const f=(lines||[]).filter(l=>l.trim());const src=noScript?['','','','','']:(f.length?f:LINES);return src.map((line,i)=>({id:i+1,line,bg:SCN_BG[i%7],dur:SCN_DUR[i%7],start:0,end:100,shots:Array.from({length:SCN_SHOTS[i%7]},(_,k)=>({bg:k?ALT[(i+k+2)%6]:SCN_BG[i%7],sound:'quiet'}))}));}
+  go(s){const i=ORDER.indexOf(s);this.clear('play');this.clear('make');this.setState(st=>({screen:s,reached:Math.max(st.reached,i),sceneOpen:null,playing:false}));const el=this.scrollRef.current;if(el)el.scrollTop=0;if(s==='make')this.startMake(true);}
+  toast(text,tone,action){this.clear('toast');this.setState({toast:{text,tone,action}});this.timers.toast=setTimeout(()=>this.setState({toast:null}),3600);}
+  newVlog(){this.setState({clips:[],title:'',about:'',lines:[''],reached:0,recorded:[],noScript:false,voiceMode:'ai',versions:null,vi:0,t:0,makeFailed:false},()=>this.go('clips'));}
+  openVlog(v){this.setState({title:v.title,lines:LINES.slice(),clips:this.readyClips(),reached:4,versions:[{scenes:this.build(LINES,false),note:'Last saved'}],vi:0,t:0},()=>{this.go('edit');this.togglePlay(true);});}
+  addClips(){const base=this.state.clips.length;const src=base?[{bg:BG.day,secs:6},{bg:BG.sea,secs:5}]:CLIPS;const stamp=Date.now();const add=src.map((c,i)=>({...c,id:stamp+i,state:'importing',starred:false}));this.setState(st=>({clips:st.clips.concat(add)}));add.forEach((c,i)=>setTimeout(()=>this.setState(st=>({clips:st.clips.map(x=>x.id===c.id?{...x,state:x.error?'error':'ready'}:x)})),500+i*380));}
+  setLine(i,v){this.setState(st=>{const l=st.lines.slice();l[i]=v;return{lines:l};});}
+  addLine(i){this.setState(st=>{const l=st.lines.slice();l.splice(i+1,0,'');return{lines:l};});}
+  removeLine(i){this.setState(st=>{const l=st.lines.slice();l.splice(i,1);return{lines:l.length?l:['']};});}
+  dropLine(i){const d=this.state.drag;if(d==null||d===i){this.setState({drag:null});return;}const l=this.state.lines.slice();const[x]=l.splice(d,1);l.splice(i,0,x);this.setState({lines:l,drag:null});}
+  writeAI(){if(this.state.lines.some(l=>l.trim())){this.setState({sheet:'replace'});return;}this.doWrite();}
+  doWrite(){this.setState({aiBusy:'write',sheet:null});setTimeout(()=>{this.setState(st=>({aiBusy:null,lines:LINES.slice(),title:st.title||'A sunny Saturday in the park'}));this.toast('Wrote 7 lines from what’s in your clips.');},1300);}
+  polish(){this.setState({aiBusy:'polish'});setTimeout(()=>{this.setState({aiBusy:null});this.toast('Polished your lines. Same story, tighter wording.');},1000);}
+  preview(name){this.clear('pv');this.setState({pv:name,pvState:'loading'});this.timers.pv=setTimeout(()=>{this.setState({pvState:'playing'});this.timers.pv=setTimeout(()=>this.setState({pv:null,pvState:null}),2600);},700);}
+  openTele(i){if(this.props.simulateErrors&&!this.state.micOnce){this.setState({micOnce:true});this.toast('Microphone blocked. Allow it in your browser’s site settings, then try again.','err');return;}this.setState({tele:{i,phase:'idle',secs:0},levels:[]});}
+  teleRec(){const tl=this.state.tele;if(!tl)return;
+    if(tl.phase==='idle'){this.setState({tele:{...tl,phase:'rec',secs:0}});this.clear('rec');this.timers.rec=setInterval(()=>this.setState(st=>({tele:st.tele?{...st.tele,secs:st.tele.secs+.1}:null,levels:Array.from({length:28},()=>Math.random())})),100);}
+    else if(tl.phase==='rec'){this.clear('rec');this.setState({tele:{...tl,phase:'saving'},levels:[]});setTimeout(()=>{const st=this.state;const rec=st.recorded.includes(tl.i)?st.recorded:st.recorded.concat(tl.i);const n=this.lineList().length;let nx=-1;for(let k=1;k<=n;k++){const j=(tl.i+k)%n;if(!rec.includes(j)){nx=j;break;}}if(nx<0){this.setState({recorded:rec,tele:null});this.toast('All lines recorded.');}else this.setState({recorded:rec,tele:{i:nx,phase:'idle',secs:0}});},650);}
+  }
+  teleMove(d){this.clear('rec');this.setState(st=>{if(!st.tele)return{};const n=this.lineList().length;return{tele:{i:(st.tele.i+d+n)%n,phase:'idle',secs:0},levels:[]};});}
+  stages(){const st=this.state;const nC=st.clips.filter(c=>c.state==='ready').length||6;const nL=this.lineList().length;const v=st.noScript?{label:'Finding the beat'}:st.voiceMode==='ai'?{label:'Voicing your script',n:nL,unit:'lines'}:st.voiceMode==='record'?{label:'Cleaning up your recordings',n:nL,unit:'lines'}:{label:'Timing your captions'};return[{label:'Watching your clips',n:nC,unit:'clips'},v,{label:'Picking the best moments'},{label:'Cutting it together'},{label:'Adding captions & music'}];}
+  startMake(reset){this.clear('make');if(reset)this.setState({stage:0,sub:0,makeFailed:false});else this.setState({makeFailed:false});this.timers.make=setInterval(()=>this.tickMake(),170);}
+  tickMake(){const st=this.state;const g=this.stages();if(st.stage>=g.length){this.clear('make');this.finishMake();return;}const len=g[st.stage].n||5;if(this.props.simulateErrors&&!st.failedOnce&&st.stage===1&&st.sub===3){this.clear('make');this.setState({makeFailed:true,failedOnce:true});return;}if(st.sub+1>=len)this.setState({stage:st.stage+1,sub:0});else this.setState({sub:st.sub+1});}
+  finishMake(){const sc=this.build(this.state.lines,this.state.noScript);this.setState({versions:[{scenes:sc,note:'First cut'}],vi:0,t:0},()=>{this.go('edit');this.togglePlay(true);});}
+  scenes(){const v=this.state.versions;return v&&v[this.state.vi]?v[this.state.vi].scenes:[];}
+  segs(sc){let a=0;return sc.map(s=>{const d=Math.max(.5,s.dur*(s.end-s.start)/100);const o={start:a,d};a+=d;return o;});}
+  total(){const g=this.segs(this.scenes());return g.length?g[g.length-1].start+g[g.length-1].d:0;}
+  togglePlay(force){const play=force===true?true:!this.state.playing;this.clear('play');if(play){this.setState(st=>({playing:true,t:st.t>=this.total()-.05?0:st.t}));this.timers.play=setInterval(()=>{const tot=this.total();this.setState(st=>{const t=st.t+.1;if(t>=tot){this.clear('play');return{t:tot,playing:false};}return{t};});},100);}else this.setState({playing:false});}
+  commit(scenes,note){this.setState(st=>{const v=st.versions.slice(0,st.vi+1).concat({scenes,note});return{versions:v,vi:v.length-1};});}
+  patch(fn){this.setState(st=>{const v=st.versions.slice();v[st.vi]={...v[st.vi],scenes:fn(v[st.vi].scenes)};return{versions:v};});}
+  openScene(i){this.clear('play');const g=this.segs(this.scenes());this.setState({playing:false,sceneOpen:i,t:g[i]?g[i].start+.05:0});}
+  undo(){this.setState(st=>({vi:Math.max(0,st.vi-1),sceneOpen:null,t:0}));}
+  redo(){this.setState(st=>({vi:Math.min(st.versions.length-1,st.vi+1),sceneOpen:null,t:0}));}
+  sendAI(txt){const text=(typeof txt==='string'?txt:this.state.aiText).trim();if(!text||this.state.aiWorking)return;this.setState({aiWorking:true,aiText:text});setTimeout(()=>{let sc=this.scenes().map(s=>({...s}));const lo=text.toLowerCase();if(/sunset|golden/.test(lo)){const k=sc.findIndex(s=>s.bg===BG.gold);if(k>0){const[x]=sc.splice(k,1);sc.unshift(x);}}else if(/punch|short|fast/.test(lo))sc=sc.map(s=>({...s,dur:+(s.dur*.85).toFixed(2)}));else if(/slow|longer/.test(lo))sc=sc.map(s=>({...s,dur:+(s.dur*1.15).toFixed(2)}));else if(/music|loud/.test(lo))this.setState(st=>({musicVol:Math.min(100,st.musicVol+20)}));this.commit(sc,'“'+text+'”');this.setState({aiWorking:false,aiText:'',sheet:null,sceneOpen:null,t:0});this.toast('Done: '+text+'.',null,'undo');},1000);}
+  startExport(){this.clear('exp');this.setState({exp:'rendering',pct:0});this.timers.exp=setInterval(()=>{const st=this.state;if(this.props.simulateErrors&&!st.expFailedOnce&&st.pct>=58){this.clear('exp');this.setState({exp:'error',expFailedOnce:true});return;}const p=st.pct+2.5;if(p>=100){this.clear('exp');const title=st.title||'My vlog';const sc=this.scenes();const nv={id:Date.now(),title,when:'Just now',dur:fmt(this.total()),bg:sc[0]?sc[0].bg:BG.day};this.setState(s2=>({exp:'done',pct:100,vlogs:s2.vlogs.some(v=>v.title===title)?s2.vlogs.map(x=>x.title===title?{...x,when:'Just now',dur:nv.dur,bg:nv.bg}:x):[nv].concat(s2.vlogs)}));}else this.setState({pct:p});},110);}
+  sendLink(){const e=this.state.email.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){this.setState({signin:'error'});return;}this.setState({signin:'sending'});setTimeout(()=>this.setState({signin:'sent'}),900);}
+  closeSheet(){if(this.state.exp==='rendering')this.clear('exp');this.setState(st=>({sheet:null,exp:st.exp==='rendering'||st.exp==='error'?'ready':st.exp}));}
+
+  renderVals(){
+    const st=this.state,P=this.props,isPhone=P.device==='Phone';
+    const screen=st.screen||'home';const ci=ORDER.indexOf(screen);
+    const vlogs=P.firstVisit?[]:st.vlogs;
+    const fanItem=i=>{const v=i<vlogs.length?vlogs[i]:EX[i];const real=i<vlogs.length;return{...v,onOpen:()=>real?this.openVlog(v):this.toast('That’s an example. Start a new vlog to make your own.')};};
+    const hf={a:fanItem(0),b:fanItem(1),c:fanItem(2),tag:vlogs.length?'NEW':'EXAMPLE'};
+    const vlogCards=vlogs.map(v=>({...v,onOpen:()=>this.openVlog(v),onMore:()=>this.setState({delId:v.id,sheet:'del'})}));
+    const steps=LABELS.map((label,i)=>{const cur=i===ci,locked=i>st.reached,done=!cur&&!locked;const click=!cur&&!locked&&ORDER[i]!=='make';return{label,n:i+1,cur,done,bg:cur?'#fff':done?'#1e1c1b':'transparent',fg:cur?'#0c0c0c':done?'#fff':'rgba(255,255,255,.4)',ring:locked?'inset 0 0 0 1px rgba(255,255,255,.08)':'none',fw:cur?700:600,cursor:click?'pointer':'default',seg:cur?'#fff':done?'#ff5a1f':'rgba(255,255,255,.12)',onClick:()=>{if(click)this.go(ORDER[i]);}};});
+    const tiles=st.clips.map(c=>({...c,importing:c.state==='importing',error:c.state==='error',ready:c.state==='ready',durL:fmt(c.secs),ring:c.starred?'0 0 0 2px #ff5a1f':'0 0 0 1px rgba(255,255,255,.08)',starBg:c.starred?'#ff5a1f':'rgba(0,0,0,.5)',starFill:c.starred?'#fff':'none',similarB:!!c.similar&&c.state==='ready',msg:'This browser can’t decode this HEVC video.',onStar:()=>this.setState(s2=>({clips:s2.clips.map(x=>x.id===c.id?{...x,starred:!x.starred}:x)})),onRemove:()=>this.setState(s2=>({clips:s2.clips.filter(x=>x.id!==c.id)}))}));
+    const ready=st.clips.filter(c=>c.state==='ready');const secs=ready.reduce((a,c)=>a+c.secs,0);const starredN=ready.filter(c=>c.starred).length;
+    const btn=(on,orange)=>({bg:on?(orange?'#ff5a1f':'#fff'):'rgba(255,255,255,.12)',fg:on?(orange?'#fff':'#0c0c0c'):'rgba(255,255,255,.4)',sh:on&&orange?'0 12px 30px rgba(255,90,31,.35)':'none'});
+    const filledN=st.lines.filter(l=>l.trim()).length;const words=st.lines.join(' ').split(/\s+/).filter(Boolean).length;
+    const lineRows=st.lines.map((l,i)=>({n:i+1,text:l,ph:i===0?'e.g. So here’s a sunny Saturday in the park.':'Next moment…',rowBg:st.drag===i?'rgba(255,90,31,.08)':'transparent',onChange:e=>this.setLine(i,e.target.value),onKey:e=>{if(e.key==='Enter'){e.preventDefault();this.addLine(i);}},onRemove:()=>this.removeLine(i),onDragStart:e=>{if(e.dataTransfer)e.dataTransfer.effectAllowed='move';this.setState({drag:i});},onDragOver:e=>e.preventDefault(),onDrop:e=>{e.preventDefault();this.dropLine(i);}}));
+    const ll=this.lineList();const n=ll.length;
+    const modes=[{id:'ai',title:'AI voice',desc:'Six natural voices read your lines.'},{id:'record',title:'Record my own',desc:'Read each line with a teleprompter.'},{id:'none',title:'No voiceover',desc:'Your lines appear as captions only.'}].map(m=>{const sel=st.voiceMode===m.id;return{...m,sel,isAi:m.id==='ai',isRec:m.id==='record',isNone:m.id==='none',bg:sel?'rgba(255,90,31,.1)':'#141313',ring:sel?'inset 0 0 0 1.5px #ff5a1f':'inset 0 0 0 1px rgba(255,255,255,.06)',iconBg:sel?'#ff5a1f':'rgba(255,255,255,.08)',onClick:()=>this.setState({voiceMode:m.id})};});
+    const voiceCards=VOICES.map(v=>{const sel=st.voice===v.name,me=st.pv===v.name;return{...v,initial:v.name[0],sel,bg:sel?'rgba(255,90,31,.1)':'#141313',ring:sel?'inset 0 0 0 1.5px #ff5a1f':'inset 0 0 0 1px rgba(255,255,255,.06)',avBg:sel?'#ff5a1f':'rgba(255,255,255,.08)',avFg:'#fff',playBg:me||sel?'#fff':'rgba(255,255,255,.08)',playFg:me||sel?'#0c0c0c':'#fff',idle:!me,loading:me&&st.pvState==='loading',playing:me&&st.pvState==='playing',onPick:()=>this.setState({voice:v.name}),onPlay:e=>{e.stopPropagation();this.setState({voice:v.name});this.preview(v.name);}};});
+    const recRows=ll.map((l,i)=>{const done=st.recorded.includes(i);return{n:i+1,text:l,done,notDone:!done,btn:done?'Redo':'Record',btnBg:done?'rgba(255,255,255,.08)':'#fff',btnFg:done?'#fff':'#0c0c0c',onRec:()=>this.openTele(i),onPlay:()=>this.toast('Playing your take for line '+(i+1)+'.')};});
+    const recDone=st.recorded.length>=n;const vc=VOICES.find(v=>v.name===st.voice)||VOICES[0];
+    const voiceSummary=st.voiceMode==='ai'?vc.name+' · '+vc.desc.toLowerCase():st.voiceMode==='record'?st.recorded.length+' of '+n+' lines recorded':'Captions only, no voiceover';
+    const voiceOk=st.voiceMode!=='record'||recDone;
+    const tl=st.tele;const teleRecording=!!tl&&tl.phase==='rec',teleSaving=!!tl&&tl.phase==='saving';
+    const lv=(st.levels.length?st.levels:Array(28).fill(.06)).map(v=>({h:Math.round(6+v*42)+'px',c:teleRecording?(v>.72?'#ffa25a':'#ff7a3d'):'rgba(255,255,255,.18)'}));
+    const g=this.stages();let totSteps=0,doneSteps=0;g.forEach((s,i)=>{const L=s.n||5;totSteps+=L;if(i<st.stage)doneSteps+=L;else if(i===st.stage)doneSteps+=st.sub;});
+    const makeStages=g.map((s,i)=>{const done=i<st.stage,cur=i===st.stage&&!st.makeFailed,fail=i===st.stage&&st.makeFailed,wait=i>st.stage;return{label:s.label,done,cur,fail,wait,fg:wait?'rgba(255,255,255,.5)':'#fff',fw:cur?700:500,count:(cur||fail)&&s.n?Math.min(st.sub+1,s.n)+' of '+s.n+' '+s.unit:done&&s.n?s.n+' '+s.unit:''};});
+    const mClips=(ready.length?ready:CLIPS).slice(0,4);const makeThumbs=mClips.map((c,i)=>({bg:c.bg,rot:['-9deg','4deg','-3deg','8deg'][i],delay:['0s','.6s','1.2s','.3s'][i]}));
+    const sc=this.scenes();const sg=this.segs(sc);const total=sg.length?sg[sg.length-1].start+sg[sg.length-1].d:0;const t=Math.min(st.t,total);
+    let idx=sg.findIndex(x=>t<x.start+x.d);if(idx<0)idx=Math.max(0,sg.length-1);
+    if(st.sceneOpen!=null)idx=Math.min(st.sceneOpen,sc.length-1);
+    const cs=sc[idx]||{line:'',bg:BG.day};const pr=PRESETS.find(p=>p.id===st.preset)||PRESETS[0];
+    let capWords=[];if(cs.line){const w=cs.line.split(' ');const ch=[];for(let k=0;k<w.length;k+=4)ch.push(w.slice(k,k+4));const p=sg[idx]?Math.min(.999,Math.max(0,(t-sg[idx].start)/sg[idx].d)):0;const c=Math.min(ch.length-1,Math.floor(p*ch.length));const wi=Math.floor((p*ch.length-c)*ch[c].length);capWords=ch[c].map((x,j)=>({w:x,color:j===wi?pr.hl:pr.color}));}
+    const cap={weight:pr.weight,color:pr.color,shadow:pr.shadow,tt:pr.tt,box:pr.box,pad:pr.box==='transparent'?'0':'.12em .42em'};
+    const vs=st.versions||[];const curNote=vs[st.vi]?vs[st.vi].note:'';
+    const tabs=['Scenes','Voice','Music','Style'].map(l=>{const sel=st.tab===l.toLowerCase();return{label:l,bg:sel?'#fff':'transparent',fg:sel?'#0c0c0c':'rgba(255,255,255,.75)',onClick:()=>this.setState({tab:l.toLowerCase()})};});
+    const sceneCards=sc.map((s,i)=>({n:i+1,line:s.line||'Music only',bg:s.bg,meta:sg[i].d.toFixed(1)+'s · '+s.shots.length+(s.shots.length>1?' shots':' shot'),shots:s.shots.map(x=>({bg:x.bg})),ring:i===idx?'inset 0 0 0 1.5px #ff5a1f':'inset 0 0 0 1px rgba(255,255,255,.06)',cardBg:i===idx?'rgba(255,90,31,.08)':'#141313',onOpen:()=>this.openScene(i)}));
+    let se={shots:[],alts:[]};
+    if(st.sceneOpen!=null&&sc[st.sceneOpen]){const k=st.sceneOpen,s=sc[k],gk=sg[k];
+      se={n:k+1,of:sc.length,line:s.line,
+        onLine:e=>{const v=e.target.value;this.patch(a=>a.map((y,yi)=>yi===k?{...y,line:v}:y));},
+        onFocus:()=>{this.lineBefore=s.line;},
+        onBlur:()=>{const now=this.scenes()[k];if(now&&now.line!==this.lineBefore){this.commit(this.scenes(),'Rewrote scene '+(k+1));this.toast('Re-voicing just this line…');}},
+        shots:s.shots.map((x,j)=>({n:j+1,bg:x.bg,range:fmt(gk.start+j*gk.d/s.shots.length)+'–'+fmt(gk.start+(j+1)*gk.d/s.shots.length),opts:['Off','Quiet','Full'].map(o=>{const sel=x.sound===o.toLowerCase();return{label:o,bg:sel?'#fff':'transparent',fg:sel?'#0c0c0c':'rgba(255,255,255,.75)',onClick:()=>this.patch(a=>a.map((y,yi)=>yi!==k?y:{...y,shots:y.shots.map((z,zi)=>zi!==j?z:{...z,sound:o.toLowerCase()})}))};})})),
+        alts:ALT.map(bg=>({bg,ring:bg===s.bg?'0 0 0 2px #ff5a1f':'0 0 0 1px rgba(255,255,255,.12)',onClick:()=>{const a=this.scenes().map((y,yi)=>yi!==k?y:{...y,bg,shots:y.shots.map((z,zi)=>zi?z:{...z,bg})});this.commit(a,'Swapped a shot in scene '+(k+1));}})),
+        start:s.start,end:s.end,startL:(s.dur*s.start/100).toFixed(1)+'s',endL:(s.dur*s.end/100).toFixed(1)+'s',
+        onStart:e=>{const v=+e.target.value;this.patch(a=>a.map((y,yi)=>yi===k?{...y,start:Math.min(v,y.end-10)}:y));},
+        onEnd:e=>{const v=+e.target.value;this.patch(a=>a.map((y,yi)=>yi===k?{...y,end:Math.max(v,y.start+10)}:y));},
+        earlierOff:k===0,laterOff:k===sc.length-1,earlierFg:k===0?'rgba(255,255,255,.3)':'#fff',laterFg:k===sc.length-1?'rgba(255,255,255,.3)':'#fff',
+        onEarlier:()=>{if(k===0)return;const a=this.scenes().slice();[a[k-1],a[k]]=[a[k],a[k-1]];this.commit(a,'Moved scene '+(k+1)+' earlier');this.setState({sceneOpen:k-1});},
+        onLater:()=>{if(k>=sc.length-1)return;const a=this.scenes().slice();[a[k+1],a[k]]=[a[k],a[k+1]];this.commit(a,'Moved scene '+(k+1)+' later');this.setState({sceneOpen:k+1});},
+        onDelete:()=>{const a=this.scenes().filter((y,yi)=>yi!==k);if(!a.length)return;this.commit(a,'Deleted scene '+(k+1));this.setState({sceneOpen:null,t:0});this.toast('Scene deleted.',null,'undo');}};}
+    const voiceRows=VOICES.map(v=>{const sel=st.voiceMode==='ai'&&st.voice===v.name;return{name:v.name,initial:v.name[0],desc:v.acc+' · '+v.desc,sel,bg:sel?'rgba(255,90,31,.1)':'#141313',ring:sel?'inset 0 0 0 1.5px #ff5a1f':'none',onClick:()=>{this.setState({voice:v.name,voiceMode:'ai'});this.toast('Re-voicing with '+v.name+'…');}};});
+    const musicRows=MUSIC.map((m,i)=>{const sel=st.music===i;return{...m,sel,bg:sel?'rgba(255,90,31,.1)':'#141313',ring:sel?'inset 0 0 0 1.5px #ff5a1f':'none',onClick:()=>this.setState({music:i})};});
+    const presetCards=PRESETS.map(p=>({...p,pad:p.box==='transparent'?'0':'3px 8px',ring:st.preset===p.id?'inset 0 0 0 1.5px #ff5a1f':'inset 0 0 0 1px rgba(255,255,255,.06)',onClick:()=>this.setState({preset:p.id})}));
+    const sheet=st.tele?null:st.sheet;
+    const res={'Vertical 9:16':'1080×1920','Square 1:1':'1080×1080','Wide 16:9':'1920×1080'}[st.fmt];
+    const delV=st.vlogs.find(v=>v.id===st.delId);
+    const flowFoot=['clips','script','voice'].includes(screen)||(isPhone&&(screen==='edit'||screen==='home'));
+    const tt=st.toast;const err=tt&&tt.tone==='err';
+    return {
+      scrollRef:this.scrollRef,stop:e=>e.stopPropagation(),
+      isPhone,notPhone:!isPhone,screenLabel:LABELS[ci]||'Home',
+      stagePad:isPhone?'40px 20px':'0',frameW:isPhone?'390px':'100%',frameH:isPhone?'844px':'100vh',frameR:isPhone?'48px':'0',frameShadow:isPhone?'0 0 0 10px #0d0c0c,0 0 0 11px #2a2624,0 40px 80px rgba(0,0,0,.6)':'none',
+      isHome:screen==='home',inFlow:ci>=0,isClips:screen==='clips',isScript:screen==='script',isVoice:screen==='voice',isMake:screen==='make',isEdit:screen==='edit',showWash:screen!=='make',
+      heroBgH:isPhone?'860px':'760px',homeHeadPad:isPhone?'58px 20px 0':'28px 40px 0',heroPad:isPhone?'36px 20px 0':'72px 40px 0',fanFlex:isPhone?'1 1 100%':'0 0 520px',fanH:isPhone?'330px':'500px',fanScale:isPhone?.64:1,homeStepsPad:isPhone?'24px 20px 28px':'56px 40px 28px',homeGridPad:isPhone?'32px 16px 24px':'40px 40px 64px',
+      hf,vlogCards,hasVlogs:vlogs.length>0,noVlogs:vlogs.length===0,vlogCount:vlogs.length,
+      newVlog:()=>this.newVlog(),openSignin:()=>this.setState({sheet:'signin',signin:'enter'}),signedOut:!st.signedIn,isSignedIn:!!st.signedIn,signedIn:st.signedIn,signOut:()=>{this.setState({signedIn:null});this.toast('Signed out.');},
+      goHome:()=>{Object.keys(this.timers).forEach(k=>{if(k!=='toast')this.clear(k);});this.setState({screen:'home',playing:false,sheet:null});},
+      steps,stepCompact:'Step '+(ci+1)+' of 5 · '+(LABELS[ci]||''),flowHeadPad:isPhone?'52px 16px 12px':'12px 40px',pagePad:isPhone?'24px 16px 24px':'40px 40px 32px',footPad:isPhone?'20px 16px 30px':'28px 40px 28px',
+      clipsEmpty:st.clips.length===0,hasClips:st.clips.length>0,addClips:()=>this.addClips(),dropH:isPhone?'360px':'340px',dropHint:isPhone?'From your phone’s gallery':'or drag them here',tileMin:isPhone?'100px':'150px',tiles,
+      starHint:starredN?starredN+(starredN>1?' clips':' clip')+' marked must-include. Tap the star on any clip that has to be in.':'Tap the star on clips that must be in your vlog.',
+      clipsSummary:ready.length?ready.length+' clips · '+fmt(secs)+' of 10:00 max':'No clips yet',clipsLocked:!ready.length,clipsBtn:btn(ready.length>0),toScript:()=>this.go('script'),
+      title:st.title,onTitle:e=>this.setState({title:e.target.value}),about:st.about,onAbout:e=>this.setState({about:e.target.value}),
+      aiIdle:!st.aiBusy,aiBusyAny:!!st.aiBusy,aiBusyLabel:st.aiBusy==='polish'?'Polishing…':'Writing from your clips…',linesEmpty:filledN===0,linesFilled:filledN>0,filledN,writeAI:()=>this.writeAI(),polishAI:()=>this.polish(),confirmReplace:()=>this.doWrite(),
+      spoken:'About '+fmt(words/2.6)+' spoken',lineRows,addLineEnd:()=>this.addLine(st.lines.length-1),sideMax:isPhone?'100%':'380px',sidePos:isPhone?'relative':'sticky',
+      fmtChips:['Vertical 9:16','Square 1:1','Wide 16:9'].map(o=>chip(o,st.fmt===o,()=>this.setState({fmt:o}))),lenChips:['Auto','15s','30s','60s'].map(o=>chip(o,st.len===o,()=>this.setState({len:o}))),vibeChips:['Auto','Chill','Upbeat','Cinematic','Funny','Aesthetic'].map(o=>chip(o,st.vibe===o,()=>this.setState({vibe:o}))),
+      noScriptGo:()=>{this.setState({noScript:true},()=>this.go('make'));},scriptLocked:filledN===0,scriptBtn:btn(filledN>0),toVoice:()=>{this.setState({noScript:false},()=>this.go('voice'));},
+      modes,modeAi:st.voiceMode==='ai',modeRec:st.voiceMode==='record',modeNone:st.voiceMode==='none',voiceCards,firstLine:ll[0],recRows,openTeleNext:()=>{const j=ll.findIndex((_,i)=>!st.recorded.includes(i));this.openTele(j<0?0:j);},
+      voiceSummary,voiceLocked:!voiceOk,voiceBtn:btn(voiceOk,true),toMake:()=>this.go('make'),
+      teleOpen:!!tl,teleHeadPad:isPhone?'54px 16px 8px':'20px 24px',teleNum:tl?'Line '+(tl.i+1)+' of '+n:'',teleLine:tl?ll[tl.i]:'',telePrevLine:tl&&tl.i>0?ll[tl.i-1]:' ',teleNextLine:tl&&tl.i<n-1?ll[tl.i+1]:' ',teleTimer:tl&&tl.phase!=='idle'?fmt(tl.secs):'',teleTimerFg:teleRecording?'#ff4f4f':'rgba(255,255,255,.6)',
+      teleRecording,teleSaving,teleAnim:teleRecording?'ivpulse 1.4s ease-out infinite':'none',teleStatus:teleRecording?'Recording. Tap to stop.':teleSaving?'Saving your take…':'Tap the button and read the line.',levels:lv,
+      teleRec:()=>this.teleRec(),telePrev:()=>this.teleMove(-1),teleSkip:()=>this.teleMove(1),teleClose:()=>{this.clear('rec');this.setState({tele:null,levels:[]});},
+      makeMinH:isPhone?'700px':'640px',makePad:isPhone?'40px 16px 40px':'56px 24px 56px',makeThumbs,makeThumbW:isPhone?'78px':'96px',makeThumbH:isPhone?'150px':'180px',makeTitle:st.title||'Your vlog',makeStages,makePct:Math.round(doneSteps/totSteps*100)+'%',
+      makeFailed:st.makeFailed,makeRunning:!st.makeFailed,makeErr:'We couldn’t finish “'+(g[st.stage]?g[st.stage].label.toLowerCase():'')+'”. The voice service didn’t answer in time. Nothing was lost.',retryMake:()=>this.startMake(false),backFromMake:()=>this.go(st.noScript?'script':'voice'),
+      editPad:isPhone?'14px 16px 16px':'20px 40px 40px',undo:()=>this.undo(),redo:()=>this.redo(),undoOff:st.vi===0,redoOff:st.vi>=vs.length-1,undoFg:st.vi===0?'rgba(255,255,255,.3)':'#fff',redoFg:st.vi>=vs.length-1?'rgba(255,255,255,.3)':'#fff',versionNote:'Version '+(st.vi+1)+' · '+curNote,
+      openExport:()=>{this.clear('play');this.setState({sheet:'export',exp:'ready',playing:false});},
+      pvColFlex:isPhone?'1 1 100%':'0 0 340px',pvPos:isPhone?(st.sceneOpen!=null?'sticky':'relative'):'sticky',pvTop:isPhone?'100px':'90px',pvColBg:isPhone&&st.sceneOpen!=null?'#09090a':'transparent',pvColPad:isPhone&&st.sceneOpen!=null?'8px 0 10px':'0',pvW:isPhone?(st.sceneOpen!=null?'120px':'230px'):'320px',pvFull:!(isPhone&&st.sceneOpen!=null),
+      pvBg:cs.bg,pvBg0:sc[0]?sc[0].bg:BG.day,showTitle:t<3&&idx===0,titleText:st.title||'My vlog',cap,capWords,hasCap:capWords.length>0&&!(t<3&&idx===0&&t<1.2),
+      playing:st.playing,paused:!st.playing,togglePlay:()=>this.togglePlay(),timeL:fmt(t)+' / '+fmt(total),scrubW:(total?t/total*100:0)+'%',
+      onScrub:e=>{const r=e.currentTarget.getBoundingClientRect();const f=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));this.setState({t:f*this.total(),sceneOpen:null});},
+      panelPadB:isPhone?'0':'0',noScene:st.sceneOpen==null,sceneOpenB:st.sceneOpen!=null,closeScene:()=>this.setState({sceneOpen:null}),se,
+      tabs,tabScenes:st.tab==='scenes',tabVoice:st.tab==='voice',tabMusic:st.tab==='music',tabStyle:st.tab==='style',sceneCards,
+      usingRecording:st.voiceMode==='record',voiceRows,voiceVol:st.voiceVol,onVoiceVol:e=>this.setState({voiceVol:+e.target.value}),musicRows,musicVol:st.musicVol,onMusicVol:e=>this.setState({musicVol:+e.target.value}),presetCards,
+      aiText:st.aiText,onAiText:e=>this.setState({aiText:e.target.value}),onAiKey:e=>{if(e.key==='Enter')this.sendAI();},sendAI:()=>this.sendAI(),aiWorking:st.aiWorking,aiReady:!st.aiWorking,aiChips:AI_CHIPS.map(c=>({label:c,onClick:()=>this.sendAI(c)})),openAISheet:()=>this.setState({sheet:'ai'}),
+      sheetOpen:!!sheet,sheetExport:sheet==='export',sheetSignin:sheet==='signin',sheetDel:sheet==='del',sheetReplace:sheet==='replace',sheetAI:sheet==='ai',closeSheet:()=>this.closeSheet(),
+      sheetAlign:isPhone?'flex-end':'center',sheetPad:isPhone?'0':'24px',sheetMax:isPhone?'100%':'480px',sheetR:isPhone?'28px 28px 0 0':'28px',sheetInnerPad:isPhone?'12px 20px 34px':'24px 28px 28px',
+      expTitle:{ready:'Export your vlog',rendering:'Making your video',done:'Your vlog is ready',error:'Export didn’t finish'}[st.exp],expReady:st.exp==='ready',expRendering:st.exp==='rendering',expDone:st.exp==='done',expError:st.exp==='error',
+      expRes:res,expLen:fmt(total),expSize:'about '+Math.max(1,Math.round(total*.22))+' MB',expSizeExact:(total*.22).toFixed(1)+' MB',pctL:Math.round(st.pct)+'%',pctW:st.pct+'%',
+      startExport:()=>this.startExport(),cancelExport:()=>{this.clear('exp');this.setState({exp:'ready',pct:0});},
+      shareLabel:isPhone?'Share':'Download video',saveLabel:isPhone?'Save to Photos':'Share…',shareVideo:()=>{this.setState({sheet:null});this.toast(isPhone?'Opening the share sheet…':'Saved to your Downloads folder.');},saveVideo:()=>{this.setState({sheet:null});this.toast(isPhone?'Saved to Photos.':'Opening the share sheet…');},
+      signinTitle:st.signin==='sent'?'Check your email':'Sign in to keep going',signinForm:st.signin!=='sent',signinSent:st.signin==='sent',signinError:st.signin==='error',signinSending:st.signin==='sending',sendLabel:st.signin==='sending'?'Sending…':'Send sign-in link',
+      email:st.email,onEmail:e=>this.setState({email:e.target.value,signin:st.signin==='error'?'enter':st.signin}),onEmailKey:e=>{if(e.key==='Enter')this.sendLink();},emailRing:st.signin==='error'?'inset 0 0 0 1.5px #ff4f4f':'inset 0 0 0 1px rgba(255,255,255,.08)',
+      sendLink:()=>this.sendLink(),googleSignin:()=>this.toast('Google sign-in isn’t switched on in this demo.'),differentEmail:()=>this.setState({signin:'enter'}),finishSignin:()=>{this.setState({signedIn:st.email.trim(),sheet:null});this.toast('Signed in as '+st.email.trim()+'.');},
+      delTitle:delV?delV.title:'',confirmDelete:()=>{this.setState(s2=>({vlogs:s2.vlogs.filter(v=>v.id!==s2.delId),sheet:null,delId:null}));this.toast('Vlog deleted.');},
+      hasToast:!!tt,toastText:tt?tt.text:'',toastUndo:!!tt&&tt.action==='undo',undoToast:()=>{this.undo();this.setState({toast:null});},toastDot:err?'#ff4f4f':'#ff7a3d',toastBg:err?'#2a1414':'#1e1c1b',toastRing:err?'inset 0 0 0 1px rgba(255,79,79,.35),0 14px 34px rgba(0,0,0,.45)':'inset 0 0 0 1px rgba(255,255,255,.08),0 14px 34px rgba(0,0,0,.45)',toastBottom:flowFoot?(isPhone?'120px':'104px'):'28px'
+    };
+  }
+}
+</script>
+</body>
+</html>

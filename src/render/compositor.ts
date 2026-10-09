@@ -1,6 +1,6 @@
 import type { Clip } from '@/domain/types'
 import { captionAt, shotAt, TRANSITION_SEC, type Timeline, type TimelineShot } from '@/domain/timeline'
-import type { TextStyle } from './styles'
+import { applyCase, type TextStyle } from './styles'
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 export type FrameSource = CanvasImageSource & { width?: number; height?: number }
@@ -104,34 +104,59 @@ function wrap(ctx: Ctx2D, text: string, maxW: number): string[] {
   return lines
 }
 
-function strokedText(ctx: Ctx2D, text: string, x: number, y: number, style: TextStyle, color: string, px: number) {
-  if (style.stroke !== 'rgba(0,0,0,0)') {
+/** Text with the preset's legibility treatment (outline glow) but no box. */
+function legibleText(ctx: Ctx2D, text: string, x: number, y: number, style: TextStyle, color: string, px: number) {
+  const o = style.outline
+  if (o) {
+    ctx.save()
+    ctx.shadowColor = o.color
+    ctx.shadowBlur = px * (o.blur / 48)
+    ctx.shadowOffsetY = px * 0.04
     ctx.lineJoin = 'round'
-    ctx.lineWidth = Math.max(2, px * 0.14)
-    ctx.strokeStyle = style.stroke
-    ctx.strokeText(text, x, y)
+    ctx.strokeStyle = o.color
+    ctx.lineWidth = px * (o.strength === 'heavy' ? 0.16 : o.strength === 'normal' ? 0.1 : 0)
+    if (ctx.lineWidth > 0) ctx.strokeText(text, x, y)
+    ctx.fillStyle = color
+    ctx.fillText(text, x, y)
+    ctx.restore()
+    return
   }
   ctx.fillStyle = color
   ctx.fillText(text, x, y)
 }
 
+function boxBehind(ctx: Ctx2D, style: TextStyle, x: number, centerY: number, width: number, px: number) {
+  if (!style.box) return
+  const padX = px * 0.42
+  const padY = px * 0.12
+  ctx.fillStyle = style.box
+  roundRect(ctx, x - padX, centerY - px * 0.62 - padY, width + padX * 2, px * 1.24 + padY * 2, px * 0.35)
+}
+
 export function drawOverlays(ctx: Ctx2D, W: number, H: number, t: number, tl: Timeline, style: TextStyle) {
   const unit = Math.min(W, H)
   const vertical = H > W
+  const textOnBox = style.box ? style.captionColor : '#ffffff'
 
-  // Title: big, top of frame, fades in and out.
+  // Title: big, top of frame (centred at 15%), fades in and out.
   if (tl.title.text && t < tl.title.until) {
     const fadeIn = Math.min(1, t / 0.25)
     const fadeOut = Math.min(1, (tl.title.until - t) / 0.35)
     ctx.globalAlpha = Math.max(0, Math.min(fadeIn, fadeOut))
-    const px = unit * 0.1
+    const px = W * 0.1
     setFont(ctx, style, px)
-    ctx.textAlign = 'center'
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    const text = style.uppercaseTitle ? tl.title.text.toUpperCase() : tl.title.text
-    const lines = wrap(ctx, text, W * 0.86)
-    const top = H * (vertical ? 0.15 : 0.16)
-    lines.forEach((line, i) => strokedText(ctx, line, W / 2, top + i * px * 1.1, style, style.titleColor, px))
+    const lines = wrap(ctx, applyCase(tl.title.text, style.titleCase), W * 0.84).slice(0, 3)
+    const lineH = px * 1.08
+    const top = H * 0.15 - ((lines.length - 1) * lineH) / 2
+    lines.forEach((line, i) => {
+      const w = ctx.measureText(line).width
+      const x = (W - w) / 2
+      const y = top + i * lineH
+      boxBehind(ctx, style, x, y, w, px)
+      legibleText(ctx, line, x, y, style, textOnBox, px)
+    })
     ctx.globalAlpha = 1
   }
 
@@ -140,22 +165,23 @@ export function drawOverlays(ctx: Ctx2D, W: number, H: number, t: number, tl: Ti
   if (scene?.onScreenText) {
     const px = unit * 0.05
     setFont(ctx, style, px, 700)
-    ctx.textAlign = 'center'
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    strokedText(ctx, scene.onScreenText, W / 2, H * (vertical ? 0.3 : 0.3), style, '#fff', px)
+    const w = ctx.measureText(scene.onScreenText).width
+    boxBehind(ctx, style, (W - w) / 2, H * 0.3, w, px)
+    legibleText(ctx, scene.onScreenText, (W - w) / 2, H * 0.3, style, textOnBox, px)
   }
 
-  // Captions: lower third, current word highlighted. Kept above the area social apps cover.
+  // Captions: centred at 70%, current word highlighted, inside 84% of the width.
   const chunk = captionAt(tl, t)
   if (chunk) {
-    const px = unit * (vertical ? 0.072 : 0.06)
+    const px = W * (vertical ? 0.072 : 0.045)
     setFont(ctx, style, px)
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'left'
-    const words = chunk.words.map((w) => (style.uppercaseCaptions ? w.word.toUpperCase() : w.word))
+    const words = chunk.words.map((w) => applyCase(w.word, style.captionCase))
     const space = ctx.measureText(' ').width
     const widths = words.map((w) => ctx.measureText(w).width)
-    // wrap words onto rows that fit
     const maxW = W * 0.84
     const rows: number[][] = [[]]
     let rowW = 0
@@ -170,21 +196,16 @@ export function drawOverlays(ctx: Ctx2D, W: number, H: number, t: number, tl: Ti
       }
     })
     const baseY = H * (vertical ? 0.7 : 0.8)
-    const lineH = px * 1.25
+    const lineH = px * (style.box ? 1.5 : 1.25)
     rows.forEach((row, r) => {
       const total = row.reduce((a, i, k) => a + widths[i] + (k ? space : 0), 0)
       let x = (W - total) / 2
       const y = baseY + (r - (rows.length - 1) / 2) * lineH
-      if (style.box) {
-        ctx.fillStyle = style.box
-        const padX = px * 0.35
-        const padY = px * 0.18
-        roundRect(ctx, x - padX, y - px / 2 - padY, total + padX * 2, px + padY * 2, px * 0.25)
-      }
+      boxBehind(ctx, style, x, y, total, px)
       for (const i of row) {
         const w = chunk.words[i]
         const active = t >= w.start && t < w.end + 0.05
-        strokedText(ctx, words[i], x, y, style, active ? style.highlightColor : style.captionColor, px)
+        legibleText(ctx, words[i], x, y, style, active ? style.highlightColor : textOnBox, px)
         x += widths[i] + space
       }
     })

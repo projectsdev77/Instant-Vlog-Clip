@@ -1,58 +1,196 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. The designer's work lands here: every color, radius and font
- * in the app comes from these variables, so a rebrand is a one-file change.
+ * "Ember" design tokens (from the design handoff). Every colour, radius,
+ * shadow and the font come from here. The app is dark-only for now; a light
+ * theme isn't designed yet.
  */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-bg: #ffffff;
-  --color-surface: #f6f7f9;
-  --color-surface-2: #eceef2;
-  --color-border: #e2e5ea;
-  --color-fg: #0b0d12;
-  --color-muted: #5f6673;
-  --color-accent: #2563eb;
+  --color-bg: #09090a;
+  --color-surface: #141313;
+  --color-surface-2: #1e1c1b;
+  --color-border: rgb(255 255 255 / 0.08);
+  --color-fg: #ffffff;
+  --color-muted: rgb(255 255 255 / 0.62);
+  --color-faint: rgb(255 255 255 / 0.45);
+  --color-accent: #ff5a1f;
+  --color-accent-hover: #ff6a32;
   --color-accent-fg: #ffffff;
-  --color-accent-soft: #e8efff;
-  --color-danger: #dc2626;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
+  --color-accent-soft: rgb(255 90 31 / 0.1);
+  --color-danger: #ff4f4f;
+  --color-danger-fg: #1a0404;
+  --color-danger-surface: #2a1414;
+  --color-success: #2fbf71;
+  --color-success-fg: #06140b;
+  --color-success-soft: #4fd88d;
+  --color-warning: #ff5a1f;
+  --color-ink: #0c0c0c;
 
-  --radius-card: 1rem;
-  --radius-control: 0.75rem;
+  --color-ember-200: #ffa25a;
+  --color-ember-300: #ff7a3d;
+  --color-ember-500: #ff5a1f;
+  --color-ember-600: #e2440d;
+  --color-ember-700: #c2340a;
+  --color-ember-900: #7a1c03;
+
+  --radius-thumb: 10px;
+  --radius-input: 16px;
+  --radius-tile: 16px;
+  --radius-card: 20px;
+  --radius-panel: 24px;
+  --radius-sheet: 28px;
+  /* kept for older components */
+  --radius-control: 16px;
+
+  --shadow-lift: 0 14px 34px rgb(0 0 0 / 0.4);
+  --shadow-cover: 0 0 0 1.5px rgb(255 255 255 / 0.2), 0 30px 60px rgb(30 6 0 / 0.55);
+  --shadow-ember: 0 12px 30px rgb(255 90 31 / 0.35);
+
+  --ease-ember: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --animate-float: float 3s ease-in-out infinite;
+  --animate-sweep: sweep 3.2s ease-in-out infinite alternate;
+  --animate-pulse-rec: pulse-rec 1.4s ease-out infinite;
+  --animate-bar: bar 0.9s ease-in-out infinite alternate;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50% { transform: translateY(-14px) rotate(var(--r, 0deg)); }
+  }
+  @keyframes sweep {
+    from { transform: translateX(-30%); }
+    to { transform: translateX(30%); }
+  }
+  @keyframes pulse-rec {
+    0% { box-shadow: 0 0 0 0 rgb(255 79 79 / 0.5); }
+    100% { box-shadow: 0 0 0 18px rgb(255 79 79 / 0); }
+  }
+  @keyframes bar {
+    from { transform: scaleY(0.35); }
+    to { transform: scaleY(1); }
+  }
 }
 
 @layer base {
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-bg: #0b0d12;
-      --color-surface: #151821;
-      --color-surface-2: #1e222d;
-      --color-border: #2a2f3c;
-      --color-fg: #f3f4f6;
-      --color-muted: #9aa1ae;
-      --color-accent: #4f86ff;
-      --color-accent-soft: #1a2747;
-    }
+  :root {
+    color-scheme: dark;
   }
 
   html,
   body,
   #root {
-    height: 100%;
+    min-height: 100%;
   }
 
   body {
     background: var(--color-bg);
     color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
   }
 
-  :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+  input,
+  textarea,
+  button,
+  select {
+    font: inherit;
   }
+
+  ::placeholder {
+    color: rgb(255 255 255 / 0.4);
+  }
+
+  input[type='range'] {
+    accent-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-property: opacity !important;
+    }
+  }
+}
+
+@layer components {
+  /* Full Ember glow: Home hero and the Make screen only. */
+  .ember-motion {
+    background: radial-gradient(ellipse 75% 85% at 30% 10%, #ffa25a 0%, #ff6a24 26%, #e2440d 46%, #7a1c03 72%, #1a0602 100%);
+  }
+  .ember-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.22;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .ember-streak {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgb(255 220 190 / 0), rgb(255 220 190 / 0.4), rgb(255 220 190 / 0));
+    filter: blur(1px);
+    pointer-events: none;
+  }
+  /* Faint glow behind the header on flow screens. */
+  .ember-wash {
+    position: absolute;
+    left: 50%;
+    top: -120px;
+    width: 900px;
+    height: 520px;
+    max-width: 200vw;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgb(255 106 36 / 0.26), transparent 62%);
+    pointer-events: none;
+  }
+  .eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-ember-300);
+  }
+  .title-1 {
+    font-size: clamp(32px, 4vw, 40px);
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  .title-2 {
+    font-size: clamp(20px, 2.2vw, 26px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .ring-hair {
+    box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.16);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

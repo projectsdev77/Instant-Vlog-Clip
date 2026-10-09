@@ -126,7 +126,7 @@ async function run(onProgress: (p: Progress) => void) {
   onProgress({ stage: 'cutting' })
   onProgress({ stage: 'finishing' })
   await useProject.getState().updateProject({ musicTrackId: ctx.musicTrackId ?? null })
-  await useProject.getState().pushEdit(plan)
+  await useProject.getState().pushEdit(plan.createdBy === 'fallback' ? plan : { ...plan, note: 'First cut' })
   await useProject.getState().updateProject({ step: 'edit' })
 }
 

@@ -19,7 +19,7 @@ const ok = (s) => console.log(`✓ ${s}`)
 
 async function newVlogWithClips(files) {
   await page.goto(BASE)
-  await page.getByRole('button', { name: 'New vlog' }).click()
+  await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
   await page.locator('input[type=file]').setInputFiles(files)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, files.length, { timeout: 60000 })
   await page.getByRole('button', { name: 'Continue' }).click()
@@ -29,21 +29,21 @@ async function newVlogWithClips(files) {
 try {
   // 1. Bad file is rejected, good ones import
   await page.goto(BASE)
-  await page.getByRole('button', { name: 'New vlog' }).click()
+  await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
   await page.locator('input[type=file]').setInputFiles([`${OUT}/not-a-video.mp4`, fixtures[0]])
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
 
   // 2. Own voice: type lines, record each with the teleprompter
   await newVlogWithClips(fixtures)
-  const box = page.locator('ol textarea').first()
+  const box = page.locator('ol input').first()
   await box.fill('I woke up early and grabbed coffee.')
   await box.press('Enter')
-  await page.locator('ol textarea').nth(1).fill('Then I biked through the park.')
+  await page.locator('ol input').nth(1).fill('Then I biked through the park.')
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.waitForURL(/\/voice$/)
   await page.getByRole('radio', { name: /Record my own/ }).click()
-  await page.getByRole('button', { name: 'Record' }).first().click()
+  await page.getByRole('button', { name: 'Open teleprompter' }).click()
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: 'Start recording' }).click()
     await page.waitForTimeout(1800)
@@ -53,7 +53,7 @@ try {
   await page.waitForSelector('text=2 of 2 lines recorded', { timeout: 15000 })
   ok('recorded both lines with the teleprompter')
   await page.getByRole('button', { name: 'Make my vlog' }).click()
-  await page.waitForURL(/\/edit$/, { timeout: 90000 })
+  await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
   const dur1 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`own-voice vlog generated (${dur1})`)
 
@@ -65,8 +65,8 @@ try {
 
   // 4. No script: music montage
   await newVlogWithClips(fixtures)
-  await page.getByRole('button', { name: 'No script' }).click()
-  await page.waitForURL(/\/edit$/, { timeout: 90000 })
+  await page.getByRole('button', { name: 'No script, just music' }).click()
+  await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
   const dur2 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`no-script montage generated (${dur2}, ${await page.locator('ol[aria-label=Scenes] li').count()} scenes)`)
   await page.screenshot({ path: `${OUT}/montage.png` })
@@ -74,7 +74,7 @@ try {
   // 5. Home lists the vlogs
   await page.goto(BASE)
   await page.waitForSelector('text=Your vlogs')
-  ok(`home lists ${await page.locator('main ul li').count()} vlogs`)
+  ok(`home lists ${await page.locator('[aria-label^="More options"]').count()} vlogs`)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.screenshot({ path: `${OUT}/home-desktop.png` })
 } finally {

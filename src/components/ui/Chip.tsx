@@ -7,8 +7,8 @@ export function Chip({ selected, className, ...props }: ButtonHTMLAttributes<HTM
       type="button"
       aria-pressed={selected}
       className={cn(
-        'h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium transition',
-        selected ? 'border-accent bg-accent-soft text-accent' : 'border-border bg-bg text-fg hover:bg-surface',
+        'h-11 shrink-0 rounded-full px-3.5 text-[15px] transition duration-150 ease-ember active:scale-[.98] disabled:opacity-40',
+        selected ? 'bg-white font-bold text-ink' : 'ring-hair bg-transparent font-medium text-fg hover:bg-white/6',
         className,
       )}
       {...props}
@@ -28,9 +28,9 @@ export function ChipGroup<T extends string | number>({
   onChange: (v: T) => void
 }) {
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-muted">{label}</div>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={label}>
+    <div className="space-y-2.5">
+      <div className="text-[15px] font-semibold">{label}</div>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
         {options.map((o) => (
           <Chip key={String(o.value)} selected={o.value === value} onClick={() => onChange(o.value)}>
             {o.label}

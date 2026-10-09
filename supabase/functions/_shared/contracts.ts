@@ -113,12 +113,12 @@ export type VoiceOption = { id: string; name: string; description: string; gende
  * the ElevenLabs voice library before launch and swap freely.
  */
 export const VOICES: VoiceOption[] = [
-  { id: 'ava', name: 'Ava', description: 'Warm and friendly', gender: 'female', accent: 'American' },
-  { id: 'leo', name: 'Leo', description: 'Relaxed and natural', gender: 'male', accent: 'American' },
-  { id: 'mia', name: 'Mia', description: 'Bright and upbeat', gender: 'female', accent: 'American' },
-  { id: 'sam', name: 'Sam', description: 'Energetic storyteller', gender: 'male', accent: 'American' },
-  { id: 'grace', name: 'Grace', description: 'Calm and clear', gender: 'female', accent: 'British' },
-  { id: 'oliver', name: 'Oliver', description: 'Easygoing and witty', gender: 'male', accent: 'British' },
+  { id: 'ava', name: 'Ava', description: 'Warm and upbeat', gender: 'female', accent: 'American' },
+  { id: 'leo', name: 'Leo', description: 'Calm, low and easy', gender: 'male', accent: 'American' },
+  { id: 'mia', name: 'Mia', description: 'Bright and friendly', gender: 'female', accent: 'American' },
+  { id: 'sam', name: 'Sam', description: 'Relaxed, like a friend talking', gender: 'male', accent: 'American' },
+  { id: 'grace', name: 'Grace', description: 'Soft and clear', gender: 'female', accent: 'British' },
+  { id: 'oliver', name: 'Oliver', description: 'Dry, a little witty', gender: 'male', accent: 'British' },
 ]
 
 /** App voice id → ElevenLabs voice id. */

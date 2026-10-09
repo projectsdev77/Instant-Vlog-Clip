@@ -19,7 +19,7 @@ import { getMedia } from '@/lib/mediaStore'
 import { openInput } from '@/media/input'
 import { drawFrame, type FrameSource } from './compositor'
 import { renderMix } from './mix'
-import { outputSize, styleById } from './styles'
+import { loadVideoFont, outputSize, styleById } from './styles'
 
 export const FPS = 30
 
@@ -28,7 +28,7 @@ export type ExportResult = { blob: Blob; mime: string; extension: 'mp4' | 'webm'
 export class ExportCancelled extends Error {}
 
 /** Picks MP4/H.264/AAC when the browser can encode it, else WebM/VP9/Opus. */
-async function pickFormat(width: number, height: number) {
+export async function pickFormat(width: number, height: number) {
   const video = await getFirstEncodableVideoCodec(['avc', 'vp9', 'av1'], { width, height })
   if (!video) throw new Error("This browser can't encode video. Try the latest Chrome or Safari.")
   if (video === 'avc') {
@@ -57,6 +57,7 @@ export async function exportVideo(tl: Timeline, project: Project, onProgress: (f
   const { width, height } = outputSize(project.settings.aspect, 1920)
   const fmt = await pickFormat(width, height)
   const style = styleById(project.styleId)
+  await loadVideoFont()
 
   const canvas = new OffscreenCanvas(width, height)
   const ctx = canvas.getContext('2d')!

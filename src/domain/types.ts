@@ -137,7 +137,7 @@ export type EditPlan = {
   music?: MusicSettings
 }
 
-export type StyleId = 'classic' | 'bold' | 'minimal' | 'neon'
+export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon'
 
 export type ProjectStep = 'clips' | 'script' | 'voice' | 'generate' | 'edit'
 

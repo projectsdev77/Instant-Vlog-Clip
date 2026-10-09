@@ -3,7 +3,9 @@
 Turn raw phone footage into a short, narrated vlog. Add clips, write a few lines (or let AI write them), pick a voice or record your own, and get a vertical video with captions, a title and music, ready to post.
 
 - Product & technical spec: [docs/SPEC.md](docs/SPEC.md)
-- Designer handoff: https://claude.ai/artifact/CKXX2gxRcFGYCesEh495UG (source and screenshots in [docs/design-handoff/](docs/design-handoff/))
+- Visual design ("Ember"): [docs/design/ember/](docs/design/ember/) — the designer's handoff. Open `Instant Vlog Clip.dc.html` through a local web server (for example `npx serve docs/design/ember`) to click through the prototype.
+- Current screens: [docs/screens/](docs/screens/) (phone and desktop, every state; regenerate with `node e2e/screens.mjs`)
+- Original design brief: https://claude.ai/artifact/CKXX2gxRcFGYCesEh495UG (source in [docs/design-handoff/](docs/design-handoff/))
 
 ## Quick start (no accounts needed)
 
@@ -96,6 +98,14 @@ e2e/          Playwright flows and the screenshot script
 ```
 
 All project data lives in the browser (IndexedDB + Origin Private File System). Nothing is synced between devices yet.
+
+## Design notes
+
+The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css), base components in [src/components/ui/](src/components/ui/). Where the build differs from the prototype, on purpose:
+- **One compositor for preview and export.** The title sits at 15% and captions at 70% of the frame (the export spec) in the preview too, so what you see is exactly what you export. The prototype's preview used 11% / 66%.
+- **Dark theme only.** The light theme isn't designed yet.
+- **Icons** are Lucide at 2.2–2.6px stroke rather than the prototype's hand-drawn SVGs.
+- **"Save to Photos"** on phones downloads the file; browsers can't write to the photo library directly. **Share** opens the native share sheet, where users can pick Photos.
 
 ## Status and known gaps
 

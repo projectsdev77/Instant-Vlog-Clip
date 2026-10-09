@@ -23,7 +23,7 @@ export function newProject(): Project {
     currentEdit: -1,
     musicTrackId: 'auto',
     musicGainDb: -14,
-    styleId: 'classic',
+    styleId: 'ember',
   }
 }
 

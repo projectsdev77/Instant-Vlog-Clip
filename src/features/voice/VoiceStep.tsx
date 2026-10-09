@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Captions, Check, Mic, Pause, Play, Sparkles, Square } from 'lucide-react'
+import { AudioLines, Captions, Check, Mic, Play, Square } from 'lucide-react'
 import { voices, AiError, ai } from '@/ai'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
 import type { ScriptLine, VoiceMode } from '@/domain/types'
@@ -12,69 +10,97 @@ import { hasFreshAudio } from '@/domain/timing'
 import { cn } from '@/lib/cn'
 import { getMediaUrl } from '@/lib/mediaStore'
 import { useProject } from '@/store/projectStore'
-import { saveRecording } from '@/pipeline/voice'
-import { StepFooter } from '@/features/project/ProjectLayout'
+import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath } from '@/features/project/steps'
-import { startRecording, type Recording } from './recorder'
+import { Teleprompter } from './Teleprompter'
 
-const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Sparkles }[] = [
-  { id: 'ai', title: 'AI voice', body: 'Pick a voice to read your script.', icon: Sparkles },
+const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] = [
+  { id: 'ai', title: 'AI voice', body: 'Six natural voices read your lines.', icon: AudioLines },
   { id: 'recorded', title: 'Record my own', body: 'Read each line with a teleprompter.', icon: Mic },
   { id: 'none', title: 'No voiceover', body: 'Your lines appear as captions only.', icon: Captions },
 ]
 
+export const isRecorded = (l: ScriptLine) => hasFreshAudio(l) && l.audio?.source === 'recorded'
+
 export function VoiceStep() {
   const { project, updateProject } = useProject()
   const navigate = useNavigate()
+  const [tele, setTele] = useState<number | null>(null)
   if (!project) return null
   const lines = project.script?.lines ?? []
-  const recorded = lines.filter((l) => hasFreshAudio(l) && l.audio?.source === 'recorded').length
+  const recorded = lines.filter(isRecorded).length
   const mode = project.voice.mode
+  const voice = voices.find((v) => v.id === project.voice.voiceId) ?? voices[0]
   const canContinue = mode !== 'recorded' || recorded === lines.length
 
   const next = async () => {
     if (stepIndex(project.step) < stepIndex('generate')) await updateProject({ step: 'generate' })
     navigate(stepPath(project.id, 'generate'))
   }
+  const firstUnrecorded = () => Math.max(0, lines.findIndex((l) => !isRecorded(l)))
+
+  const summary = mode === 'ai' ? `${voice.name} · ${voice.description.toLowerCase()}` : mode === 'recorded' ? `${recorded} of ${lines.length} lines recorded` : 'Captions only, no voiceover'
 
   return (
     <>
-      <main className="flex-1 space-y-5 px-4 py-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pick a voice</h1>
-          <p className="mt-1 text-sm text-muted">Who tells the story?</p>
-        </div>
-        <div role="radiogroup" className="grid gap-2 sm:grid-cols-3">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={mode === m.id}
-              onClick={() => updateProject((p) => ({ voice: { ...p.voice, mode: m.id } }))}
-              className={cn(
-                'flex items-start gap-3 rounded-[var(--radius-card)] border p-3.5 text-left transition',
-                mode === m.id ? 'border-accent bg-accent-soft' : 'border-border hover:bg-surface',
-              )}
-            >
-              <m.icon className={cn('mt-0.5 size-5 shrink-0', mode === m.id ? 'text-accent' : 'text-muted')} />
-              <span>
-                <span className="block font-medium">{m.title}</span>
-                <span className="block text-sm text-muted">{m.body}</span>
-              </span>
-            </button>
-          ))}
+      <StepPage>
+        <StepHeading step={3} title="Who tells the story?" />
+        <div role="radiogroup" aria-label="Voiceover" className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+          {MODES.map((m) => {
+            const selected = mode === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => updateProject((p) => ({ voice: { ...p.voice, mode: m.id } }))}
+                className={cn(
+                  'flex items-center gap-4 rounded-[var(--radius-card)] p-[18px] text-left transition duration-150 ease-ember',
+                  selected ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface hover:bg-[#1a1918]',
+                )}
+              >
+                <span className={cn('grid size-[42px] shrink-0 place-items-center rounded-xl', selected ? 'bg-accent text-white' : 'bg-surface-2 text-fg')}>
+                  <m.icon className="size-5" strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-bold">{m.title}</span>
+                  <span className="block text-[14px] text-muted">{m.body}</span>
+                </span>
+                {selected && (
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-white">
+                    <Check className="size-3.5" strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
-        {mode === 'ai' && <VoicePicker sample={lines[0]?.text ?? "So here's how today went."} />}
-        {mode === 'recorded' && <RecordLines lines={lines} />}
-        {mode === 'none' && <p className="rounded-[var(--radius-card)] bg-surface p-4 text-sm text-muted">Your script will show as on-screen captions, timed to the music.</p>}
-      </main>
-      <StepFooter hint={mode === 'recorded' ? `${recorded} of ${lines.length} lines recorded` : undefined}>
-        <Button block size="lg" disabled={!canContinue} onClick={next}>
+        <div className="mt-8">
+          {mode === 'ai' && <VoicePicker sample={lines[0]?.text ?? "So here's how today went."} />}
+          {mode === 'recorded' && <RecordLines lines={lines} onOpen={(i) => setTele(i)} openFirst={() => setTele(firstUnrecorded())} />}
+          {mode === 'none' && (
+            <div className="flex flex-wrap items-center gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
+              <div className="grid aspect-[9/16] w-[92px] place-items-end overflow-hidden rounded-[var(--radius-thumb)] bg-[linear-gradient(175deg,#cfe6ea_0%,#6fa7b4_34%,#2b5763_70%,#0c1a1f_100%)] p-2">
+                <span className="rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-extrabold">
+                  Captions do the <span className="text-ember-200">talking.</span>
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[16px] font-bold">Captions do the talking</div>
+                <p className="mt-1 text-muted">Your lines appear on screen, timed to the music. You can add a voice later.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </StepPage>
+      <StepFooter summary={summary}>
+        <Button variant="ember" disabled={!canContinue} onClick={next}>
           Make my vlog
         </Button>
       </StepFooter>
+      {tele !== null && <Teleprompter lines={lines} start={tele} onClose={() => setTele(null)} />}
     </>
   )
 }
@@ -95,6 +121,7 @@ function VoicePicker({ sample }: { sample: string }) {
       setPlaying(null)
       return
     }
+    setPlaying(null)
     const key = `${voiceId}:${sample}`
     let url = previewCache.get(key)
     if (!url) {
@@ -118,51 +145,76 @@ function VoicePicker({ sample }: { sample: string }) {
   }
 
   return (
-    <div role="radiogroup" aria-label="Voices" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {voices.map((v) => {
-        const selected = project.voice.voiceId === v.id
-        return (
-          <Card key={v.id} className={cn('relative p-3', selected && 'border-accent ring-1 ring-accent')}>
-            <button type="button" role="radio" aria-checked={selected} className="block w-full pr-9 text-left" onClick={() => updateProject((p) => ({ voice: { ...p.voice, voiceId: v.id } }))}>
-              <span className="flex items-center gap-1.5 font-medium">
-                {v.name} {selected && <Check className="size-4 text-accent" />}
-              </span>
-              <span className="block text-xs text-muted">{v.description}</span>
-              <span className="block text-xs text-muted">{v.accent}</span>
-            </button>
-            <button type="button" onClick={() => preview(v.id)} className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-surface-2" aria-label={`Preview ${v.name}`}>
-              {loading === v.id ? <Spinner /> : playing === v.id ? <Pause className="size-4" /> : <Play className="size-4" />}
-            </button>
-          </Card>
-        )
-      })}
-    </div>
+    <>
+      <p className="mb-4 text-[15px] text-muted">Play reads your first line: “{sample}”</p>
+      <div role="radiogroup" aria-label="Voices" className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
+        {voices.map((v) => {
+          const selected = project.voice.voiceId === v.id
+          return (
+            <div key={v.id} className={cn('flex items-center gap-3 rounded-[var(--radius-card)] p-3.5 transition', selected ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface')}>
+              <button type="button" role="radio" aria-checked={selected} onClick={() => updateProject((p) => ({ voice: { ...p.voice, voiceId: v.id } }))} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <span className={cn('grid size-11 shrink-0 place-items-center rounded-full text-[17px] font-extrabold', selected ? 'bg-accent text-white' : 'bg-surface-2')}>{v.name[0]}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[16px] font-bold">
+                    {v.name} <span className="text-[12px] font-semibold text-faint">{v.accent}</span>
+                  </span>
+                  <span className="block text-[14px] leading-snug text-muted">{v.description}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => preview(v.id)}
+                className={cn('grid size-11 shrink-0 place-items-center rounded-full transition', selected ? 'bg-white text-ink' : 'bg-surface-2 text-fg hover:bg-[#262321]')}
+                aria-label={playing === v.id ? `Stop ${v.name}` : `Preview ${v.name}`}
+              >
+                {loading === v.id ? <Spinner /> : playing === v.id ? <Bars /> : <Play className="ml-0.5 size-4" fill="currentColor" />}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }
 
-function RecordLines({ lines }: { lines: ScriptLine[] }) {
-  const [active, setActive] = useState<number | null>(null)
+/** Three animated bars for "playing". */
+export function Bars() {
   return (
-    <>
+    <span className="flex h-4 items-end gap-[3px]" aria-hidden>
+      {[0, 0.2, 0.4].map((d) => (
+        <span key={d} className="h-full w-[3px] origin-bottom animate-bar rounded-full bg-current" style={{ animationDelay: `${d}s` }} />
+      ))}
+    </span>
+  )
+}
+
+function RecordLines({ lines, onOpen, openFirst }: { lines: ScriptLine[]; onOpen: (i: number) => void; openFirst: () => void }) {
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-panel)] bg-surface p-5">
+        <p className="max-w-[52ch] text-muted">Read each line out loud. We trim the silence, even out the volume and time the captions to your voice.</p>
+        <Button onClick={openFirst}>
+          <span className="size-2.5 rounded-full bg-danger" /> Open teleprompter
+        </Button>
+      </div>
       <ol className="space-y-2">
         {lines.map((l, i) => {
-          const done = hasFreshAudio(l) && l.audio?.source === 'recorded'
+          const done = isRecorded(l)
           return (
-            <li key={l.id}>
-              <Card className="flex items-center gap-3 p-3">
-                <span className={cn('grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold', done ? 'bg-success text-white' : 'bg-surface-2 text-muted')}>{done ? <Check className="size-4" /> : i + 1}</span>
-                <span className="flex-1 text-sm">{l.text}</span>
-                {done && <PlayButton mediaKey={l.audio!.mediaKey} />}
-                <Button size="sm" variant={done ? 'ghost' : 'secondary'} onClick={() => setActive(i)}>
-                  <Mic className="size-4" /> {done ? 'Redo' : 'Record'}
-                </Button>
-              </Card>
+            <li key={l.id} className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-3 pl-4">
+              <span className={cn('grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold', done ? 'bg-success text-success-fg' : 'bg-surface-2 text-muted')}>
+                {done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
+              </span>
+              <span className="min-w-0 flex-1 text-[15px]">{l.text}</span>
+              {done && <PlayButton mediaKey={l.audio!.mediaKey} />}
+              <Button size="sm" variant={done ? 'quiet' : 'primary'} className={cn(done && 'bg-white/8')} onClick={() => onOpen(i)}>
+                {done ? 'Redo' : 'Record'}
+              </Button>
             </li>
           )
         })}
       </ol>
-      {active !== null && <Teleprompter lines={lines} start={active} onClose={() => setActive(null)} />}
-    </>
+    </div>
   )
 }
 
@@ -184,90 +236,8 @@ function PlayButton({ mediaKey }: { mediaKey: string }) {
     void ref.current.play()
   }
   return (
-    <button type="button" onClick={toggle} className="grid size-8 place-items-center rounded-full bg-surface-2" aria-label={playing ? 'Stop' : 'Play recording'}>
-      {playing ? <Square className="size-3.5" /> : <Play className="size-4" />}
+    <button type="button" onClick={toggle} className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 hover:bg-[#262321]" aria-label={playing ? 'Stop' : 'Play recording'}>
+      {playing ? <Square className="size-3.5" fill="currentColor" /> : <Play className="ml-0.5 size-4" fill="currentColor" />}
     </button>
-  )
-}
-
-/** One line at a time, big text, tap to record / stop; advances automatically. */
-function Teleprompter({ lines, start, onClose }: { lines: ScriptLine[]; start: number; onClose: () => void }) {
-  const project = useProject((s) => s.project)
-  const [index, setIndex] = useState(start)
-  const [state, setState] = useState<'idle' | 'recording' | 'saving'>('idle')
-  const [level, setLevel] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
-  const recRef = useRef<Recording | null>(null)
-  const line = lines[index]
-
-  useEffect(() => {
-    if (state !== 'recording') return
-    const t0 = performance.now()
-    let raf = 0
-    const tick = () => {
-      setLevel(recRef.current?.level() ?? 0)
-      setElapsed((performance.now() - t0) / 1000)
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [state])
-
-  useEffect(() => () => recRef.current?.cancel(), [])
-
-  const toggle = async () => {
-    if (state === 'idle') {
-      try {
-        recRef.current = await startRecording()
-        setState('recording')
-      } catch {
-        toast('Microphone access is needed to record. Check your browser settings.', 'error')
-      }
-      return
-    }
-    if (state === 'recording' && recRef.current) {
-      setState('saving')
-      const blob = await recRef.current.stop()
-      recRef.current = null
-      try {
-        await saveRecording(line, blob, project?.settings.language ?? 'en')
-        if (index < lines.length - 1) setIndex(index + 1)
-        else onClose()
-      } catch {
-        toast("Couldn't save that take. Try again.", 'error')
-      }
-      setState('idle')
-    }
-  }
-
-  return (
-    <Sheet open title={`Line ${index + 1} of ${lines.length}`} onClose={() => state !== 'saving' && onClose()}>
-      <div className="flex min-h-[50vh] flex-col items-center justify-between gap-6 py-4 text-center">
-        <p className="text-2xl leading-snug font-semibold sm:text-3xl">{line.text}</p>
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-1.5 w-40 overflow-hidden rounded-full bg-surface-2">
-            <div className="h-full bg-danger transition-[width] duration-75" style={{ width: `${state === 'recording' ? level * 100 : 0}%` }} />
-          </div>
-          <button
-            type="button"
-            onClick={toggle}
-            disabled={state === 'saving'}
-            aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
-            className={cn('grid size-20 place-items-center rounded-full text-white shadow-lg transition', state === 'recording' ? 'bg-danger' : 'bg-accent')}
-          >
-            {state === 'saving' ? <Spinner className="size-6" /> : state === 'recording' ? <Square className="size-7" fill="currentColor" /> : <Mic className="size-8" />}
-          </button>
-          <span className="text-sm text-muted">{state === 'recording' ? `${elapsed.toFixed(1)}s · tap to stop` : state === 'saving' ? 'Saving…' : 'Tap to record this line'}</span>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" disabled={index === 0 || state !== 'idle'} onClick={() => setIndex(index - 1)}>
-            Previous
-          </Button>
-          <Button variant="ghost" size="sm" disabled={index === lines.length - 1 || state !== 'idle'} onClick={() => setIndex(index + 1)}>
-            Skip
-          </Button>
-        </div>
-      </div>
-    </Sheet>
   )
 }
