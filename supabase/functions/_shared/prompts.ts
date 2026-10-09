@@ -95,3 +95,60 @@ export function catalogText(catalog: CatalogEntry[]): string {
     })
     .join('\n')
 }
+
+// ---------------------------------------------------------------------------
+// Gemini checklists. Faster models follow rules better when the key ones are
+// restated right before they answer, with the request's own numbers filled
+// in. Sent as the last part of the request (Gemini only).
+
+export function analyzeChecklist(req: AnalyzeClipRequest): string {
+  const d = req.durationSec.toFixed(1)
+  return [
+    'Before answering, check:',
+    `- every moment has 0 ≤ start < end ≤ ${d} (seconds, read from the frame labels), is 1.5–6 s long, and doesn't overlap another moment`,
+    '- moments are ordered best first; score is between 0 and 1',
+    '- tags are 3–8 lowercase single words about places, objects and activities',
+    '- the description says what is visible; refer to people as "a person", "two friends" etc., never guess who they are, their age or ethnicity',
+    '- flag accidental only for pocket shots, floor/ceiling, a finger over the lens or nothing happening',
+  ].join('\n')
+}
+
+const SCRIPT_EXAMPLE = `Example of the style (different footage, don't reuse it):
+title: "Sunday in Lisbon"
+1 hook:  "So I gave myself one lazy Sunday in Lisbon…"
+2 story: "Started with the best pastel de nata of my life."
+3 story: "Then took the old yellow tram all the way up the hill."
+4 outro: "Honestly? I'd do it all again tomorrow."`
+
+export function scriptChecklist(req: ScriptRequest): string {
+  const words = req.targetSec === 'auto' ? 'fit the footage, usually 50–110 words in total' : `about ${Math.round(req.targetSec * 2.5)} words in total`
+  const must = req.catalog.filter((c) => c.mustInclude).map((c) => c.clipId)
+  return [
+    SCRIPT_EXAMPLE,
+    '',
+    'Before answering, check:',
+    '- first person, casual spoken English, each line ≤ 15 words; no hashtags, emojis or quotes around lines',
+    `- length: ${words}`,
+    '- the first line is a hook (purpose "hook"), the last is an outro (purpose "outro"), the rest "story"',
+    "- only things the catalog or the user's notes mention; no invented people, places or events",
+    must.length ? `- these must-include clips each get a line: ${must.join(', ')}` : '- (no must-include clips)',
+    req.mode === 'polish' ? "- polish mode: keep the user's facts, order and voice; only fix wording" : '- write mode: build a small story arc in the order things were filmed',
+    '- onScreenText is "" unless it adds a place name or price',
+  ].join('\n')
+}
+
+export function planChecklist(req: PlanRequest): string {
+  const ids = req.catalog.map((c) => `${c.clipId} (0–${c.durationSec.toFixed(1)}s)`).join(', ')
+  const scenes = req.lines.length
+    ? req.lines.map((l, i) => `  ${i + 1}. lineId ${l.lineId}: shots add up to ${l.sceneSec.toFixed(2)}s`).join('\n')
+    : `  scenes with lineId "" adding up to about ${req.targetSec}s`
+  return [
+    'Before answering, check:',
+    `- allowed clipIds, copied exactly, with their lengths: ${ids}`,
+    `- scenes, in this order:\n${scenes}`,
+    '- every shot has 0 ≤ in < out ≤ its clip length; do the subtraction (out − in) for each shot and make each scene add up',
+    '- no two shots use overlapping time ranges of the same clip',
+    '- the very first shot has transitionIn "cut"',
+    '- prefer clips whose description matches each line; avoid clips marked unusable',
+  ].join('\n')
+}

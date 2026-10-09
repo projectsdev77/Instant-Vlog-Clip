@@ -1,4 +1,5 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.131.0'
+import { forClaude } from '../_shared/schemas.ts'
 import { type JsonRequest, RateLimitError, RefusalError } from './llm.ts'
 
 const MODEL = 'claude-opus-5-5'
@@ -22,7 +23,7 @@ export async function claudeJson<T>(req: JsonRequest): Promise<T> {
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       system: [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }],
-      output_config: { effort: req.effort, format: { type: 'json_schema', schema: req.schema } },
+      output_config: { effort: req.effort, format: { type: 'json_schema', schema: forClaude(req.schema) } },
       messages: [{ role: 'user', content }],
     })
     message = await stream.finalMessage()

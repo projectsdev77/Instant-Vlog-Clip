@@ -26,7 +26,12 @@ The language model is a setting (`AI_PROVIDER`):
 - **`gemini`** (default): Google Gemini. Get a key at Google AI Studio. The free tier is fine for development, but its limits are low, and Google may use free-tier requests to improve its products. **Switch the key to a paid (billing-enabled) Google account before launch.**
 - **`claude`**: Anthropic Claude (`claude-opus-5-5`), with an Anthropic API key.
 
-Nothing else changes between them: same prompts, same response formats, same app.
+Nothing else changes between them: same prompts, same response formats, same app. Gemini additionally gets a short checklist at the end of each request (allowed clip IDs, exact scene lengths, word budget) and stricter response limits, since faster models follow rules better when they're restated with the real numbers.
+
+**Testing the AI before wiring up the app:** `scripts/ai-smoke.ts` runs the script writer and edit planner on a sample day and lists any rule the answers break (length, hook/outro, scene timing, unknown or unusable clips). Pass a JPEG contact sheet to test clip analysis too.
+```bash
+GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
+```
 
 1. Create a Supabase project and install the [Supabase CLI](https://supabase.com/docs/guides/cli).
 2. Apply the database migration (usage limits):

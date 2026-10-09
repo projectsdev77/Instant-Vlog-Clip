@@ -8,7 +8,17 @@ import type {
   PlanResponse,
   ScriptResponse,
 } from '../_shared/contracts.ts'
-import { ANALYZE_SYSTEM, analyzeUserText, PLAN_SYSTEM, planUserText, SCRIPT_SYSTEM, scriptUserText } from '../_shared/prompts.ts'
+import {
+  ANALYZE_SYSTEM,
+  analyzeChecklist,
+  analyzeUserText,
+  PLAN_SYSTEM,
+  planChecklist,
+  planUserText,
+  SCRIPT_SYSTEM,
+  scriptChecklist,
+  scriptUserText,
+} from '../_shared/prompts.ts'
 import { analyzeClipSchema, planSchema, scriptSchema } from '../_shared/schemas.ts'
 import { generateJson, RateLimitError, RefusalError } from './llm.ts'
 import { synthesize, transcribe } from './elevenlabs.ts'
@@ -39,6 +49,7 @@ async function handle(req: AiAction) {
         effort: 'low',
         schema: analyzeClipSchema,
         maxTokens: 8000,
+        checklist: analyzeChecklist(p),
         parts: [
           { type: 'image', mimeType: 'image/jpeg', base64: p.contactSheetBase64 },
           { type: 'text', text: analyzeUserText(p) },
@@ -50,6 +61,7 @@ async function handle(req: AiAction) {
         system: SCRIPT_SYSTEM,
         effort: 'medium',
         schema: scriptSchema,
+        checklist: scriptChecklist(req.payload),
         parts: [{ type: 'text', text: scriptUserText(req.payload) }],
       })
     case 'plan-edit':
@@ -57,6 +69,7 @@ async function handle(req: AiAction) {
         system: PLAN_SYSTEM,
         effort: 'medium',
         schema: planSchema,
+        checklist: planChecklist(req.payload),
         parts: [{ type: 'text', text: planUserText(req.payload) }],
       })
     case 'synthesize':

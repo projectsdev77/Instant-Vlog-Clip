@@ -11,6 +11,8 @@ export type JsonRequest = {
   /** how hard the model should think; providers map this their own way */
   effort: 'low' | 'medium' | 'high'
   maxTokens?: number
+  /** rules restated right before the model answers; sent to Gemini only */
+  checklist?: string
 }
 
 /** The model declined for safety reasons. */

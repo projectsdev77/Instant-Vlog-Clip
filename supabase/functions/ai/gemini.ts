@@ -1,4 +1,5 @@
 import { ApiError, FinishReason, GoogleGenAI } from 'npm:@google/genai@2.23.0'
+import { forGemini } from '../_shared/schemas.ts'
 import { type JsonRequest, RateLimitError, RefusalError } from './llm.ts'
 
 // "gemini-flash-latest" follows Google's current Flash model, the one with a
@@ -20,13 +21,16 @@ export async function geminiJson<T>(req: JsonRequest): Promise<T> {
       contents: [
         {
           role: 'user',
-          parts: req.parts.map((p) => (p.type === 'text' ? { text: p.text } : { inlineData: { mimeType: p.mimeType, data: p.base64 } })),
+          parts: [
+            ...req.parts.map((p) => (p.type === 'text' ? { text: p.text } : { inlineData: { mimeType: p.mimeType, data: p.base64 } })),
+            ...(req.checklist ? [{ text: req.checklist }] : []),
+          ],
         },
       ],
       config: {
         systemInstruction: req.system,
         responseMimeType: 'application/json',
-        responseJsonSchema: req.schema,
+        responseJsonSchema: forGemini(req.schema),
         maxOutputTokens: req.maxTokens ?? 32000,
       },
     })
