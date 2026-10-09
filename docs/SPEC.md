@@ -183,7 +183,7 @@ After the model returns the EDL, code **validates and repairs** it:
 | Fallback decode | ffmpeg.wasm (lazy-loaded) | Codecs the browser can't decode (e.g. HEVC on some Windows Chrome) |
 | Audio | Web Audio API / OfflineAudioContext; MediaRecorder for voice recording | Mixing, ducking, loudness, recording |
 | Backend | Supabase: Auth, Postgres (users, quotas), Edge Functions | AI calls go through Edge Functions so API keys never reach the browser |
-| LLM | Anthropic Claude via `@anthropic-ai/sdk` in Edge Functions | Vision + script writing + structured JSON output |
+| LLM | Google Gemini (default, free tier during development) or Anthropic Claude, chosen by the `AI_PROVIDER` setting | Vision + script writing + structured JSON output |
 | Text-to-speech | Multilingual TTS with word timestamps, behind an interface (provider TBD, e.g. ElevenLabs) | AI voiceover; multilingual so more languages are easy to add |
 | Speech-to-text | Multilingual Whisper-class STT with word timestamps, behind an interface (provider TBD) | On-camera speech + recorded voiceover timings |
 | Music | Curated, licensed royalty-free library (~30 tracks, tagged by vibe/BPM) in Supabase Storage | Licensing safety |
@@ -367,4 +367,6 @@ Rendering is the riskiest piece, so it's proven before the AI.
 - **Return rate:** % creating a second vlog within 7 days
 
 ## 13. Implementation status
+**AI provider:** development uses Gemini's free tier; the client moves to a paid Google account (or switches `AI_PROVIDER` to Claude) at launch. Free-tier limits are low and Google may use free-tier requests to improve its products, which doesn't fit the app's privacy promise for real users.
+
 The MVP flow is built; see the README's "Status and known gaps" for what is verified, what still needs live API and real-device testing, and what is not built yet. Deviations from this spec so far: export runs on the main thread (WebCodecs does the heavy work off-thread), and the music library is generated placeholder tracks until a licensed library is chosen.

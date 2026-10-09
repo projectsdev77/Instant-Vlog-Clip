@@ -20,7 +20,13 @@ Use the latest Chrome, Edge or Safari. Video decoding and encoding use WebCodecs
 
 ## Live AI mode
 
-Live mode sends requests to one Supabase Edge Function (`supabase/functions/ai`), which calls **Claude** (clip analysis, scripts, edit plans) and **ElevenLabs** (AI voice, speech-to-text). Users' video files never leave their device. Only small contact-sheet images, short audio and text are sent.
+Live mode sends requests to one Supabase Edge Function (`supabase/functions/ai`). It uses a language model for clip analysis, scripts and edit plans, and **ElevenLabs** for the AI voice and speech-to-text. Users' video files never leave their device; only small contact-sheet images, short audio and text are sent.
+
+The language model is a setting (`AI_PROVIDER`):
+- **`gemini`** (default): Google Gemini. Get a key at Google AI Studio. The free tier is fine for development, but its limits are low, and Google may use free-tier requests to improve its products. **Switch the key to a paid (billing-enabled) Google account before launch.**
+- **`claude`**: Anthropic Claude (`claude-opus-5-5`), with an Anthropic API key.
+
+Nothing else changes between them: same prompts, same response formats, same app.
 
 1. Create a Supabase project and install the [Supabase CLI](https://supabase.com/docs/guides/cli).
 2. Apply the database migration (usage limits):
@@ -30,10 +36,13 @@ Live mode sends requests to one Supabase Edge Function (`supabase/functions/ai`)
    ```
 3. Set the function's secrets and deploy it:
    ```bash
-   supabase secrets set ANTHROPIC_API_KEY=... ELEVENLABS_API_KEY=...
+   # Gemini (default)
+   supabase secrets set GEMINI_API_KEY=... ELEVENLABS_API_KEY=...
+   # or Claude
+   supabase secrets set AI_PROVIDER=claude ANTHROPIC_API_KEY=... ELEVENLABS_API_KEY=...
    supabase functions deploy ai
    ```
-   Optional secrets: `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
+   Optional secrets: `GEMINI_MODEL` (default `gemini-flash-latest`, which follows Google's current Flash model; pin a version for launch), `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
 4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
 5. Create `.env.local` from `.env.example`:
    ```
@@ -112,7 +121,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 Built and verified in Chromium with the demo AI: the full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling. Unit tests cover the edit-plan logic and the demo AI.
 
 Not yet verified:
-- **Live AI has not been run against real APIs.** This build environment couldn't reach Anthropic or ElevenLabs. The Claude calls follow the current SDK; the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.
+- **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.
 - **Real devices.** Not yet tested on a physical iPhone or Android phone, or with large 4K/HEVC phone clips.
 
 Not built yet (see spec):

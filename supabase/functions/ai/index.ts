@@ -1,5 +1,6 @@
 // The app's single AI endpoint. Keeps API keys server-side; receives only
 // contact sheets, short audio and text, never the user's video files.
+// The language model is Gemini or Claude (AI_PROVIDER); voice is ElevenLabs.
 import type {
   AiAction,
   AiErrorBody,
@@ -9,7 +10,7 @@ import type {
 } from '../_shared/contracts.ts'
 import { ANALYZE_SYSTEM, analyzeUserText, PLAN_SYSTEM, planUserText, SCRIPT_SYSTEM, scriptUserText } from '../_shared/prompts.ts'
 import { analyzeClipSchema, planSchema, scriptSchema } from '../_shared/schemas.ts'
-import { claudeJson, RefusalError } from './claude.ts'
+import { generateJson, RateLimitError, RefusalError } from './llm.ts'
 import { synthesize, transcribe } from './elevenlabs.ts'
 import { authorize, QuotaError, AuthError, type UsageKind } from './quota.ts'
 
@@ -33,30 +34,30 @@ async function handle(req: AiAction) {
   switch (req.action) {
     case 'analyze-clip': {
       const p = req.payload
-      return await claudeJson<AnalyzeClipResponse>({
+      return await generateJson<AnalyzeClipResponse>({
         system: ANALYZE_SYSTEM,
         effort: 'low',
         schema: analyzeClipSchema,
         maxTokens: 8000,
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.contactSheetBase64 } },
+        parts: [
+          { type: 'image', mimeType: 'image/jpeg', base64: p.contactSheetBase64 },
           { type: 'text', text: analyzeUserText(p) },
         ],
       })
     }
     case 'write-script':
-      return await claudeJson<ScriptResponse>({
+      return await generateJson<ScriptResponse>({
         system: SCRIPT_SYSTEM,
         effort: 'medium',
         schema: scriptSchema,
-        content: [{ type: 'text', text: scriptUserText(req.payload) }],
+        parts: [{ type: 'text', text: scriptUserText(req.payload) }],
       })
     case 'plan-edit':
-      return await claudeJson<PlanResponse>({
+      return await generateJson<PlanResponse>({
         system: PLAN_SYSTEM,
         effort: 'medium',
         schema: planSchema,
-        content: [{ type: 'text', text: planUserText(req.payload) }],
+        parts: [{ type: 'text', text: planUserText(req.payload) }],
       })
     case 'synthesize':
       return await synthesize(req.payload.text, req.payload.voiceId)
@@ -91,6 +92,7 @@ Deno.serve(async (request) => {
     if (e instanceof AuthError) return fail('auth', e.message, 401)
     if (e instanceof QuotaError) return fail('quota', e.message, 429)
     if (e instanceof RefusalError) return fail('refusal', e.message, 422)
+    if (e instanceof RateLimitError) return fail('upstream', e.message, 503)
     console.error(body.action, e)
     return fail('upstream', 'The AI service had a problem. Please try again.', 502)
   }
