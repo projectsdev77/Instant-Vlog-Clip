@@ -89,6 +89,7 @@ Both `.env` files are git-ignored.
 | `npm test` | Unit tests (Vitest) |
 | `npm run test-clips` | Generates test videos into `e2e/fixtures` (needs ffmpeg) |
 | `npm run e2e` | Browser tests against a running dev server (Playwright Chromium) |
+| `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
 
 Playwright's Chromium has no H.264 decoder, so test clips are VP9/WebM and exports in tests come out as WebM. Real Chrome and Safari export MP4 (H.264/AAC).
@@ -111,6 +112,8 @@ Export ────► WebCodecs + Mediabunny, frame-accurate, on device → MP4
 ```
 
 **Length.** The user picks it on the Clips step (Auto, 15, 30 or 60 s). Each narration line gets a scene exactly as long as the line; the rest of the length is footage-only scenes (the clips' own sound under the music), spread between the lines. Every usable clip appears at least once, even if that runs past the chosen length, and speech is never cut. Auto means the narration plus room for every clip, or, with no script, a length that fits the footage.
+
+**Templates and effects (CapCut-style, AI-driven).** The user picks a template on the Script step (Day in my life, TikTok fast cuts, Cinematic, Travel diary, Aesthetic, Clean) and can switch it on the Edit screen's Look tab. A template ([src/domain/templates.ts](src/domain/templates.ts)) sets the color look, caption style, pacing and which transitions (cut, fade, dip, whip, slide, zoom, flash, blur), camera moves (zoom in/out, pan, punch, shake) and speed effects (0.5–3×, speed ramps) the AI editor may use. The AI picks effects per shot to fit the footage; then `stylize()` keeps its allowed choices, tops up to the template's style, and lands footage-only cuts on the music's beat. Users can change any of it per shot (split, freeze frame, duplicate, delete, speed, camera, transition, fill or blurred background, clip volume) and for the whole vlog (filters, brightness/contrast/saturation/warmth, vignette, grain, fades). Every change is a new version with undo.
 
 The **edit plan** ([src/domain/types.ts](src/domain/types.ts)) is the single source of truth. The AI only proposes one; [src/domain/repair.ts](src/domain/repair.ts) clamps it to real clip bounds, makes each scene exactly cover its narration line, removes repeated footage and fills gaps, and [src/domain/fallback.ts](src/domain/fallback.ts) builds a rule-based edit when the AI is unavailable. The preview and the exporter share one compositor ([src/render/compositor.ts](src/render/compositor.ts)), so what you see is what you export.
 

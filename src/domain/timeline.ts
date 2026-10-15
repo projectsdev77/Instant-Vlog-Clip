@@ -1,6 +1,6 @@
 import { shotLength } from './shots'
 import { hasFreshAudio, LINE_LEAD_IN, lineWords } from './timing'
-import type { Clip, EditPlan, Script, ScriptLine, Shot, VoiceMode, Word } from './types'
+import { DEFAULT_LOOK, type Clip, type EditPlan, type Look, type Script, type ScriptLine, type Shot, type Transition, type VoiceMode, type Word } from './types'
 
 export type TimelineShot = {
   shot: Shot
@@ -28,9 +28,32 @@ export type Timeline = {
   title: { text: string; until: number }
   /** [start, end] ranges where narration plays, for music ducking */
   speech: [number, number][]
+  look: Look
+  fades: { in: boolean; out: boolean }
 }
 
 export const TRANSITION_SEC = 0.35
+
+/** How long each transition takes, seconds. */
+export function transitionSec(tr: Transition): number {
+  switch (tr) {
+    case 'cut':
+      return 0
+    case 'crossfade':
+    case 'blur':
+      return 0.45
+    case 'dip':
+      return 0.5
+    case 'whip':
+    case 'flash':
+      return 0.28
+    default:
+      return TRANSITION_SEC
+  }
+}
+
+export const FADE_IN_SEC = 0.5
+export const FADE_OUT_SEC = 0.8
 
 export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: Script | undefined, voiceMode: VoiceMode): Timeline {
   const lines = new Map<string, ScriptLine>((script?.lines ?? []).map((l) => [l.id, l]))
@@ -64,7 +87,7 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
   })
 
   const titleUntil = plan.title.showUntilSec === 'always' ? t : Math.min(t, plan.title.showUntilSec)
-  return { duration: t, shots, scenes, voice, captions, title: { text: plan.title.text, until: titleUntil }, speech }
+  return { duration: t, shots, scenes, voice, captions, title: { text: plan.title.text, until: titleUntil }, speech, look: plan.look ?? DEFAULT_LOOK, fades: plan.fades ?? { in: false, out: false } }
 }
 
 /** Groups words into short caption chunks that read well on a phone. */

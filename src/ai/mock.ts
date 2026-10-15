@@ -1,9 +1,10 @@
-import type { CatalogEntry, PlanRequest, PlanResponse, ScriptRequest, ScriptResponse } from '@shared/contracts.ts'
+import type { CatalogEntry, PlanRequest, PlanResponse, PlanTemplate, ScriptRequest, ScriptResponse } from '@shared/contracts.ts'
 import { planFallback } from '@/domain/fallback'
 import { textHash } from '@/domain/ids'
 import { DEFAULT_SETTINGS, type Clip, type ClipAnalysis, type Script, type ShotType, type Vibe, type Word } from '@/domain/types'
 import { estimatedWords, LINE_LEAD_IN, LINE_TAIL } from '@/domain/timing'
 import { encodeWav } from '@/media/audio'
+import { planToWire } from './wire'
 import type { AiService } from './service'
 
 /**
@@ -153,13 +154,44 @@ function plan(req: PlanRequest): PlanResponse {
   }
 
   const note = req.feedback ? `Updated the edit: ${req.feedback.trim()}` : `Matched ${p.scenes.length} scenes to your ${req.narrated ? 'narration' : 'clips'}.`
-  return {
-    note,
-    scenes: p.scenes.map((s) => ({
-      lineId: s.lineId ?? '',
-      shots: s.shots.map((x) => ({ clipId: x.clipId, in: x.in, out: x.out, focusX: x.crop.focusX, focusY: x.crop.focusY, clipAudio: x.clipAudio, transitionIn: x.transitionIn })),
-    })),
+  const wire = planToWire({ note, scenes: p.scenes })
+  if (req.currentPlan) applyEffectFeedback(wire, req.currentPlan, req.feedback ?? '', req.template)
+  return wire
+}
+
+/**
+ * Demo editor's take on effects: keeps the current edit's transitions and
+ * moves, then follows a few plain requests ("slow-mo", "no effects", "zoom").
+ */
+function applyEffectFeedback(wire: PlanResponse, current: PlanResponse, feedback: string, template?: PlanTemplate) {
+  const shots = wire.scenes.flatMap((s) => s.shots)
+  const prev = current.scenes.flatMap((s) => s.shots)
+  shots.forEach((x, i) => {
+    const o = prev[i]
+    if (!o) return
+    x.transitionIn = i === 0 ? 'cut' : o.transitionIn
+    x.motion = o.motion
+    x.ramp = o.ramp
+  })
+  const f = feedback.toLowerCase()
+  const footage = wire.scenes.filter((s) => !s.lineId).flatMap((s) => s.shots)
+  if (/(no|remove|less|without) (effects|transitions|zoom)|simpler|plain/.test(f)) {
+    for (const x of shots) {
+      x.transitionIn = 'cut'
+      x.motion = 'none'
+      x.ramp = 'none'
+      x.speed = 1
+    }
   }
+  if (/slow.?mo|slow motion/.test(f)) {
+    const x = footage[0] ?? shots[shots.length - 1]
+    if (x) {
+      x.out = x.in + (x.out - x.in) * 0.5
+      x.speed = 0.5
+    }
+  }
+  if (/zoom|punch/.test(f)) shots.slice(0, 4).forEach((x) => (x.motion = 'punch'))
+  if (/transition|smooth/.test(f)) shots.slice(1).forEach((x, i) => (x.transitionIn = (template?.transitions.filter((t) => t !== 'cut') ?? ['crossfade'])[i % Math.max(1, (template?.transitions.length ?? 1) - 1)] ?? 'crossfade'))
 }
 
 /** A soft "speech-like" murmur so demo voiceovers are audible and timed. */

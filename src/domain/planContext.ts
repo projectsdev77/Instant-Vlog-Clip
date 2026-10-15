@@ -1,3 +1,4 @@
+import { resolveTemplate } from './templates'
 import { lineSceneDuration } from './timing'
 import type { Clip, ProjectSettings, Script, VoiceMode } from './types'
 
@@ -37,6 +38,7 @@ export function videoTargetSec(ctx: PlanContext): number {
 }
 
 export function vibeShotLength(settings: ProjectSettings): number {
+  if (settings.template && settings.template !== 'auto') return resolveTemplate(settings.template, settings.vibe).shotSec
   switch (settings.vibe) {
     case 'upbeat':
     case 'funny':

@@ -1,12 +1,14 @@
-import type { CatalogEntry, PlanLine, PlanResponse } from '@shared/contracts.ts'
+import type { CatalogEntry, PlanLine } from '@shared/contracts.ts'
 import { ai, AiError } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
+import { planToWire } from '@/ai/wire'
+import { planTemplate, resolveTemplate, stylize } from '@/domain/templates'
 import { planFallback } from '@/domain/fallback'
 import { videoTargetSec, type PlanContext } from '@/domain/planContext'
 import { repairPlan } from '@/domain/repair'
 import { hasFreshAudio, lineSceneDuration } from '@/domain/timing'
 import type { EditPlan, Project } from '@/domain/types'
-import { pickTrack } from '@/render/musicTracks'
+import { pickTrack, trackById } from '@/render/musicTracks'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { analyzeClipsInBackground, analysisProgress } from './analysis'
 import { voiceAllLines } from './voice'
@@ -23,6 +25,12 @@ export const STAGES: { id: Stage; label: string }[] = [
 
 export type Progress = { stage: Stage; detail?: string; fraction?: number }
 
+/** Music mood: the template's, or the project's vibe for templates that suit any mood. */
+function musicVibe(p: Project) {
+  const t = resolveTemplate(p.settings.template, p.settings.vibe)
+  return t.vibe === 'auto' ? p.settings.vibe : t.vibe
+}
+
 export function planContext(p: Project, clips = useProject.getState().clips): PlanContext {
   const lines = p.script?.lines.filter((l) => l.text.trim()) ?? []
   return {
@@ -31,24 +39,15 @@ export function planContext(p: Project, clips = useProject.getState().clips): Pl
     voiceMode: p.voice.mode,
     settings: p.settings,
     title: p.title || p.script?.title || 'My vlog',
-    musicTrackId: p.musicTrackId === 'auto' ? pickTrack(p.settings.vibe, p.clipIds.length).id : p.musicTrackId,
+    musicTrackId: p.musicTrackId === 'auto' ? pickTrack(musicVibe(p), p.clipIds.length).id : p.musicTrackId,
     musicGainDb: p.musicGainDb,
-  }
-}
-
-function toWire(plan: EditPlan): PlanResponse {
-  return {
-    note: plan.note ?? '',
-    scenes: plan.scenes.map((s) => ({
-      lineId: s.lineId ?? '',
-      shots: s.shots.map((x) => ({ clipId: x.clipId, in: x.in, out: x.out, focusX: x.crop.focusX, focusY: x.crop.focusY, clipAudio: x.clipAudio, transitionIn: x.transitionIn })),
-    })),
   }
 }
 
 /** Asks the AI for a plan, validates it, retries once with the problems listed, falls back to rules. */
 export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; current?: EditPlan } = {}): Promise<{ plan: EditPlan; usedFallback: boolean }> {
   const catalog: CatalogEntry[] = buildCatalog(ctx.clips)
+  const template = resolveTemplate(opts.current?.templateId ?? ctx.settings.template, ctx.settings.vibe)
   const lines: PlanLine[] = (ctx.script?.lines ?? []).map((l) => ({ lineId: l.id, text: l.text, visualIntent: l.visualIntent, sceneSec: Math.round(lineSceneDuration(l, ctx.voiceMode) * 100) / 100 }))
   const base = {
     aspect: ctx.settings.aspect,
@@ -58,8 +57,18 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     targetSec: Math.round(videoTargetSec(ctx)),
     catalog,
     feedback: opts.feedback,
-    currentPlan: opts.current ? toWire(opts.current) : undefined,
+    currentPlan: opts.current ? planToWire(opts.current) : undefined,
+    template: planTemplate(template),
   }
+  const finish = (plan: EditPlan, fromAi: boolean): EditPlan =>
+    stylize(plan, template, {
+      keepChoices: fromAi,
+      topUp: !opts.feedback,
+      bpm: trackById(ctx.musicTrackId)?.bpm,
+      clipDurations: new Map(ctx.clips.map((c) => [c.id, c.durationSec])),
+      look: opts.current?.templateId === template.id ? opts.current.look : undefined,
+      fades: opts.current?.templateId === template.id ? opts.current.fades : undefined,
+    })
   let previousIssues: string[] | undefined
   for (let attempt = 0; attempt < 2; attempt++) {
     let raw: unknown
@@ -72,10 +81,10 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     }
     const result = repairPlan(raw, ctx)
     const serious = result.issues.filter((i) => !i.includes('outside clip'))
-    if (!result.usedFallback && (serious.length === 0 || attempt === 1)) return { plan: result.plan, usedFallback: false }
+    if (!result.usedFallback && (serious.length === 0 || attempt === 1)) return { plan: finish(result.plan, true), usedFallback: false }
     previousIssues = result.issues
   }
-  const plan = repairPlan(toWire(planFallback(ctx)), ctx, 'fallback').plan
+  const plan = finish(repairPlan(planToWire(planFallback(ctx)), ctx, 'fallback').plan, false)
   return { plan: { ...plan, note: "Made a simple edit because the AI editor wasn't available." }, usedFallback: true }
 }
 
@@ -124,7 +133,7 @@ async function run(onProgress: (p: Progress) => void) {
 
   onProgress({ stage: 'cutting' })
   onProgress({ stage: 'finishing' })
-  await useProject.getState().updateProject({ musicTrackId: ctx.musicTrackId ?? null })
+  await useProject.getState().updateProject({ musicTrackId: ctx.musicTrackId ?? null, styleId: resolveTemplate(ctx.settings.template, ctx.settings.vibe).styleId })
   await useProject.getState().pushEdit(plan.createdBy === 'fallback' ? plan : { ...plan, note: 'First cut' })
   await useProject.getState().updateProject({ step: 'edit' })
 }

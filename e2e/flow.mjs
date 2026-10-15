@@ -88,7 +88,7 @@ async function main() {
   step('tell the AI')
   await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
   step('undo')
-  for (const tab of ['Voice', 'Music', 'Style']) {
+  for (const tab of ['Look', 'Voice', 'Music', 'Text']) {
     await page.getByLabel('Edit panels').getByRole('button', { name: tab, exact: true }).click()
     await shot(`7-panel-${tab.toLowerCase()}`)
   }

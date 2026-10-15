@@ -13,15 +13,17 @@ import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { tellAi, undo, redo } from './editActions'
 import { MusicPanel, ScenesPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
 import { SceneEditor } from './SceneEditor'
+import { LookPanel } from './LookPanel'
 import { TellAiBar, TellAiSheet } from './TellAi'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'scenes', label: 'Scenes' },
+  { id: 'look', label: 'Look' },
   { id: 'voice', label: 'Voice' },
   { id: 'music', label: 'Music' },
-  { id: 'style', label: 'Style' },
+  { id: 'style', label: 'Text' },
 ]
 
 export function EditStep() {
@@ -100,7 +102,7 @@ export function EditStep() {
 
         <div className="min-w-0 flex-[1_1_420px]">
           {editing ? (
-            <SceneEditor key={`${sceneOpen}-${plan.version}`} project={project} plan={plan} clips={clips} index={sceneOpen} onClose={() => setSceneOpen(null)} onIndex={(i) => setSceneOpen(i)} />
+            <SceneEditor key={`${sceneOpen}-${plan.version}`} project={project} plan={plan} clips={clips} index={sceneOpen} onClose={() => setSceneOpen(null)} onIndex={(i) => setSceneOpen(i)} timeline={timeline} now={now} />
           ) : (
             <>
               <nav className="mb-4 flex rounded-full bg-surface p-1" aria-label="Edit panels">
@@ -110,13 +112,14 @@ export function EditStep() {
                     type="button"
                     aria-pressed={panel === p.id}
                     onClick={() => setPanel(p.id)}
-                    className={cn('h-11 flex-1 rounded-full text-[15px] font-semibold transition duration-150 ease-ember', panel === p.id ? 'bg-white text-ink' : 'text-muted hover:text-fg')}
+                    className={cn('h-11 min-w-0 flex-1 rounded-full text-[14px] font-semibold md:text-[15px] transition duration-150 ease-ember', panel === p.id ? 'bg-white text-ink' : 'text-muted hover:text-fg')}
                   >
                     {p.label}
                   </button>
                 ))}
               </nav>
               {panel === 'scenes' && <ScenesPanel plan={plan} timeline={timeline} project={project} clips={clips} activeScene={activeScene} onOpen={openScene} />}
+              {panel === 'look' && <LookPanel project={project} plan={plan} clips={clips} />}
               {panel === 'voice' && <VoicePanel project={project} />}
               {panel === 'music' && <MusicPanel project={project} />}
               {panel === 'style' && <StylePanel project={project} clips={clips} />}

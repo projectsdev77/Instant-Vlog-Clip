@@ -93,7 +93,7 @@ async function run(device) {
   await snap('19-edit-scene-editor-trim')
   await click('All scenes')
   await page.evaluate(() => window.scrollTo(0, 0))
-  for (const [i, tab] of [['20', 'Voice'], ['21', 'Music'], ['22', 'Style']]) {
+  for (const [i, tab] of [['20', 'Voice'], ['21', 'Music'], ['22', 'Text'], ['22b', 'Look']]) {
     await page.getByLabel('Edit panels').getByRole('button', { name: tab, exact: true }).click()
     await wait(250)
     await snap(`${i}-edit-${tab.toLowerCase()}`)

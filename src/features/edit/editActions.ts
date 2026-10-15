@@ -1,7 +1,10 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { refitPlan } from '@/domain/repair'
-import { shotFromMoment } from '@/domain/shots'
-import type { EditPlan, Moment, Project, Scene } from '@/domain/types'
+import { round, shotFromMoment, shotLength, sourceTime, speedOf } from '@/domain/shots'
+import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
+import { uid } from '@/domain/ids'
+import { trackById } from '@/render/musicTracks'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext, planWithAi } from '@/pipeline/generate'
 import { voiceAllLines, voiceLine } from '@/pipeline/voice'
@@ -60,7 +63,8 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
   const clip = state().clips.find((c) => c.id === clipId)
   if (!clip) return
   const old = plan.scenes[sceneIndex].shots[shotIndex]
-  const shot = { ...shotFromMoment(clip, moment, old.out - old.in, { clipAudio: old.clipAudio, transitionIn: old.transitionIn }), id: old.id }
+  const fresh = shotFromMoment(clip, moment, shotLength(old) * speedOf(old), { clipAudio: old.clipAudio, transitionIn: old.transitionIn })
+  const shot: Shot = { ...old, clipId: fresh.clipId, in: fresh.in, out: fresh.out, crop: fresh.crop, hold: undefined }
   await commit(
     mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? shot : x)) }))),
     'Swapped a shot',
@@ -120,4 +124,117 @@ export async function undo() {
 
 export async function redo() {
   await state().updateProject((p) => ({ currentEdit: Math.min(p.edits.length - 1, p.currentEdit + 1) }))
+}
+
+const mapShot = (plan: EditPlan, sceneIndex: number, shotIndex: number, fn: (s: Shot) => Shot | Shot[]): EditPlan =>
+  mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.flatMap((x, j) => (j === shotIndex ? fn(x) : [x])) })))
+
+const clipDurations = () => new Map(state().clips.map((c) => [c.id, c.durationSec]))
+
+/** Changes effects on one shot (transition, camera move, fit, volume). */
+export async function updateShot(sceneIndex: number, shotIndex: number, patch: Partial<Shot>, note: string) {
+  const { plan } = requireEdit()
+  await commit(mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, ...patch })), note)
+}
+
+/** Volume changes while dragging edit the current version in place. */
+export async function setShotVolume(sceneIndex: number, shotIndex: number, volume: number) {
+  const { plan } = requireEdit()
+  await state().replaceCurrentEdit(mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, volume })))
+}
+
+/** Speed or speed curve; the shot keeps its length in the vlog and uses more or less footage. */
+export async function setShotSpeed(sceneIndex: number, shotIndex: number, speed: number, ramp: Shot['ramp'] = 'none') {
+  const { plan } = requireEdit()
+  await commit(
+    mapShot(plan, sceneIndex, shotIndex, (s) => {
+      const next = { ...s, hold: undefined, ramp: ramp === 'none' ? undefined : ramp }
+      setSpeed(next, speed, clipDurations())
+      if (next.ramp) next.clipAudio = 'mute'
+      return next
+    }),
+    ramp !== 'none' ? 'Speed ramp' : speed === 1 ? 'Normal speed' : `${speed}× speed`,
+  )
+}
+
+/** Where in a shot to cut: at the playhead if it's inside the shot, else the middle. */
+function cutPoint(s: Shot, local: number | undefined): number {
+  const len = shotLength(s)
+  return local !== undefined && local > 0.3 && local < len - 0.3 ? local : len / 2
+}
+
+export async function splitShot(sceneIndex: number, shotIndex: number, local?: number) {
+  const { plan } = requireEdit()
+  await commit(
+    mapShot(plan, sceneIndex, shotIndex, (s) => {
+      if (s.hold) {
+        const at = cutPoint(s, local)
+        return [{ ...s, hold: round(at) }, { ...s, id: uid('s_'), hold: round(s.hold - at), transitionIn: 'cut' }]
+      }
+      const src = round(sourceTime(s, cutPoint(s, local)))
+      const base = { ...s, ramp: undefined }
+      return [
+        { ...base, out: src },
+        { ...base, id: uid('s_'), in: src, transitionIn: 'cut' },
+      ]
+    }),
+    'Split a shot',
+  )
+}
+
+/** Inserts a 1 s freeze frame at the playhead (or the middle of the shot). */
+export async function freezeFrame(sceneIndex: number, shotIndex: number, local?: number) {
+  const { plan } = requireEdit()
+  await commit(
+    mapShot(plan, sceneIndex, shotIndex, (s) => {
+      const at = cutPoint(s, local)
+      const src = round(sourceTime(s, at))
+      if (s.hold) return [s, { ...s, id: uid('s_'), transitionIn: 'cut', hold: 1 }]
+      const base = { ...s, ramp: undefined }
+      return [
+        { ...base, out: src },
+        { ...base, id: uid('s_'), in: src, out: src, hold: 1, speed: undefined, motion: 'punch', clipAudio: 'mute', transitionIn: 'flash' },
+        { ...base, id: uid('s_'), in: src, transitionIn: 'cut' },
+      ]
+    }),
+    'Freeze frame',
+  )
+}
+
+/** Copies a shot into a new footage-only scene right after this scene. */
+export async function duplicateShot(sceneIndex: number, shotIndex: number) {
+  const { plan } = requireEdit()
+  const copy = { ...plan.scenes[sceneIndex].shots[shotIndex], id: uid('s_'), transitionIn: 'cut' as const }
+  await commit(
+    mapScenes(plan, (scenes) => [...scenes.slice(0, sceneIndex + 1), { id: uid('sc_'), shots: [copy] }, ...scenes.slice(sceneIndex + 1)]),
+    'Duplicated a shot',
+  )
+}
+
+export async function deleteShot(sceneIndex: number, shotIndex: number) {
+  const { plan } = requireEdit()
+  if (plan.scenes[sceneIndex].shots.length <= 1) return deleteScene(sceneIndex)
+  await commit(mapShot(plan, sceneIndex, shotIndex, () => []), 'Removed a shot')
+}
+
+/** Look changes: `live` edits in place (while dragging), otherwise saves a new version. */
+export async function setLook(patch: Partial<Look>, live = false) {
+  const { plan } = requireEdit()
+  const tl = { ...plan, look: { ...(plan.look ?? DEFAULT_LOOK), ...patch } }
+  if (live) await state().replaceCurrentEdit(tl)
+  else await commit(tl, 'Changed the look')
+}
+
+export async function setFades(fades: { in: boolean; out: boolean }) {
+  const { plan } = requireEdit()
+  await commit({ ...plan, fades }, fades.in || fades.out ? 'Fades' : 'No fades')
+}
+
+/** Restyles the current edit with another template, keeping the footage. */
+export async function applyTemplate(id: TemplateId) {
+  const { project, plan } = requireEdit()
+  const t = resolveTemplate(id, project.settings.vibe)
+  const next = stylize(plan, t, { bpm: trackById(project.musicTrackId)?.bpm, clipDurations: clipDurations() })
+  await state().updateProject((p) => ({ styleId: t.styleId, settings: { ...p.settings, template: id } }))
+  await commit(next, `${t.name} template`)
 }

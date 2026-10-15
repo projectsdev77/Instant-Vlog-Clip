@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, Scissors, Snowflake, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
 import { rankedMoments } from '@/domain/moments'
-import type { Clip, ClipAudioMode, EditPlan, Moment, Project, Shot } from '@/domain/types'
+import type { Clip, ClipAudioMode, EditPlan, Fit, Moment, Motion, Project, Ramp, Shot, Transition } from '@/domain/types'
+import type { Timeline } from '@/domain/timeline'
+import { shotLength } from '@/domain/shots'
 import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { deleteScene, editLine, moveScene, setShotAudio, swapShot, trimShot, undo } from './editActions'
+import { deleteScene, deleteShot, duplicateShot, editLine, freezeFrame, moveScene, setShotAudio, setShotSpeed, setShotVolume, splitShot, swapShot, trimShot, undo, updateShot } from './editActions'
 import { Thumb } from './GlobalPanels'
 
-type Props = { project: Project; plan: EditPlan; clips: Clip[]; index: number; onClose: () => void; onIndex: (i: number) => void }
+type Props = { project: Project; plan: EditPlan; clips: Clip[]; index: number; onClose: () => void; onIndex: (i: number) => void; timeline: Timeline; now: number }
 
 /** Edits one scene in place of the tabs, so the preview stays visible. */
-export function SceneEditor({ project, plan, clips, index, onClose, onIndex }: Props) {
+export function SceneEditor({ project, plan, clips, index, onClose, onIndex, timeline, now }: Props) {
   const scene = plan.scenes[index]
   const line = project.script?.lines.find((l) => l.id === scene?.lineId)
   const [text, setText] = useState(line?.text ?? '')
@@ -81,6 +83,25 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex }: P
             onAudio={(m) => act('audio', () => setShotAudio(index, si, m))}
             onSwap={(c, m) => act('swap', () => swapShot(index, si, c.id, m))}
             onTrim={(a, b) => act('trim', () => trimShot(index, si, a, b))}
+            tools={{
+              busy: !!busy,
+              playheadLocal: playheadIn(timeline, now, shot.id),
+              onSplit: (at) => act('tool', () => splitShot(index, si, at)),
+              onFreeze: (at) => act('tool', () => freezeFrame(index, si, at)),
+              onDuplicate: () => act('tool', () => duplicateShot(index, si)),
+              onDelete: () =>
+                act('tool', async () => {
+                  const last = scene.shots.length <= 1
+                  await deleteShot(index, si)
+                  if (last) onClose()
+                  toast(last ? 'Scene deleted.' : 'Shot deleted.', 'info', { label: 'Undo', run: () => void undo() })
+                }),
+              onSpeed: (speed, ramp) => act('tool', () => setShotSpeed(index, si, speed, ramp)),
+              onPatch: (patch, note) => act('tool', () => updateShot(index, si, patch, note)),
+              onVolume: (v) => void setShotVolume(index, si, v),
+              first: index === 0 && si === 0,
+              fit: plan.look?.fit ?? 'fill',
+            }}
           />
         ))}
       </div>
@@ -118,7 +139,27 @@ const SOUND: { id: ClipAudioMode; label: string }[] = [
   { id: 'full', label: 'Full' },
 ]
 
-function ShotCard(props: { shot: Shot; n: number; clip?: Clip; clips: Clip[]; busy: string | null; onAudio: (m: ClipAudioMode) => void; onSwap: (c: Clip, m: Moment) => void; onTrim: (a: number, b: number) => void }) {
+/** Playhead position inside a shot, seconds, if the playhead is on it. */
+function playheadIn(tl: Timeline, now: number, shotId: string): number | undefined {
+  const ts = tl.shots.find((x) => x.shot.id === shotId)
+  return ts && now >= ts.start && now < ts.end ? now - ts.start : undefined
+}
+
+type Tools = {
+  busy: boolean
+  playheadLocal?: number
+  first: boolean
+  fit: Fit
+  onSplit: (at?: number) => void
+  onFreeze: (at?: number) => void
+  onDuplicate: () => void
+  onDelete: () => void
+  onSpeed: (speed: number, ramp?: Ramp) => void
+  onPatch: (patch: Partial<Shot>, note: string) => void
+  onVolume: (v: number) => void
+}
+
+function ShotCard(props: { shot: Shot; n: number; clip?: Clip; clips: Clip[]; busy: string | null; onAudio: (m: ClipAudioMode) => void; onSwap: (c: Clip, m: Moment) => void; onTrim: (a: number, b: number) => void; tools: Tools }) {
   const { shot, clip } = props
   return (
     <div className="space-y-4 rounded-[var(--radius-panel)] bg-surface p-4">
@@ -127,7 +168,8 @@ function ShotCard(props: { shot: Shot; n: number; clip?: Clip; clips: Clip[]; bu
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-bold">Shot {props.n}</div>
           <div className="tabular text-[13px] font-medium whitespace-nowrap text-muted">
-            {formatDuration(shot.in)}–{formatDuration(shot.out)} · {(shot.out - shot.in).toFixed(1)}s
+            {shot.hold ? `Freeze frame at ${formatDuration(shot.in)}` : `${formatDuration(shot.in)}–${formatDuration(shot.out)}`} · {shotLength(shot).toFixed(1)}s
+            {shot.speed && shot.speed !== 1 ? ` · ${shot.speed}×` : ''}
           </div>
         </div>
         <div className="flex basis-full items-center justify-between gap-2 sm:basis-auto">
@@ -148,9 +190,137 @@ function ShotCard(props: { shot: Shot; n: number; clip?: Clip; clips: Clip[]; bu
           </div>
         </div>
       </div>
+      <ShotTools shot={shot} t={props.tools} />
       <Alternatives clips={props.clips} current={shot} busy={props.busy === 'swap'} onPick={props.onSwap} />
-      {clip && <Trimmer key={`${shot.in}-${shot.out}`} clip={clip} shot={shot} onApply={props.onTrim} />}
+      {clip && !shot.hold && <Trimmer key={`${shot.in}-${shot.out}`} clip={clip} shot={shot} onApply={props.onTrim} />}
     </div>
+  )
+}
+
+const SPEEDS = [0.5, 1, 1.5, 2, 3]
+const RAMP_OPTIONS: { id: Ramp; label: string }[] = [
+  { id: 'montage', label: 'Montage' },
+  { id: 'hero', label: 'Hero' },
+  { id: 'bullet', label: 'Bullet' },
+]
+const MOTION_OPTIONS: { id: Motion; label: string }[] = [
+  { id: 'none', label: 'None' },
+  { id: 'zoomIn', label: 'Zoom in' },
+  { id: 'zoomOut', label: 'Zoom out' },
+  { id: 'panLeft', label: 'Pan left' },
+  { id: 'panRight', label: 'Pan right' },
+  { id: 'punch', label: 'Punch' },
+  { id: 'shake', label: 'Shake' },
+]
+const TRANSITION_OPTIONS: { id: Transition; label: string }[] = [
+  { id: 'cut', label: 'Cut' },
+  { id: 'crossfade', label: 'Fade' },
+  { id: 'dip', label: 'Dip' },
+  { id: 'whip', label: 'Whip' },
+  { id: 'slide', label: 'Slide' },
+  { id: 'zoom', label: 'Zoom' },
+  { id: 'flash', label: 'Flash' },
+  { id: 'blur', label: 'Blur' },
+]
+
+/** CapCut-style tools for one shot. */
+function ShotTools({ shot, t }: { shot: Shot; t: Tools }) {
+  const ramp = shot.ramp ?? 'none'
+  const speed = shot.speed ?? 1
+  return (
+    <div className="space-y-3.5">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="Shot tools">
+        <ToolButton disabled={t.busy} onClick={() => t.onSplit(t.playheadLocal)} icon={<Scissors className="size-4" strokeWidth={2.4} />} label="Split" hint={t.playheadLocal !== undefined ? 'at the playhead' : 'in the middle'} />
+        <ToolButton disabled={t.busy} onClick={() => t.onFreeze(t.playheadLocal)} icon={<Snowflake className="size-4" strokeWidth={2.4} />} label="Freeze" />
+        <ToolButton disabled={t.busy} onClick={t.onDuplicate} icon={<Copy className="size-4" strokeWidth={2.4} />} label="Duplicate" />
+        <ToolButton disabled={t.busy} onClick={t.onDelete} icon={<Trash2 className="size-4" strokeWidth={2.4} />} label="Delete" danger />
+      </div>
+      {!shot.hold && (
+        <Segs label="Speed">
+          {SPEEDS.map((x) => (
+            <Seg key={x} on={ramp === 'none' && speed === x} disabled={t.busy} onClick={() => t.onSpeed(x)}>
+              {x}×
+            </Seg>
+          ))}
+          {RAMP_OPTIONS.map((r) => (
+            <Seg key={r.id} on={ramp === r.id} disabled={t.busy} onClick={() => t.onSpeed(1, r.id)}>
+              {r.label}
+            </Seg>
+          ))}
+        </Segs>
+      )}
+      <Segs label="Camera">
+        {MOTION_OPTIONS.map((m) => (
+          <Seg key={m.id} on={(shot.motion ?? 'none') === m.id} disabled={t.busy} onClick={() => t.onPatch({ motion: m.id === 'none' ? undefined : m.id }, m.id === 'none' ? 'No camera move' : `${m.label} move`)}>
+            {m.label}
+          </Seg>
+        ))}
+      </Segs>
+      {!t.first && (
+        <Segs label="Transition in">
+          {TRANSITION_OPTIONS.map((x) => (
+            <Seg key={x.id} on={shot.transitionIn === x.id} disabled={t.busy} onClick={() => t.onPatch({ transitionIn: x.id }, `${x.label} transition`)}>
+              {x.label}
+            </Seg>
+          ))}
+        </Segs>
+      )}
+      <Segs label="Frame">
+        <Seg on={(shot.fit ?? t.fit) === 'fill'} disabled={t.busy} onClick={() => t.onPatch({ fit: 'fill' }, 'Fill the frame')}>
+          Fill
+        </Seg>
+        <Seg on={(shot.fit ?? t.fit) === 'blur'} disabled={t.busy} onClick={() => t.onPatch({ fit: 'blur' }, 'Blurred background')}>
+          Blur background
+        </Seg>
+      </Segs>
+      {!shot.hold && shot.clipAudio !== 'mute' && (
+        <label className="flex items-center gap-3 text-[13px] font-semibold">
+          <span className="w-24 shrink-0 text-muted">Clip volume</span>
+          <input type="range" min={0} max={200} step={5} value={Math.round((shot.volume ?? 1) * 100)} onChange={(e) => t.onVolume(Number(e.target.value) / 100)} className="h-9 flex-1" aria-label="Clip volume" />
+          <span className="tabular w-11 text-right">{Math.round((shot.volume ?? 1) * 100)}%</span>
+        </label>
+      )}
+    </div>
+  )
+}
+
+function ToolButton({ icon, label, hint, onClick, disabled, danger }: { icon: React.ReactNode; label: string; hint?: string; onClick: () => void; disabled?: boolean; danger?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={hint ? `${label} ${hint}` : label}
+      className={cn('flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold transition hover:bg-white/14 disabled:opacity-50', danger && 'text-danger')}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
+
+function Segs({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 md:flex-row md:items-start md:gap-3">
+      <span className="shrink-0 text-[13px] font-semibold text-muted md:w-24 md:pt-2">{label}</span>
+      <div className="-mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0" role="group" aria-label={label}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Seg({ on, onClick, disabled, children }: { on: boolean; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn('h-8 shrink-0 rounded-full px-3 text-[13px] font-semibold whitespace-nowrap transition disabled:opacity-60', on ? 'bg-white text-ink' : 'bg-surface-2 text-muted hover:text-fg')}
+    >
+      {children}
+    </button>
   )
 }
 

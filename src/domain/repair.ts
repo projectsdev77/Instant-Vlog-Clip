@@ -3,12 +3,12 @@ import { audioModeFor, planFallback } from './fallback'
 import { uid } from './ids'
 import { rankedMoments } from './moments'
 import { usableClips, vibeShotLength, vibeTransition, videoTargetSec, type PlanContext } from './planContext'
-import { fitShots, round, shotFromMoment, shotLength, sumShots } from './shots'
+import { fitShots, srcSpan, MAX_HOLD, MAX_SPEED, MIN_SPEED, round, shotFromMoment, shotLength, sumShots } from './shots'
 import { lineSceneDuration, MAX_SHOT, MIN_SHOT } from './timing'
-import type { EditPlan, Scene, Shot, Transition } from './types'
+import { MOTIONS, RAMPS, TRANSITIONS, type EditPlan, type Scene, type Shot, type Transition } from './types'
 
 const num = z.coerce.number().refine(Number.isFinite)
-const transition = z.enum(['cut', 'crossfade', 'dip', 'whip']).catch('cut')
+const transition = z.enum(TRANSITIONS).catch('cut')
 
 /** Lenient shape for plans coming from the AI (or old saved data). */
 const RawShot = z.object({
@@ -22,6 +22,12 @@ const RawShot = z.object({
   crop: z.object({ focusX: num, focusY: num, zoom: num.optional() }).partial().optional(),
   clipAudio: z.enum(['mute', 'duck', 'full']).optional().catch(undefined),
   transitionIn: transition.optional(),
+  speed: num.optional().catch(undefined),
+  ramp: z.enum(RAMPS).optional().catch(undefined),
+  hold: num.optional().catch(undefined),
+  volume: num.optional().catch(undefined),
+  motion: z.enum(MOTIONS).optional().catch(undefined),
+  fit: z.enum(['fill', 'blur']).optional().catch(undefined),
 })
 const RawScene = z.object({ id: z.string().optional(), lineId: z.string().nullish(), shots: z.array(z.unknown()) })
 const RawPlan = z.object({ scenes: z.array(z.unknown()), note: z.string().optional() })
@@ -56,7 +62,8 @@ export function repairPlan(
   const usedRanges: Shot[] = []
   const overlapsUsed = (s: Shot) =>
     !opts.allowRepeats &&
-    usedRanges.some((r) => r.clipId === s.clipId && Math.min(r.out, s.out) - Math.max(r.in, s.in) > 0.5 * Math.min(shotLength(r), shotLength(s)))
+    !s.hold &&
+    usedRanges.some((r) => !r.hold && r.clipId === s.clipId && Math.min(r.out, s.out) - Math.max(r.in, s.in) > 0.5 * Math.min(srcSpan(r), srcSpan(s)))
 
   const cleanShot = (rawShot: unknown, si: number, i: number): Shot | null => {
     const p = RawShot.safeParse(rawShot)
@@ -73,9 +80,10 @@ export function repairPlan(
     let a = clamp(Math.min(r.in, r.out), 0, clip.durationSec)
     let b = clamp(Math.max(r.in, r.out), 0, clip.durationSec)
     if (a !== r.in || b !== r.out) issues.push(`scenes[${si}].shots[${i}] in/out outside clip ${clip.id} (0–${clip.durationSec.toFixed(2)}s)`)
-    if (b - a < Math.min(MIN_SHOT, clip.durationSec)) {
-      // widen around the middle
-      const need = Math.min(MIN_SHOT, clip.durationSec)
+    if (r.hold && r.hold > 0) b = a // freeze frame: one frame, at `in`
+    else if (b - a < Math.min(MIN_SHOT * clamp(r.speed ?? 1, MIN_SPEED, MAX_SPEED), clip.durationSec)) {
+      // widen around the middle (to MIN_SHOT seconds of video at the shot's speed)
+      const need = Math.min(MIN_SHOT * clamp(r.speed ?? 1, MIN_SPEED, MAX_SPEED), clip.durationSec)
       const mid = (a + b) / 2
       a = clamp(mid - need / 2, 0, clip.durationSec - need)
       b = a + need
@@ -93,6 +101,15 @@ export function repairPlan(
       clipAudio: r.clipAudio ?? audioModeFor(clip, narrated),
       transitionIn: (r.transitionIn ?? 'cut') as Transition,
     }
+    if (r.hold && r.hold > 0) shot.hold = round(clamp(r.hold, 0.1, MAX_HOLD))
+    else if (r.speed && Math.abs(r.speed - 1) > 1e-3) shot.speed = round(clamp(r.speed, MIN_SPEED, MAX_SPEED))
+    if (r.ramp && r.ramp !== 'none' && !shot.hold) {
+      shot.ramp = r.ramp
+      shot.clipAudio = 'mute'
+    }
+    if (r.volume !== undefined && Math.abs(r.volume - 1) > 1e-3) shot.volume = clamp(r.volume, 0, 2)
+    if (r.motion && r.motion !== 'none') shot.motion = r.motion
+    if (r.fit) shot.fit = r.fit
     if (overlapsUsed(shot)) {
       issues.push(`scenes[${si}].shots[${i}] repeats footage already used`)
       return null
@@ -203,7 +220,7 @@ export function refitPlan(plan: EditPlan, ctx: PlanContext): EditPlan {
     scenes: plan.scenes.map((s) => ({ id: s.id, lineId: s.lineId, shots: s.shots })),
   }
   const { plan: fixed } = repairPlan(raw, { ...ctx, settings: { ...ctx.settings, aspect: plan.aspect } }, plan.createdBy, { allowRepeats: true, fill: false })
-  return { ...fixed, title: plan.title, music: plan.music, version: plan.version, createdAt: plan.createdAt }
+  return { ...fixed, title: plan.title, music: plan.music, look: plan.look, fades: plan.fades, templateId: plan.templateId, version: plan.version, createdAt: plan.createdAt }
 }
 
 /**

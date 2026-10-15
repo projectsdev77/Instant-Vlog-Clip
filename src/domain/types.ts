@@ -13,6 +13,8 @@ export type ProjectSettings = {
   targetSec: TargetLength
   vibe: Vibe
   language: Language
+  /** edit template; 'auto' lets the app pick from the vibe */
+  template?: TemplateId | 'auto'
 }
 
 export type Word = { word: string; start: number; end: number }
@@ -107,8 +109,20 @@ export type Script = { title: string; lines: ScriptLine[] }
 export type VoiceMode = 'ai' | 'recorded' | 'none'
 export type VoiceSettings = { mode: VoiceMode; voiceId: string; volumeDb: number }
 
-export type Transition = 'cut' | 'crossfade' | 'dip' | 'whip'
+export const TRANSITIONS = ['cut', 'crossfade', 'dip', 'whip', 'slide', 'zoom', 'flash', 'blur'] as const
+export type Transition = (typeof TRANSITIONS)[number]
 export type ClipAudioMode = 'mute' | 'duck' | 'full'
+
+/** Camera-style movement applied to a shot. */
+export const MOTIONS = ['none', 'zoomIn', 'zoomOut', 'panLeft', 'panRight', 'punch', 'shake'] as const
+export type Motion = (typeof MOTIONS)[number]
+
+/** Speed curves: the shot's footage plays faster/slower along the way. */
+export const RAMPS = ['none', 'montage', 'hero', 'bullet'] as const
+export type Ramp = (typeof RAMPS)[number]
+
+/** How footage that doesn't match the frame's shape is shown. */
+export type Fit = 'fill' | 'blur'
 
 export type Shot = {
   id: string
@@ -119,11 +133,45 @@ export type Shot = {
   crop: { focusX: number; focusY: number; zoom: number }
   clipAudio: ClipAudioMode
   transitionIn: Transition
+  /** playback speed, 0.25-4 (default 1); the shot lasts (out - in) / speed */
+  speed?: number
+  /** speed curve on top of `speed` (clip sound is muted while ramping) */
+  ramp?: Ramp
+  /** freeze frame: show the frame at `in` for this many seconds */
+  hold?: number
+  /** clip sound level, 0-2 (default 1) */
+  volume?: number
+  motion?: Motion
+  /** overrides the plan's fit for this shot */
+  fit?: Fit
 }
 
 export type Scene = { id: string; lineId?: string; shots: Shot[] }
 
 export type MusicSettings = { trackId: string; gainDb: number; duckUnderVoice: boolean }
+
+export const FILTERS = ['none', 'warm', 'vivid', 'film', 'teal', 'fade', 'mono', 'cool'] as const
+export type FilterId = (typeof FILTERS)[number]
+
+/** Color look for the whole vlog. Adjustments are -1..1 (0 = unchanged). */
+export type Look = {
+  filter: FilterId
+  /** 0..1 */
+  intensity: number
+  brightness: number
+  contrast: number
+  saturation: number
+  warmth: number
+  /** 0..1 */
+  vignette: number
+  /** 0..1 */
+  grain: number
+  fit: Fit
+}
+
+export const DEFAULT_LOOK: Look = { filter: 'none', intensity: 1, brightness: 0, contrast: 0, saturation: 0, warmth: 0, vignette: 0, grain: 0, fit: 'fill' }
+
+export type TemplateId = 'daily' | 'trend' | 'cinematic' | 'travel' | 'aesthetic' | 'clean'
 
 export type EditPlan = {
   version: number
@@ -135,6 +183,10 @@ export type EditPlan = {
   scenes: Scene[]
   title: { text: string; showUntilSec: number | 'always' }
   music?: MusicSettings
+  look?: Look
+  /** fade from / to black at the start and end */
+  fades?: { in: boolean; out: boolean }
+  templateId?: TemplateId
 }
 
 export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon'

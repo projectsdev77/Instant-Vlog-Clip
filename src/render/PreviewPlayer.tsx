@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import type { Project } from '@/domain/types'
-import { shotAt, TRANSITION_SEC, type Timeline, type TimelineShot } from '@/domain/timeline'
+import { shotAt, transitionSec, type Timeline, type TimelineShot } from '@/domain/timeline'
+import { shotLength, sourceTime, speedAt } from '@/domain/shots'
 import { formatDuration } from '@/lib/format'
 import { getMediaUrl } from '@/lib/mediaStore'
 import { Spinner } from '@/components/ui/Spinner'
@@ -273,19 +274,22 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
   )
 }
 
-/** Keeps each clip's <video> at the right spot: playing for the current shot, parked at its in-point for the next one. */
+/** Keeps each clip's <video> at the right spot: playing for the current shot (at its speed), parked at its in-point for the next one. */
 function syncVideos(tl: Timeline, t: number, playing: boolean, videos: Map<string, HTMLVideoElement>) {
   const cur = shotAt(tl, t)
   if (!cur) return
-  const want = new Map<string, { time: number; play: boolean }>()
-  const curSrc = cur.shot.in + (t - cur.start)
-  want.set(cur.clip.id, { time: curSrc, play: playing })
-  if (cur.prev && t - cur.start < TRANSITION_SEC && cur.shot.transitionIn !== 'cut' && !want.has(cur.prev.clip.id)) {
-    want.set(cur.prev.clip.id, { time: cur.prev.shot.out + (t - cur.start), play: playing })
+  const want = new Map<string, { time: number; play: boolean; rate: number }>()
+  const local = t - cur.start
+  const len = shotLength(cur.shot)
+  const rate = speedAt(cur.shot, len ? local / len : 0)
+  want.set(cur.clip.id, { time: sourceTime(cur.shot, local), play: playing && rate > 0.05, rate })
+  if (cur.prev && local < transitionSec(cur.shot.transitionIn) && !want.has(cur.prev.clip.id)) {
+    const p = cur.prev.shot
+    want.set(cur.prev.clip.id, { time: sourceTime(p, shotLength(p) + local), play: playing && !p.hold, rate: p.hold ? 1 : (p.speed ?? 1) })
   }
   const idx = tl.shots.indexOf(cur)
   const next = tl.shots[idx + 1]
-  if (next && !want.has(next.clip.id)) want.set(next.clip.id, { time: next.shot.in, play: false })
+  if (next && !want.has(next.clip.id)) want.set(next.clip.id, { time: next.shot.in, play: false, rate: 1 })
 
   for (const [id, v] of videos) {
     const w = want.get(id)
@@ -294,12 +298,14 @@ function syncVideos(tl: Timeline, t: number, playing: boolean, videos: Map<strin
       continue
     }
     if (v.readyState < 1) continue
+    const r = Math.max(0.0625, Math.min(16, w.rate || 1))
+    if (Math.abs(v.playbackRate - r) > 0.02) v.playbackRate = r
     const drift = Math.abs(v.currentTime - w.time)
     if (w.play) {
       if (v.paused) {
         v.currentTime = w.time
         void v.play().catch(() => {})
-      } else if (drift > 0.25) v.currentTime = w.time
+      } else if (drift > 0.25 * Math.max(1, r)) v.currentTime = w.time
     } else {
       if (!v.paused) v.pause()
       if (drift > 0.04 && !v.seeking) v.currentTime = w.time

@@ -12,7 +12,7 @@ export function useEditorData(project: Project | null, plan: EditPlan | undefine
   }, [project, plan, clips])
 
   const [mix, setMix] = useState<{ key: string; buf: AudioBuffer } | null>(null)
-  const mixKey = timeline && project ? JSON.stringify([timeline.shots.map((s) => [s.clip.id, s.shot.in, s.shot.out, s.shot.clipAudio, s.start]), timeline.voice, project.musicTrackId, project.musicGainDb, project.voice.volumeDb]) : ''
+  const mixKey = timeline && project ? JSON.stringify([timeline.shots.map((s) => [s.clip.id, s.shot.in, s.shot.out, s.shot.clipAudio, s.start, s.shot.speed, s.shot.hold, s.shot.ramp, s.shot.volume]), timeline.voice, project.musicTrackId, project.musicGainDb, project.voice.volumeDb]) : ''
 
   useEffect(() => {
     if (!timeline || !project || !mixKey) return

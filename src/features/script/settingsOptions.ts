@@ -1,4 +1,5 @@
-import type { Aspect, TargetLength, Vibe } from '@/domain/types'
+import { TEMPLATES } from '@/domain/templates'
+import type { Aspect, TargetLength, TemplateId } from '@/domain/types'
 
 export const ASPECTS: { value: Aspect; label: string }[] = [
   { value: '9:16', label: 'Vertical 9:16' },
@@ -13,11 +14,11 @@ export const LENGTHS: { value: TargetLength; label: string }[] = [
   { value: 60, label: '60s' },
 ]
 
-export const VIBES: { value: Vibe; label: string }[] = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'chill', label: 'Chill' },
-  { value: 'upbeat', label: 'Upbeat' },
-  { value: 'cinematic', label: 'Cinematic' },
-  { value: 'funny', label: 'Funny' },
-  { value: 'aesthetic', label: 'Aesthetic' },
-]
+
+export const TEMPLATE_OPTIONS: { value: TemplateId | 'auto'; label: string }[] = [{ value: 'auto', label: 'Auto' }, ...TEMPLATES.map((t) => ({ value: t.id, label: t.name }))]
+
+export function templateHint(id: TemplateId | 'auto'): string {
+  if (id === 'auto') return 'Auto: the Day in my life style, which suits most vlogs.'
+  const t = TEMPLATES.find((x) => x.id === id)
+  return t ? `${t.name}: ${t.description}.` : ''
+}

@@ -16,11 +16,12 @@ import { aiMode } from '@/ai/mode'
 import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
+import { sumShots } from '@/domain/shots'
 import { Captions, Lock, Mic, Music2, Smartphone } from 'lucide-react'
 
 function vlogLength(p: Project): number {
   const edit = p.currentEdit >= 0 ? p.edits[p.currentEdit] : undefined
-  return edit ? edit.scenes.reduce((a, s) => a + s.shots.reduce((b, x) => b + x.out - x.in, 0), 0) : 0
+  return edit ? edit.scenes.reduce((a, s) => a + sumShots(s.shots), 0) : 0
 }
 
 export function HomePage() {

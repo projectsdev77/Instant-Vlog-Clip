@@ -1,5 +1,6 @@
-import type { Clip } from '@/domain/types'
-import { captionAt, shotAt, TRANSITION_SEC, type Timeline, type TimelineShot } from '@/domain/timeline'
+import type { Clip, Look } from '@/domain/types'
+import { captionAt, FADE_IN_SEC, FADE_OUT_SEC, shotAt, transitionSec, type Timeline, type TimelineShot } from '@/domain/timeline'
+import { shotLength, sourceTime } from '@/domain/shots'
 import { applyCase, type TextStyle } from './styles'
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
@@ -13,32 +14,243 @@ function sourceSize(src: FrameSource): [number, number] {
   return [Number(src.width) || 0, Number(src.height) || 0]
 }
 
+const supportsFilter = (ctx: Ctx2D) => 'filter' in ctx
+
 /** Gentle exposure correction so cuts between clips don't jump. */
-function exposureFilter(clip: Clip): string {
+function exposure(clip: Clip): number {
   const b = clip.signals?.brightness
-  if (!b?.length) return 'none'
+  if (!b?.length) return 1
   const avg = b.reduce((a, x) => a + x, 0) / b.length
   const factor = Math.max(0.85, Math.min(1.3, 0.48 / Math.max(0.05, avg)))
-  return Math.abs(factor - 1) < 0.04 ? 'none' : `brightness(${factor.toFixed(2)})`
+  return Math.abs(factor - 1) < 0.04 ? 1 : factor
 }
 
-/** Draws `src` covering the canvas, cropped around the shot's focus point. */
-function drawCover(ctx: Ctx2D, src: FrameSource, W: number, H: number, focusX: number, focusY: number, zoom: number, clip: Clip) {
-  const [sw, sh] = sourceSize(src)
-  if (!sw || !sh) return
-  const scale = Math.max(W / sw, H / sh) * zoom
-  const dw = sw * scale
-  const dh = sh * scale
-  // keep the focus point as centered as the frame edges allow
-  const dx = Math.min(0, Math.max(W - dw, W / 2 - focusX * dw))
-  const dy = Math.min(0, Math.max(H - dh, H / 2 - focusY * dh))
-  const filter = exposureFilter(clip)
-  if (filter !== 'none' && 'filter' in ctx) ctx.filter = filter
-  ctx.drawImage(src, dx, dy, dw, dh)
-  if ('filter' in ctx) ctx.filter = 'none'
+/** CSS filter part of a look (browsers without canvas filters get the overlay part only). */
+function lookFilter(look: Look, clip: Clip): string {
+  return lookCss(look, exposure(clip))
+}
+
+/** A look as a CSS filter string; also used for thumbnails in the editor. */
+export function lookCss(look: Look, exposureFactor = 1): string {
+  const i = look.intensity
+  let bright = exposureFactor * (1 + look.brightness * 0.35)
+  let contrast = 1 + look.contrast * 0.45
+  let sat = 1 + look.saturation * 0.8
+  let sepia = 0
+  let hue = 0
+  switch (look.filter) {
+    case 'vivid':
+      sat *= 1 + 0.35 * i
+      contrast *= 1 + 0.08 * i
+      break
+    case 'warm':
+      sepia = 0.12 * i
+      sat *= 1 + 0.1 * i
+      break
+    case 'film':
+      contrast *= 1 + 0.1 * i
+      sat *= 1 - 0.18 * i
+      sepia = 0.1 * i
+      break
+    case 'teal':
+      contrast *= 1 + 0.1 * i
+      sat *= 1 + 0.05 * i
+      break
+    case 'fade':
+      contrast *= 1 - 0.15 * i
+      sat *= 1 - 0.2 * i
+      bright *= 1 + 0.04 * i
+      break
+    case 'mono':
+      sat = 0
+      contrast *= 1 + 0.12 * i
+      break
+    case 'cool':
+      hue = -8 * i
+      sat *= 1 + 0.05 * i
+      break
+  }
+  const parts: string[] = []
+  if (Math.abs(bright - 1) > 0.01) parts.push(`brightness(${bright.toFixed(3)})`)
+  if (Math.abs(contrast - 1) > 0.01) parts.push(`contrast(${contrast.toFixed(3)})`)
+  if (Math.abs(sat - 1) > 0.01) parts.push(`saturate(${Math.max(0, sat).toFixed(3)})`)
+  if (sepia > 0.005) parts.push(`sepia(${sepia.toFixed(3)})`)
+  if (Math.abs(hue) > 0.1) parts.push(`hue-rotate(${hue.toFixed(1)}deg)`)
+  return parts.join(' ') || 'none'
+}
+
+/** Tints, vignette and grain drawn on top with blend modes (work in every browser). */
+function lookOverlays(ctx: Ctx2D, W: number, H: number, look: Look, t: number) {
+  const i = look.intensity
+  const tint = (op: GlobalCompositeOperation, color: string, alpha: number) => {
+    if (alpha <= 0.003) return
+    ctx.save()
+    ctx.globalCompositeOperation = op
+    ctx.globalAlpha = Math.min(1, alpha)
+    ctx.fillStyle = color
+    ctx.fillRect(0, 0, W, H)
+    ctx.restore()
+  }
+  const filterless = !supportsFilter(ctx)
+  if (look.filter === 'warm') tint('soft-light', '#ff9b45', 0.32 * i)
+  if (look.filter === 'film') {
+    tint('screen', '#1c1712', 0.5 * i)
+    tint('soft-light', '#ffb36b', 0.18 * i)
+  }
+  if (look.filter === 'teal') {
+    tint('soft-light', '#00a3b4', 0.3 * i)
+    tint('overlay', '#ff8a3d', 0.08 * i)
+  }
+  if (look.filter === 'fade') {
+    tint('screen', '#3a3632', 0.45 * i)
+    tint('soft-light', '#ffd2b0', 0.12 * i)
+  }
+  if (look.filter === 'cool') tint('soft-light', '#4a8dff', 0.25 * i)
+  if (look.filter === 'mono' && filterless) tint('saturation', '#808080', i)
+  if (look.saturation < 0 && filterless) tint('saturation', '#808080', -look.saturation * 0.8)
+  if (look.warmth > 0) tint('soft-light', '#ff9b45', look.warmth * 0.4)
+  if (look.warmth < 0) tint('soft-light', '#4a8dff', -look.warmth * 0.4)
+  if (look.vignette > 0.01) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.hypot(W, H) / 2)
+    g.addColorStop(0, 'rgba(0,0,0,0)')
+    g.addColorStop(1, `rgba(0,0,0,${(0.75 * look.vignette).toFixed(3)})`)
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, H)
+  }
+  if (look.grain > 0.01) {
+    const n = noise()
+    if (n) {
+      ctx.save()
+      ctx.globalCompositeOperation = 'overlay'
+      ctx.globalAlpha = Math.min(1, look.grain * 0.5)
+      const ox = Math.floor((Math.sin(t * 91.7) * 0.5 + 0.5) * 128)
+      const oy = Math.floor((Math.cos(t * 57.3) * 0.5 + 0.5) * 128)
+      const pattern = ctx.createPattern(n, 'repeat')
+      if (pattern) {
+        ctx.translate(-ox, -oy)
+        ctx.fillStyle = pattern
+        ctx.fillRect(0, 0, W + 128, H + 128)
+      }
+      ctx.restore()
+    }
+  }
+}
+
+function makeCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElement | null {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h)
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    return c
+  }
+  return null
+}
+
+let noiseCanvas: OffscreenCanvas | HTMLCanvasElement | null | undefined
+function noise() {
+  if (noiseCanvas !== undefined) return noiseCanvas
+  noiseCanvas = makeCanvas(128, 128)
+  const c = noiseCanvas?.getContext('2d') as Ctx2D | null
+  if (!c || !noiseCanvas) return (noiseCanvas = null)
+  const img = c.createImageData(128, 128)
+  let seed = 7
+  for (let p = 0; p < img.data.length; p += 4) {
+    seed = (seed * 16807) % 2147483647
+    const v = 128 + ((seed % 160) - 80)
+    img.data[p] = img.data[p + 1] = img.data[p + 2] = v
+    img.data[p + 3] = 255
+  }
+  c.putImageData(img, 0, 0)
+  return noiseCanvas
+}
+
+let blurCanvas: OffscreenCanvas | HTMLCanvasElement | null = null
+/** Draws `src` blurred and darkened over the whole frame (downscale-upscale blur works everywhere). */
+function drawBlurredBackground(ctx: Ctx2D, src: FrameSource, W: number, H: number, sw: number, sh: number) {
+  const bw = 24
+  const bh = Math.max(8, Math.round((bw * H) / W))
+  if (!blurCanvas || blurCanvas.width !== bw || blurCanvas.height !== bh) blurCanvas = makeCanvas(bw, bh)
+  const b = blurCanvas?.getContext('2d') as Ctx2D | null
+  if (!b || !blurCanvas) return
+  const scale = Math.max(bw / sw, bh / sh)
+  b.drawImage(src, (bw - sw * scale) / 2, (bh - sh * scale) / 2, sw * scale, sh * scale)
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(blurCanvas, -W * 0.05, -H * 0.05, W * 1.1, H * 1.1)
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'
+  ctx.fillRect(0, 0, W, H)
+  ctx.restore()
 }
 
 const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2)
+const easeOut = (x: number) => 1 - (1 - x) ** 3
+
+/** Camera move for a shot `local` seconds in: scale, offset (fraction of frame) and rotation. */
+function motionAt(motion: string | undefined, local: number, len: number) {
+  const u = len > 0 ? Math.max(0, Math.min(1, local / len)) : 0
+  switch (motion) {
+    case 'zoomIn':
+      return { s: 1 + 0.14 * ease(u), x: 0, y: 0, r: 0 }
+    case 'zoomOut':
+      return { s: 1.14 - 0.14 * ease(u), x: 0, y: 0, r: 0 }
+    case 'panLeft':
+      return { s: 1.14, x: 0.05 - 0.1 * ease(u), y: 0, r: 0 }
+    case 'panRight':
+      return { s: 1.14, x: -0.05 + 0.1 * ease(u), y: 0, r: 0 }
+    case 'punch': {
+      // snap in fast, settle a little, hold
+      const hit = local < 0.12 ? easeOut(local / 0.12) * 0.2 : 0.2 - 0.08 * easeOut(Math.min(1, (local - 0.12) / 0.4))
+      return { s: 1 + hit, x: 0, y: 0, r: 0 }
+    }
+    case 'shake': {
+      const k = Math.max(0, 1 - local / 0.45)
+      return { s: 1.06, x: Math.sin(local * 63) * 0.018 * k, y: Math.cos(local * 47) * 0.014 * k, r: Math.sin(local * 39) * 0.012 * k }
+    }
+    default:
+      return { s: 1, x: 0, y: 0, r: 0 }
+  }
+}
+
+type DrawOpts = { alpha?: number; scale?: number; dx?: number; dy?: number; blur?: number }
+
+/** Draws a shot's frame with its crop, fit, camera move and color filter. */
+function drawShotFrame(ctx: Ctx2D, src: FrameSource, W: number, H: number, ts: TimelineShot, local: number, look: Look, o: DrawOpts = {}) {
+  const [sw, sh] = sourceSize(src)
+  if (!sw || !sh) return
+  const { shot, clip } = ts
+  const m = motionAt(shot.motion, local, shotLength(shot))
+  const fit = shot.fit ?? look.fit
+  const mismatch = Math.abs(sw / sh - W / H) / (W / H) > 0.12
+  ctx.save()
+  ctx.globalAlpha = o.alpha ?? 1
+  ctx.translate(W / 2 + (m.x + (o.dx ?? 0)) * W, H / 2 + (m.y + (o.dy ?? 0)) * H)
+  if (m.r) ctx.rotate(m.r)
+  const k = m.s * (o.scale ?? 1)
+  ctx.scale(k, k)
+  ctx.translate(-W / 2, -H / 2)
+  const filters: string[] = []
+  const f = lookFilter(look, clip)
+  if (f !== 'none') filters.push(f)
+  if (o.blur && o.blur > 0.3) filters.push(`blur(${o.blur.toFixed(1)}px)`)
+  if (fit === 'blur' && mismatch) {
+    drawBlurredBackground(ctx, src, W, H, sw, sh)
+    if (filters.length && supportsFilter(ctx)) ctx.filter = filters.join(' ')
+    const scale = Math.min(W / sw, H / sh) * shot.crop.zoom
+    ctx.drawImage(src, (W - sw * scale) / 2, (H - sh * scale) / 2, sw * scale, sh * scale)
+  } else {
+    if (filters.length && supportsFilter(ctx)) ctx.filter = filters.join(' ')
+    const scale = Math.max(W / sw, H / sh) * shot.crop.zoom
+    const dw = sw * scale
+    const dh = sh * scale
+    // keep the focus point as centered as the frame edges allow
+    const dx = Math.min(0, Math.max(W - dw, W / 2 - shot.crop.focusX * dw))
+    const dy = Math.min(0, Math.max(H - dh, H / 2 - shot.crop.focusY * dh))
+    ctx.drawImage(src, dx, dy, dw, dh)
+  }
+  ctx.restore()
+}
 
 /** Returns true when the main shot's image was available. */
 export function drawFrame(ctx: Ctx2D, W: number, H: number, t: number, tl: Timeline, frame: FrameProvider, style: TextStyle): boolean {
@@ -46,42 +258,76 @@ export function drawFrame(ctx: Ctx2D, W: number, H: number, t: number, tl: Timel
   ctx.fillRect(0, 0, W, H)
   const ts = shotAt(tl, t)
   let drewMain = false
+  const look = tl.look
   if (ts) {
     const local = t - ts.start
-    const drawShot = (s: TimelineShot, srcTime: number) => {
-      const img = frame(s, Math.min(srcTime, s.clip.durationSec - 0.02))
-      if (img) drawCover(ctx, img, W, H, s.shot.crop.focusX, s.shot.crop.focusY, s.shot.crop.zoom, s.clip)
+    const draw = (s: TimelineShot, shotLocal: number, o?: DrawOpts) => {
+      const img = frame(s, Math.max(0, Math.min(sourceTime(s.shot, shotLocal), s.clip.durationSec - 0.02)))
+      if (img) drawShotFrame(ctx, img, W, H, s, shotLocal, look, o)
       if (img && s === ts) drewMain = true
     }
     const tr = ts.shot.transitionIn
-    const inTransition = local < TRANSITION_SEC && ts.prev && tr !== 'cut'
-    if (inTransition && ts.prev) {
-      const p = ease(local / TRANSITION_SEC)
-      const prevSrc = ts.prev.shot.out + local
-      if (tr === 'crossfade') {
-        drawShot(ts.prev, prevSrc)
-        ctx.globalAlpha = p
-        drawShot(ts, ts.shot.in + local)
-        ctx.globalAlpha = 1
-      } else if (tr === 'dip') {
-        if (p < 0.5) drawShot(ts.prev, prevSrc)
-        else drawShot(ts, ts.shot.in + local)
-        ctx.fillStyle = `rgba(0,0,0,${1 - Math.abs(p - 0.5) * 2})`
-        ctx.fillRect(0, 0, W, H)
-      } else {
-        // whip: slide the new shot in from the right
-        ctx.save()
-        ctx.translate(-W * p, 0)
-        drawShot(ts.prev, prevSrc)
-        ctx.translate(W, 0)
-        drawShot(ts, ts.shot.in + local)
-        ctx.restore()
+    const dur = transitionSec(tr)
+    const prev = ts.prev
+    if (prev && dur > 0 && local < dur) {
+      const p = ease(local / dur)
+      const prevLocal = shotLength(prev.shot) + local
+      const blurPx = W * 0.02
+      switch (tr) {
+        case 'crossfade':
+          draw(prev, prevLocal)
+          draw(ts, local, { alpha: p })
+          break
+        case 'dip':
+          if (p < 0.5) draw(prev, prevLocal)
+          else draw(ts, local)
+          ctx.fillStyle = `rgba(0,0,0,${1 - Math.abs(p - 0.5) * 2})`
+          ctx.fillRect(0, 0, W, H)
+          break
+        case 'whip':
+          // fast horizontal pan with motion blur
+          draw(prev, prevLocal, { dx: -p, blur: Math.sin(p * Math.PI) * blurPx * 1.5 })
+          draw(ts, local, { dx: 1 - p, blur: Math.sin(p * Math.PI) * blurPx * 1.5 })
+          break
+        case 'slide':
+          draw(prev, prevLocal, { dy: -p })
+          draw(ts, local, { dy: 1 - p })
+          break
+        case 'zoom':
+          // push into the old shot, land on the new one
+          draw(prev, prevLocal, { scale: 1 + 0.6 * p, blur: p * blurPx })
+          draw(ts, local, { alpha: Math.min(1, p * 1.6), scale: 1.3 - 0.3 * p, blur: (1 - p) * blurPx })
+          break
+        case 'flash':
+          if (p < 0.5) draw(prev, prevLocal)
+          else draw(ts, local)
+          break
+        case 'blur':
+          draw(prev, prevLocal, { blur: Math.sin(p * Math.PI) * blurPx * 1.4 })
+          draw(ts, local, { alpha: p, blur: Math.sin(p * Math.PI) * blurPx * 1.4 })
+          break
+        default:
+          draw(ts, local)
       }
     } else {
-      drawShot(ts, ts.shot.in + local)
+      draw(ts, local)
+    }
+    lookOverlays(ctx, W, H, look, t)
+    if (prev && tr === 'flash' && local < dur) {
+      const a = 1 - Math.abs(local / dur - 0.5) * 2
+      ctx.fillStyle = `rgba(255,255,255,${Math.max(0, a) ** 0.7})`
+      ctx.fillRect(0, 0, W, H)
     }
   }
   drawOverlays(ctx, W, H, t, tl, style)
+  // fade from / to black
+  let black = 0
+  if (tl.fades.in && t < FADE_IN_SEC) black = 1 - t / FADE_IN_SEC
+  if (tl.fades.out && t > tl.duration - FADE_OUT_SEC) black = Math.max(black, (t - (tl.duration - FADE_OUT_SEC)) / FADE_OUT_SEC)
+  if (black > 0.001) {
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(1, black).toFixed(3)})`
+    ctx.fillRect(0, 0, W, H)
+  }
   return drewMain
 }
 

@@ -65,7 +65,13 @@ Output one scene per narration line, in the same order, each with 1-3 shots. Bet
 - Don't reuse the same footage twice. Spread usage across clips; every mustInclude clip appears.
 - The first scene should be visually strong (it carries the hook).
 - clipAudio: under narration "mute" by default, "duck" for nice ambient sound; in footage-only scenes "duck" (or "full" for someone talking); "full" only for a talking_head clip whose own speech should be heard (narration doesn't cover it).
-- transitionIn: "cut" by default. Chill/cinematic vibes may use "crossfade" between scenes; upbeat uses quick cuts and an occasional "whip". The first shot is always "cut".
+- A shot lasts (out - in) / speed seconds. At speed 0.5 it uses half as much footage per second of video; at 2 it uses twice as much. Scene lengths count the shot lengths after speed.
+
+Make it feel edited, like a creator's TikTok, within the template's style (its allowed transitions, moves, speeds and ramps are listed; use nothing else):
+- transitionIn (how the shot enters): "cut" (default, and always for the first shot), "crossfade" (soft, time passing), "dip" (through black, a new chapter), "whip" (fast pan, energy or a change of place), "slide" (push up, next thing), "zoom" (push through into a new place or reveal), "flash" (white flash, a beat drop or big moment), "blur" (dreamy dissolve). Put transitions where the story moves on, mostly between scenes; keep cuts inside a scene unless the template is fast.
+- motion (camera move on the shot): "zoomIn" (slow push, draws the eye to the subject), "zoomOut" (reveal), "panLeft"/"panRight" (landscapes, streets, wide shots; pan the way things move), "punch" (snap zoom on a reaction, a face, food, a landmark), "shake" (a hit: jump, splash, beat drop), "none" (talking to camera or already moving shots).
+- speed / ramp, mostly on footage-only scenes: slow motion 0.5 for beautiful details (water, hair, sunsets, pouring, hands); 1.5-2 for walking, driving, crowds, long actions; ramp "montage" (fast-slow-fast) or "bullet" (stronger) on action moments; "hero" (eases into slow motion) on the best shot. Keep talking clips and narrated scenes at speed 1 unless the shot is plain B-roll. A ramp mutes the clip's own sound.
+- Vary it: don't repeat the same transition or move three times in a row, and leave some plain shots so the effects land.
 - focusX/focusY: copy the subject position from the moment; it's used to crop horizontal footage to vertical.
 - note: one short friendly sentence about the edit ("Opened on the skyline, kept the bike ride fast").
 
@@ -75,6 +81,19 @@ If the user gives feedback about the current plan, change what they asked for an
 
 export function planUserText(req: PlanRequest): string {
   const parts = [`Aspect: ${req.aspect}`, `Vibe: ${req.vibe}`, `Narrated: ${req.narrated ? 'yes' : 'no'}`]
+  if (req.template) {
+    const t = req.template
+    parts.push(
+      [
+        `Template: ${t.name}. ${t.guide}`,
+        `  allowed transitions: ${t.transitions.join(', ')}`,
+        `  allowed motions: ${t.motions.join(', ')}`,
+        `  allowed speeds: 1${t.speeds.length ? `, ${t.speeds.join(', ')}` : ''}`,
+        `  allowed ramps: none${t.ramps.length ? `, ${t.ramps.join(', ')}` : ''}`,
+        `  footage-only shots: about ${t.shotSec} s each`,
+      ].join('\n'),
+    )
+  }
   if (req.lines.length) {
     const speech = req.lines.reduce((a, l) => a + l.sceneSec, 0)
     parts.push(
@@ -156,5 +175,9 @@ export function planChecklist(req: PlanRequest): string {
     '- the very first shot has transitionIn "cut"',
     '- prefer clips whose description matches each line; avoid clips marked unusable',
     '- every clip not marked unusable appears at least once',
+    req.template
+      ? `- effects only from the template: transitions ${req.template.transitions.join('/')}; motions ${req.template.motions.join('/')}; speeds 1${req.template.speeds.map((x) => `/${x}`).join('')}; ramps none${req.template.ramps.map((x) => `/${x}`).join('')}`
+      : '- motion "none", speed 1, ramp "none" unless asked',
+    '- a shot lasts (out − in) / speed seconds; use that when adding up scenes',
   ].join('\n')
 }

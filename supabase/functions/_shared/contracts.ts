@@ -73,7 +73,13 @@ export type PlanRequest = {
   currentPlan?: PlanResponse
   /** validation errors from a previous attempt */
   previousIssues?: string[]
+  /** edit template (transitions, effects, pacing) */
+  template?: PlanTemplate
 }
+
+export type TransitionWire = 'cut' | 'crossfade' | 'dip' | 'whip' | 'slide' | 'zoom' | 'flash' | 'blur'
+export type MotionWire = 'none' | 'zoomIn' | 'zoomOut' | 'panLeft' | 'panRight' | 'punch' | 'shake'
+export type RampWire = 'none' | 'montage' | 'hero' | 'bullet'
 
 export type PlanShotWire = {
   clipId: string
@@ -82,7 +88,26 @@ export type PlanShotWire = {
   focusX: number
   focusY: number
   clipAudio: 'mute' | 'duck' | 'full'
-  transitionIn: 'cut' | 'crossfade' | 'dip' | 'whip'
+  transitionIn: TransitionWire
+  /** camera move; "none" for a still frame */
+  motion: MotionWire
+  /** playback speed, 1 = normal; the shot lasts (out - in) / speed */
+  speed: number
+  ramp: RampWire
+}
+
+/** The edit template's style rules, for the AI editor. */
+export type PlanTemplate = {
+  name: string
+  /** how this template cuts, in plain words */
+  guide: string
+  transitions: TransitionWire[]
+  motions: MotionWire[]
+  /** speeds the editor may use besides 1 */
+  speeds: number[]
+  ramps: RampWire[]
+  /** typical footage-only shot length, seconds */
+  shotSec: number
 }
 
 export type PlanResponse = {

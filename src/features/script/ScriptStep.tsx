@@ -21,7 +21,8 @@ import { stepIndex, stepPath } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { generateScript } from './scriptActions'
-import { ASPECTS, VIBES } from './settingsOptions'
+import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
+import { resolveTemplate } from '@/domain/templates'
 
 export function ScriptStep() {
   const { project, updateProject } = useProject()
@@ -161,8 +162,14 @@ export function ScriptStep() {
 
           <aside className="w-full max-w-[380px] flex-[1_1_300px] space-y-6 rounded-[var(--radius-panel)] bg-surface p-[22px] md:sticky md:top-[92px]">
             <ChipGroup label="Format" options={ASPECTS} value={project.settings.aspect} onChange={(aspect) => updateProject((p) => ({ settings: { ...p.settings, aspect } }))} />
-            <ChipGroup label="Vibe" options={VIBES} value={project.settings.vibe} onChange={(vibe) => updateProject((p) => ({ settings: { ...p.settings, vibe } }))} />
-            <p className="text-[13px] font-medium text-faint">Auto picks from your clips. You can change all of this later.</p>
+            <ChipGroup
+              label="Template"
+              options={TEMPLATE_OPTIONS}
+              value={project.settings.template ?? 'auto'}
+              onChange={(template) => updateProject((p) => ({ settings: { ...p.settings, template, vibe: template === 'auto' ? 'auto' : resolveTemplate(template, p.settings.vibe).vibe } }))}
+            />
+            <p className="-mt-3 text-[13px] font-medium text-muted">{templateHint(project.settings.template ?? 'auto')}</p>
+            <p className="text-[13px] font-medium text-faint">Sets the transitions, effects, color and captions the AI edits with. You can switch it later.</p>
           </aside>
         </div>
       </StepPage>

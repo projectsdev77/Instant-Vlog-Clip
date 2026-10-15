@@ -12,7 +12,7 @@ import { applyCase, STYLES, type TextStyle } from '@/render/styles'
 import { useProject } from '@/store/projectStore'
 import { changeVoice } from './editActions'
 
-export type PanelId = 'scenes' | 'voice' | 'music' | 'style'
+export type PanelId = 'scenes' | 'look' | 'voice' | 'music' | 'style'
 
 const rowBase = 'flex w-full items-center gap-3 rounded-[var(--radius-card)] p-3 text-left transition duration-150 ease-ember'
 const rowSel = 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]'

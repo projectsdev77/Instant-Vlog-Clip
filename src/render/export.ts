@@ -14,7 +14,8 @@ import {
 } from 'mediabunny'
 import type { Clip, Project } from '@/domain/types'
 import type { Timeline, TimelineShot } from '@/domain/timeline'
-import { TRANSITION_SEC } from '@/domain/timeline'
+import { transitionSec } from '@/domain/timeline'
+import { shotLength, sourceTime } from '@/domain/shots'
 import { getMedia } from '@/lib/mediaStore'
 import { openInput } from '@/media/input'
 import { drawFrame, type FrameSource } from './compositor'
@@ -111,7 +112,7 @@ export async function exportVideo(tl: Timeline, project: Project, onProgress: (f
         const first = Math.ceil((ts.start - 1e-6) * FPS)
         const last = Math.ceil((ts.end - 1e-6) * FPS) - 1
         const times: number[] = []
-        for (let f = first; f <= last; f++) times.push(Math.min(ts.clip.durationSec - 0.02, ts.shot.in + (f / FPS - ts.start)))
+        for (let f = first; f <= last; f++) times.push(Math.max(0, Math.min(ts.clip.durationSec - 0.02, sourceTime(ts.shot, f / FPS - ts.start))))
         await iter?.return(undefined)
         iter = sink.canvasesAtTimestamps(times)
       }
@@ -122,9 +123,10 @@ export async function exportVideo(tl: Timeline, project: Project, onProgress: (f
 
       let prevFrame: FrameSource | null = null
       const local = t - cur.start
-      if (cur.prev && cur.shot.transitionIn !== 'cut' && local < TRANSITION_SEC) {
+      if (cur.prev && local < transitionSec(cur.shot.transitionIn)) {
         const { sink } = await getSource(cur.prev.clip)
-        prevFrame = (await sink.getCanvas(Math.min(cur.prev.clip.durationSec - 0.02, cur.prev.shot.out + local)))?.canvas ?? null
+        const p = cur.prev.shot
+        prevFrame = (await sink.getCanvas(Math.max(0, Math.min(cur.prev.clip.durationSec - 0.02, sourceTime(p, shotLength(p) + local)))))?.canvas ?? null
       }
       drawFrame(ctx, width, height, t, tl, (s: TimelineShot) => (s === cur ? main : s === cur.prev ? prevFrame : null), style)
       await videoSource.add(t, 1 / FPS)

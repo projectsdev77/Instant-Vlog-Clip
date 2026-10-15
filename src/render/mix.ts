@@ -53,14 +53,16 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
   }
 
   // Clip sound
-  const clipShots = tl.shots.filter((s) => s.shot.clipAudio !== 'mute' && s.clip.hasAudio)
+  // Freeze frames and speed ramps have no clip sound; constant speeds play it faster/slower.
+  const clipShots = tl.shots.filter((s) => s.shot.clipAudio !== 'mute' && s.clip.hasAudio && !s.shot.hold && (s.shot.ramp ?? 'none') === 'none' && (s.shot.volume ?? 1) > 0)
   const clipBufs = await Promise.all(clipShots.map(async (s) => ({ s, buf: await clipRange(s.clip.mediaKey, s.shot.in, s.shot.out) })))
   for (const { s, buf } of clipBufs) {
     if (!buf) continue
     const src = ctx.createBufferSource()
     src.buffer = buf
+    src.playbackRate.value = s.shot.speed ?? 1
     const g = ctx.createGain()
-    const level = s.shot.clipAudio === 'full' ? 1 : 0.3
+    const level = (s.shot.clipAudio === 'full' ? 1 : 0.3) * (s.shot.volume ?? 1)
     const len = s.end - s.start
     const fade = Math.min(0.08, len / 4)
     g.gain.setValueAtTime(0, s.start)
@@ -75,7 +77,8 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
     g.gain.setValueAtTime(level, Math.max(s.start + fade, s.end - fade))
     g.gain.linearRampToValueAtTime(0, s.end)
     src.connect(g).connect(ctx.destination)
-    src.start(s.start, 0, len)
+    src.start(s.start, 0)
+    src.stop(s.end)
   }
 
   // Music, ducked under narration and under clips playing their own speech
