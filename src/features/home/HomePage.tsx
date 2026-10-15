@@ -15,6 +15,8 @@ import type { Project } from '@/domain/types'
 import { aiMode } from '@/ai/mode'
 import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
+import { CoverVideo } from './CoverVideo'
+import { Captions, Lock, Mic, Music2, Smartphone } from 'lucide-react'
 
 function vlogLength(p: Project): number {
   const edit = p.currentEdit >= 0 ? p.edits[p.currentEdit] : undefined
@@ -110,17 +112,12 @@ export function HomePage() {
         </ol>
       </section>
 
-      <section className="relative mx-auto mt-10 max-w-[1120px] px-4 md:px-10">
-        <div className="mb-5 flex items-baseline justify-between">
-          <h2 className="title-2">Your vlogs</h2>
-          {list.length > 0 && <span className="text-[14px] text-muted">{list.length} made</span>}
-        </div>
-        {firstVisit ? (
-          <div className="rounded-[var(--radius-panel)] bg-surface p-6">
-            <div className="text-[16px] font-semibold">Your vlogs will show up here</div>
-            <p className="mt-1 text-muted">Each vlog you make is saved on this device, so you can come back and change it later.</p>
+      {list.length > 0 && (
+        <section className="relative mx-auto mt-10 max-w-[1120px] px-4 md:px-10">
+          <div className="mb-5 flex items-baseline justify-between">
+            <h2 className="title-2">Your vlogs</h2>
+            <span className="text-[14px] text-muted">{list.length} made</span>
           </div>
-        ) : (
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-[18px]">
             {list.map((p, i) => (
               <li key={p.id} className="min-w-0">
@@ -151,6 +148,44 @@ export function HomePage() {
               </button>
             </li>
           </ul>
+        </section>
+      )}
+
+      <section className="relative mx-auto mt-16 max-w-[1120px] px-4 md:mt-20 md:px-10" aria-labelledby="what-you-get">
+        <div className="eyebrow">What you get</div>
+        <h2 id="what-you-get" className="title-1 mt-2 max-w-[18ch]">A vlog that sounds like you made it.</h2>
+        <ul className="mt-8 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
+          {FEATURES.map((f) => (
+            <li key={f.title} className="rounded-[var(--radius-panel)] bg-surface p-6">
+              <span className="grid size-11 place-items-center rounded-xl bg-accent-soft text-ember-300">
+                <f.icon className="size-5" strokeWidth={2.2} />
+              </span>
+              <div className="mt-5 text-[17px] font-bold">{f.title}</div>
+              <p className="mt-1.5 text-[15px] text-muted">{f.body}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="relative mx-auto mt-4 max-w-[1120px] px-4 md:px-10">
+        <div className="flex flex-col gap-6 rounded-[var(--radius-panel)] bg-surface p-6 md:flex-row md:items-center md:gap-10 md:p-10">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white text-ink">
+            <Lock className="size-6" strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="title-2">Your videos never leave your device.</h2>
+            <p className="mt-2 max-w-[62ch] text-[16px] text-muted">Clips are read and the final video is made right in your browser. The AI only sees small preview frames and the words of your script, never your footage.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative mx-auto mt-16 max-w-[1120px] px-4 text-center md:mt-24 md:px-10">
+        <h2 className="mx-auto max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.04em] text-balance">Your camera roll is full of vlogs.</h2>
+        <p className="mx-auto mt-4 max-w-[44ch] text-[17px] text-muted">Pick a few clips from today and see it come together in about a minute.</p>
+        {desktop && (
+          <div className="mt-8 flex justify-center">
+            <NewVlogButton onClick={start} />
+          </div>
         )}
       </section>
 
@@ -183,6 +218,13 @@ export function HomePage() {
     </div>
   )
 }
+
+const FEATURES = [
+  { icon: Mic, title: 'Narrated by AI or by you', body: 'Pick one of six natural voices, or read your lines with the built-in teleprompter.' },
+  { icon: Captions, title: 'Captions that follow along', body: 'Every word appears as it’s spoken, in a style you choose.' },
+  { icon: Music2, title: 'Music that knows when to dip', body: 'A soundtrack for the mood, quieter whenever someone talks.' },
+  { icon: Smartphone, title: 'Ready to post', body: 'Vertical by default, sized for TikTok, Reels and Shorts. Share straight from your phone.' },
+]
 
 function NewVlogButton({ onClick, block }: { onClick: () => void; block?: boolean }) {
   return (
@@ -232,17 +274,22 @@ function Cover({ item, width, big, className, onOpen }: { item: CoverItem; width
       style={{ width, background: item.bg }}
     >
       {item.image && <img src={item.image} alt="" className="absolute inset-0 size-full object-cover" />}
+      {!item.image && item.video && <CoverVideo item={item} overlay={big && !!item.captions} />}
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-black/60" />
       {big && (
         <>
           {item.tag && <span className="absolute top-3.5 left-3.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold tracking-wide text-ink uppercase">{item.tag}</span>}
-          <span className="absolute top-1/2 left-1/2 grid size-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-ink">
-            <Play className="ml-0.5 size-5" fill="currentColor" />
-          </span>
-          <span className="absolute inset-x-4 bottom-4">
-            <span className="block text-[17px] leading-tight font-bold">{item.title}</span>
-            <span className="mt-1 block text-[12px] font-medium text-white/80">{item.meta}</span>
-          </span>
+          {!item.captions && (
+            <span className="absolute top-1/2 left-1/2 grid size-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-ink">
+              <Play className="ml-0.5 size-5" fill="currentColor" />
+            </span>
+          )}
+          {!item.captions && (
+            <span className="absolute inset-x-4 bottom-4">
+              <span className="block text-[17px] leading-tight font-bold">{item.title}</span>
+              <span className="mt-1 block text-[12px] font-medium text-white/80">{item.meta}</span>
+            </span>
+          )}
         </>
       )}
       {!big && item.meta && <span className="tabular absolute bottom-3 left-3 text-[12px] font-semibold">{item.meta.split(' · ').pop()}</span>}
