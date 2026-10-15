@@ -1,6 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.0'
 
 export class AuthError extends Error {}
+/** The server is missing setup (database migration). */
+export class SetupError extends Error {}
+
 export class QuotaError extends Error {}
 
 /** What a request costs against the caller's limits. */
@@ -37,7 +40,10 @@ const LIFETIME = '1970-01-01'
 
 async function bump(subject: string, day: string, field: 'generations' | 'revisions' | 'calls', limit: number): Promise<boolean> {
   const { data, error } = await db().rpc('bump_ai_usage', { p_subject: subject, p_day: day, p_field: field, p_limit: limit })
-  if (error) throw new Error(`usage check failed: ${error.message}`)
+  if (error) {
+    console.error('bump_ai_usage failed', error)
+    throw new SetupError('Usage limits are not set up: run `supabase db push` (or set QUOTAS_DISABLED=true while developing).')
+  }
   return data === true
 }
 
