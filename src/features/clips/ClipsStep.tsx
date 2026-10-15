@@ -12,6 +12,8 @@ import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLay
 import { stepIndex, stepPath } from '@/features/project/steps'
 import { importFiles } from './importClips'
 import { ACCEPT_ATTR, LIMITS } from './limits'
+import { ChipGroup } from '@/components/ui/Chip'
+import { LENGTHS } from '@/features/script/settingsOptions'
 
 export function ClipsStep() {
   const { project, clips, updateClip, removeClip, updateProject } = useProject()
@@ -107,6 +109,7 @@ export function ClipsStep() {
                   </button>
                 </li>
               </ul>
+              <LengthPicker />
             </>
           )}
         </div>
@@ -168,5 +171,25 @@ function ClipTile({ clip, onStar, onRemove }: { clip: Clip; onStar: () => void; 
         </>
       )}
     </li>
+  )
+}
+
+function LengthPicker() {
+  const { project, clips, updateProject } = useProject()
+  if (!project) return null
+  const usable = clips.filter((c) => c.status !== 'error' && c.status !== 'importing' && c.durationSec > 0)
+  const footage = usable.reduce((a, c) => a + c.durationSec, 0)
+  const target = project.settings.targetSec
+  return (
+    <section className="mt-8 max-w-[560px] rounded-[var(--radius-panel)] bg-surface p-[22px]" aria-label="Video length">
+      <ChipGroup label="How long?" options={LENGTHS} value={target} onChange={(targetSec) => updateProject((p) => ({ settings: { ...p.settings, targetSec } }))} />
+      <p className="mt-3 text-[14px] font-medium text-muted">
+        {usable.length > 0 && <span className="tabular">{`${usable.length} clip${usable.length > 1 ? 's' : ''} · ${formatDuration(footage)} of footage. `}</span>}
+        {target === 'auto' ? 'Auto fits your clips and narration.' : 'Your narration plays inside this; the rest is your clips with their own sound and music.'} Every good clip shows up at least once.
+      </p>
+      {target !== 'auto' && usable.length > 0 && footage < target * 0.9 && (
+        <p className="mt-2 text-[14px] font-medium text-ember-300">That’s more than your footage, so the vlog may come out shorter. Add a few more clips for the full {target}s.</p>
+      )}
+    </section>
   )
 }

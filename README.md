@@ -110,6 +110,8 @@ Edit ──────► real-time canvas preview, scene cards, "Tell the AI",
 Export ────► WebCodecs + Mediabunny, frame-accurate, on device → MP4/WebM → share sheet
 ```
 
+**Length.** The user picks it on the Clips step (Auto, 15, 30 or 60 s). Each narration line gets a scene exactly as long as the line; the rest of the length is footage-only scenes (the clips' own sound under the music), spread between the lines. Every usable clip appears at least once, even if that runs past the chosen length, and speech is never cut. Auto means the narration plus room for every clip, or, with no script, a length that fits the footage.
+
 The **edit plan** ([src/domain/types.ts](src/domain/types.ts)) is the single source of truth. The AI only proposes one; [src/domain/repair.ts](src/domain/repair.ts) clamps it to real clip bounds, makes each scene exactly cover its narration line, removes repeated footage and fills gaps, and [src/domain/fallback.ts](src/domain/fallback.ts) builds a rule-based edit when the AI is unavailable. The preview and the exporter share one compositor ([src/render/compositor.ts](src/render/compositor.ts)), so what you see is what you export.
 
 ### Layout

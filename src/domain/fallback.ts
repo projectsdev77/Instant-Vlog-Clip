@@ -1,6 +1,6 @@
 import { uid } from './ids'
 import { rankedMoments } from './moments'
-import { targetTotalSec, vibeShotLength, vibeTransition, type PlanContext } from './planContext'
+import { videoTargetSec, vibeShotLength, vibeTransition, type PlanContext } from './planContext'
 import { fitShots, isTalking, shotFromMoment, sumShots } from './shots'
 import { lineSceneDuration } from './timing'
 import type { Clip, ClipAudioMode, EditPlan, Moment, Scene, ScriptLine, Shot } from './types'
@@ -31,7 +31,7 @@ function chronological(clips: Clip[]): Clip[] {
   return [...clips].sort((a, b) => (a.recordedAt ?? '').localeCompare(b.recordedAt ?? '') || a.addedAt - b.addedAt)
 }
 
-export function audioModeFor(clip: Clip, narrated: boolean): ClipAudioMode {
+export function audioModeFor(clip: Clip | undefined, narrated: boolean): ClipAudioMode {
   if (isTalking(clip)) return narrated ? 'duck' : 'full'
   return narrated ? 'mute' : 'duck'
 }
@@ -95,7 +95,7 @@ export function planFallback(ctx: PlanContext): EditPlan {
       scenes.push({ id: uid('sc_'), lineId: line.id, shots: fitted.shots })
     })
   } else {
-    const total = targetTotalSec(ctx.settings)
+    const total = videoTargetSec(ctx)
     const len = vibeShotLength(ctx.settings)
     const picks: Candidate[] = []
     let acc = 0

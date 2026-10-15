@@ -34,8 +34,9 @@ const mapScenes = (plan: EditPlan, fn: (s: Scene[]) => Scene[]): EditPlan => ({ 
 export async function moveScene(from: number, to: number) {
   const { project, plan } = requireEdit()
   if (to < 0 || to >= plan.scenes.length) return
-  const lineOrder = arrayMove(plan.scenes, from, to).map((s) => s.lineId)
-  if (project.script && lineOrder.every(Boolean)) {
+  // Footage-only scenes have no line; the narrated ones set the script order.
+  const lineOrder = arrayMove(plan.scenes, from, to).map((s) => s.lineId).filter(Boolean)
+  if (project.script && lineOrder.length === project.script.lines.length) {
     const byId = new Map(project.script.lines.map((l) => [l.id, l]))
     await state().updateProject({ script: { ...project.script, lines: lineOrder.map((id) => byId.get(id!)!).filter(Boolean) } })
   }

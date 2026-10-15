@@ -21,7 +21,7 @@ import { stepIndex, stepPath } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { generateScript } from './scriptActions'
-import { ASPECTS, LENGTHS, VIBES } from './settingsOptions'
+import { ASPECTS, VIBES } from './settingsOptions'
 
 export function ScriptStep() {
   const { project, updateProject } = useProject()
@@ -161,7 +161,6 @@ export function ScriptStep() {
 
           <aside className="w-full max-w-[380px] flex-[1_1_300px] space-y-6 rounded-[var(--radius-panel)] bg-surface p-[22px] md:sticky md:top-[92px]">
             <ChipGroup label="Format" options={ASPECTS} value={project.settings.aspect} onChange={(aspect) => updateProject((p) => ({ settings: { ...p.settings, aspect } }))} />
-            <ChipGroup label="Length" options={LENGTHS} value={project.settings.targetSec} onChange={(targetSec) => updateProject((p) => ({ settings: { ...p.settings, targetSec } }))} />
             <ChipGroup label="Vibe" options={VIBES} value={project.settings.vibe} onChange={(vibe) => updateProject((p) => ({ settings: { ...p.settings, vibe } }))} />
             <p className="text-[13px] font-medium text-faint">Auto picks from your clips. You can change all of this later.</p>
           </aside>

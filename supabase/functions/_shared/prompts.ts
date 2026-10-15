@@ -55,13 +55,16 @@ export function scriptUserText(req: ScriptRequest): string {
 
 export const PLAN_SYSTEM = `You are the editor of a short vertical vlog. You pick which footage plays under each line of narration.
 
-Output one scene per narration line, in the same order, each with 1-3 shots. Rules:
-- A scene's shots must add up to its sceneSec (the narration's length). Shots are ranges [in, out] in seconds inside a clip from the catalog, within 0..durationSec.
+Output one scene per narration line, in the same order, each with 1-3 shots. Between and after narrated scenes, add footage-only scenes (lineId "") so the whole video adds up to about targetSec: these are moments where the footage breathes, with the clip's own sound under the music, like B-roll in a real vlog. Rules:
+- A narrated scene's shots must add up to its sceneSec (the narration's length). Footage-only scenes have one shot each, paced by the vibe.
+- Start with the first narrated scene (the hook). Spread footage-only scenes through the video, next to the narration they fit best; give the end a little room after the outro.
+- Show every usable clip at least once (narrated or footage-only).
+- Shots are ranges [in, out] in seconds inside a clip from the catalog, within 0..durationSec.
 - Shots are 0.8-6 s. Talking-to-camera clips may run longer.
 - Match footage to the line's meaning and visualIntent. Prefer high-scoring moments; never use clips marked unusable unless nothing else fits.
 - Don't reuse the same footage twice. Spread usage across clips; every mustInclude clip appears.
 - The first scene should be visually strong (it carries the hook).
-- clipAudio: "mute" under narration by default, "duck" for nice ambient sound, "full" only for a talking_head clip whose own speech should be heard (narration doesn't cover it).
+- clipAudio: under narration "mute" by default, "duck" for nice ambient sound; in footage-only scenes "duck" (or "full" for someone talking); "full" only for a talking_head clip whose own speech should be heard (narration doesn't cover it).
 - transitionIn: "cut" by default. Chill/cinematic vibes may use "crossfade" between scenes; upbeat uses quick cuts and an occasional "whip". The first shot is always "cut".
 - focusX/focusY: copy the subject position from the moment; it's used to crop horizontal footage to vertical.
 - note: one short friendly sentence about the edit ("Opened on the skyline, kept the bike ride fast").
@@ -73,8 +76,10 @@ If the user gives feedback about the current plan, change what they asked for an
 export function planUserText(req: PlanRequest): string {
   const parts = [`Aspect: ${req.aspect}`, `Vibe: ${req.vibe}`, `Narrated: ${req.narrated ? 'yes' : 'no'}`]
   if (req.lines.length) {
+    const speech = req.lines.reduce((a, l) => a + l.sceneSec, 0)
     parts.push(
       `Narration lines:\n${req.lines.map((l) => `- lineId=${l.lineId} sceneSec=${l.sceneSec.toFixed(2)} text="${l.text}" visualIntent="${l.visualIntent}"`).join('\n')}`,
+      `Target length: ${req.targetSec} s (narration ${speech.toFixed(1)} s, so about ${Math.max(0, req.targetSec - speech).toFixed(1)} s of footage-only scenes)`,
     )
   } else {
     parts.push(`No narration. Target length: ${req.targetSec} s`)
@@ -140,7 +145,7 @@ export function scriptChecklist(req: ScriptRequest): string {
 export function planChecklist(req: PlanRequest): string {
   const ids = req.catalog.map((c) => `${c.clipId} (0–${c.durationSec.toFixed(1)}s)`).join(', ')
   const scenes = req.lines.length
-    ? req.lines.map((l, i) => `  ${i + 1}. lineId ${l.lineId}: shots add up to ${l.sceneSec.toFixed(2)}s`).join('\n')
+    ? `${req.lines.map((l, i) => `  ${i + 1}. lineId ${l.lineId}: shots add up to ${l.sceneSec.toFixed(2)}s`).join('\n')}\n  plus footage-only scenes (lineId "") between and after them, so the total is about ${req.targetSec}s`
     : `  scenes with lineId "" adding up to about ${req.targetSec}s`
   return [
     'Before answering, check:',
@@ -150,5 +155,6 @@ export function planChecklist(req: PlanRequest): string {
     '- no two shots use overlapping time ranges of the same clip',
     '- the very first shot has transitionIn "cut"',
     '- prefer clips whose description matches each line; avoid clips marked unusable',
+    '- every clip not marked unusable appears at least once',
   ].join('\n')
 }

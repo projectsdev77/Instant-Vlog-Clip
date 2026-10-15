@@ -64,7 +64,7 @@ export type PlanRequest = {
   narrated: boolean
   /** narration lines in order; empty for a music-only vlog */
   lines: PlanLine[]
-  /** total length to aim for when there are no lines */
+  /** total length to aim for, seconds (narrated scenes plus footage-only scenes) */
   targetSec: number
   catalog: CatalogEntry[]
   /** plain-language change request from the user ("make it punchier") */

@@ -2,8 +2,7 @@ import type { CatalogEntry, PlanLine, PlanResponse } from '@shared/contracts.ts'
 import { ai, AiError } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
 import { planFallback } from '@/domain/fallback'
-import type { PlanContext } from '@/domain/planContext'
-import { targetTotalSec } from '@/domain/planContext'
+import { videoTargetSec, type PlanContext } from '@/domain/planContext'
 import { repairPlan } from '@/domain/repair'
 import { hasFreshAudio, lineSceneDuration } from '@/domain/timing'
 import type { EditPlan, Project } from '@/domain/types'
@@ -56,7 +55,7 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     vibe: ctx.settings.vibe,
     narrated: ctx.voiceMode !== 'none' && lines.length > 0,
     lines,
-    targetSec: targetTotalSec(ctx.settings),
+    targetSec: Math.round(videoTargetSec(ctx)),
     catalog,
     feedback: opts.feedback,
     currentPlan: opts.current ? toWire(opts.current) : undefined,
@@ -76,7 +75,7 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     if (!result.usedFallback && (serious.length === 0 || attempt === 1)) return { plan: result.plan, usedFallback: false }
     previousIssues = result.issues
   }
-  const plan = planFallback(ctx)
+  const plan = repairPlan(toWire(planFallback(ctx)), ctx, 'fallback').plan
   return { plan: { ...plan, note: "Made a simple edit because the AI editor wasn't available." }, usedFallback: true }
 }
 
