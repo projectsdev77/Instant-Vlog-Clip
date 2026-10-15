@@ -146,7 +146,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 Built and verified in Chromium with the demo AI: the full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling. Unit tests cover the edit-plan logic and the demo AI.
 
 Not yet verified:
-- **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.
+- **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs (ElevenLabs default voices) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.
 - **Real devices.** Not yet tested on a physical iPhone or Android phone, or with large 4K/HEVC phone clips.
 
 Not built yet (see spec):

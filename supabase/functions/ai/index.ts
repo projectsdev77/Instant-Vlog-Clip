@@ -21,7 +21,7 @@ import {
 } from '../_shared/prompts.ts'
 import { analyzeClipSchema, planSchema, scriptSchema } from '../_shared/schemas.ts'
 import { generateJson, RateLimitError, RefusalError } from './llm.ts'
-import { synthesize, transcribe } from './elevenlabs.ts'
+import { synthesize, transcribe, VoiceServiceError } from './elevenlabs.ts'
 import { authorize, QuotaError, AuthError, type UsageKind } from './quota.ts'
 
 const CORS = {
@@ -106,6 +106,7 @@ Deno.serve(async (request) => {
     if (e instanceof QuotaError) return fail('quota', e.message, 429)
     if (e instanceof RefusalError) return fail('refusal', e.message, 422)
     if (e instanceof RateLimitError) return fail('upstream', e.message, 503)
+    if (e instanceof VoiceServiceError) return fail('upstream', e.message, 502)
     console.error(body.action, e)
     return fail('upstream', 'The AI service had a problem. Please try again.', 502)
   }

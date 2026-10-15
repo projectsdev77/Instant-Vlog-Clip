@@ -109,8 +109,8 @@ export type AiErrorBody = { error: string; code: 'quota' | 'auth' | 'bad_request
 export type VoiceOption = { id: string; name: string; description: string; gender: 'female' | 'male'; accent: 'American' | 'British' }
 
 /**
- * Stock English voices. IDs are ElevenLabs premade voices; check them against
- * the ElevenLabs voice library before launch and swap freely.
+ * Stock English voices, mapped to ElevenLabs' current default voices, which
+ * every account (free included) can use through the API. Swap freely.
  */
 export const VOICES: VoiceOption[] = [
   { id: 'ava', name: 'Ava', description: 'Warm and upbeat', gender: 'female', accent: 'American' },
@@ -123,10 +123,10 @@ export const VOICES: VoiceOption[] = [
 
 /** App voice id → ElevenLabs voice id. */
 export const ELEVENLABS_VOICE_IDS: Record<string, string> = {
-  ava: '21m00Tcm4TlvDq8ikWAM',
-  leo: 'pNInz6obpgDQGcFmaJgB',
-  mia: 'MF3mGyEYCl7XYWbV9V5O',
-  sam: 'TxGEqnHWrfWFTfGW9XjX',
-  grace: 'XB0fDUnXU5powFXDhCwa',
-  oliver: 'onwK4e9ZLuTAKqWW03F9',
+  ava: 'EXAVITQu4vr4xnSDxMaL', // Sarah
+  leo: 'nPczCjzI2devNBz1zQrb', // Brian
+  mia: 'cgSgspJ2msm6clMCkdW9', // Jessica
+  sam: 'iP95p4xoKVk53GoZ742B', // Chris
+  grace: 'Xb7hH8MSUJpSbSDYk0k2', // Alice
+  oliver: 'JBFqnCBsd6RMkjVDRZzb', // George
 }
