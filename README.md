@@ -59,6 +59,26 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
 
 Signed-out visitors get one free vlog (tracked per device and IP), then are asked to sign in.
 
+## Deploying (Vercel + Supabase)
+
+The website is static and goes on Vercel; the AI keys stay on the server side in Supabase.
+
+**Never put API keys in a `VITE_` variable.** Vite copies every `VITE_` value into the JavaScript that browsers download.
+
+| Where | Variables |
+|---|---|
+| Vercel → Project → Settings → Environment Variables | `VITE_AI_MODE=live`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public values) |
+| Supabase → Edge Functions → Secrets (or `supabase secrets set`) | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, optional `AI_PROVIDER`, `GEMINI_MODEL`, `ALLOWED_ORIGIN`, limits |
+
+`vercel.json` sends every route to `index.html`, so links like `/p/<id>/edit` work on refresh. Set `ALLOWED_ORIGIN` to your Vercel URL so only your site can call the AI function.
+
+**Running live mode on your computer:** put the three `VITE_` values in `.env.local`, and the secrets in `supabase/functions/.env` (add `QUOTAS_DISABLED=true` there to skip usage limits while developing). Then:
+```bash
+supabase functions serve --env-file supabase/functions/.env
+npm run dev
+```
+Both `.env` files are git-ignored.
+
 ## Scripts
 
 | Command | What it does |
