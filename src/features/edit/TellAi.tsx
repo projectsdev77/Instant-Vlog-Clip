@@ -50,7 +50,7 @@ function AiInput({ thinking, onAsk, autoFocus }: Props & { autoFocus?: boolean }
 /** Desktop: sticky at the bottom of the panel column. */
 export function TellAiBar(props: Props) {
   return (
-    <div className="sticky bottom-4 z-10 mt-6 rounded-[var(--radius-panel)] bg-[rgb(20_19_19/.92)] p-3 shadow-lift backdrop-blur-[16px]">
+    <div data-tour="tell-ai" className="sticky bottom-4 z-10 mt-6 rounded-[var(--radius-panel)] bg-[rgb(20_19_19/.92)] p-3 shadow-lift backdrop-blur-[16px]">
       <AiInput {...props} />
     </div>
   )

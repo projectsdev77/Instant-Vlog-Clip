@@ -1,5 +1,6 @@
 // Other paths: own-voice recording, no-script montage, reload persistence, bad files.
 import { chromium } from 'playwright'
+import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -10,6 +11,7 @@ writeFileSync(`${OUT}/not-a-video.mp4`, 'hello')
 
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['microphone'] })
+await skipTutorial(context)
 const page = await context.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))

@@ -23,6 +23,7 @@ import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { generateScript } from './scriptActions'
 import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
 import { resolveTemplate } from '@/domain/templates'
+import { Tour } from '@/features/tutorial/Tour'
 
 export function ScriptStep() {
   const { project, updateProject } = useProject()
@@ -122,7 +123,7 @@ export function ScriptStep() {
                   <Spinner /> {busy === 'write' ? 'Writing from your clips…' : 'Polishing…'}
                 </div>
               ) : filled.length === 0 ? (
-                <Button onClick={() => run('write')}>
+                <Button onClick={() => run('write')} data-tour="write-ai">
                   <Sparkles className="size-4" strokeWidth={2.4} /> Write it for me
                 </Button>
               ) : (
@@ -162,6 +163,7 @@ export function ScriptStep() {
 
           <aside className="w-full max-w-[380px] flex-[1_1_300px] space-y-6 rounded-[var(--radius-panel)] bg-surface p-[22px] md:sticky md:top-[92px]">
             <ChipGroup label="Format" options={ASPECTS} value={project.settings.aspect} onChange={(aspect) => updateProject((p) => ({ settings: { ...p.settings, aspect } }))} />
+            <div data-tour="template" className="space-y-6">
             <ChipGroup
               label="Template"
               options={TEMPLATE_OPTIONS}
@@ -169,6 +171,7 @@ export function ScriptStep() {
               onChange={(template) => updateProject((p) => ({ settings: { ...p.settings, template, vibe: template === 'auto' ? 'auto' : resolveTemplate(template, p.settings.vibe).vibe } }))}
             />
             <p className="-mt-3 text-[13px] font-medium text-muted">{templateHint(project.settings.template ?? 'auto')}</p>
+            </div>
             <p className="text-[13px] font-medium text-faint">Sets the transitions, effects, color and captions the AI edits with. You can switch it later.</p>
           </aside>
         </div>
@@ -185,6 +188,7 @@ export function ScriptStep() {
           Continue
         </Button>
       </StepFooter>
+      <Tour page="script" />
 
       <Sheet open={confirmRewrite} title="Replace your lines?" onClose={() => setConfirmRewrite(false)}>
         <p className="text-muted">AI will write new lines from your clips. Your current lines will be replaced.</p>

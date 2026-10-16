@@ -89,6 +89,7 @@ Both `.env` files are git-ignored.
 | `npm test` | Unit tests (Vitest) |
 | `npm run test-clips` | Generates test videos into `e2e/fixtures` (needs ffmpeg) |
 | `npm run e2e` | Browser tests against a running dev server (Playwright Chromium) |
+| `node e2e/tutorial.mjs` | First-visit tutorial end to end (`DESKTOP=1` for the desktop layout) |
 | `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
 
@@ -112,6 +113,8 @@ Export ────► WebCodecs + Mediabunny, frame-accurate, on device → MP4
 ```
 
 **Length.** The user picks it on the Clips step (Auto, 15, 30 or 60 s). Each narration line gets a scene exactly as long as the line; the rest of the length is footage-only scenes (the clips' own sound under the music), spread between the lines. Every usable clip appears at least once, even if that runs past the chosen length, and speech is never cut. Auto means the narration plus room for every clip, or, with no script, a length that fits the footage.
+
+**First-visit tutorial.** On a first visit the home page opens a five-slide intro ("How it works", also in the header to see again). It ends with **Try it with sample clips** (starts a vlog with the three example videos from `public/examples`) or **Use my own clips**. Either way, a tip then points at the key control on each step (12 in total: choose clips, star, length, write it for me, template, voice, make, preview, scenes, look, tell the AI, export). Tips don't block the page; doing what a tip points at counts as done, and "Skip tutorial" turns them off. Progress is kept in this browser ([src/features/tutorial/](src/features/tutorial/)).
 
 **Templates and effects (CapCut-style, AI-driven).** The user picks a template on the Script step (Day in my life, TikTok fast cuts, Cinematic, Travel diary, Aesthetic, Clean) and can switch it on the Edit screen's Look tab. A template ([src/domain/templates.ts](src/domain/templates.ts)) sets the color look, caption style, pacing and which transitions (cut, fade, dip, whip, slide, zoom, flash, blur), camera moves (zoom in/out, pan, punch, shake) and speed effects (0.5–3×, speed ramps) the AI editor may use. The AI picks effects per shot to fit the footage; then `stylize()` keeps its allowed choices, tops up to the template's style, and lands footage-only cuts on the music's beat. Users can change any of it per shot (split, freeze frame, duplicate, delete, speed, camera, transition, fill or blurred background, clip volume) and for the whole vlog (filters, brightness/contrast/saturation/warmth, vignette, grain, fades). Every change is a new version with undo.
 

@@ -1,5 +1,6 @@
 // Captures every screen and state (demo AI mode) at phone and desktop sizes.
 import { chromium } from 'playwright'
+import { skipTutorial } from './skipTutorial.mjs'
 import { mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -13,6 +14,7 @@ const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream',
 async function run(device) {
   const phone = device === 'phone'
   const context = await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : { width: 1360, height: 900 }, deviceScaleFactor: phone ? 2 : 1, permissions: ['microphone'] })
+  await skipTutorial(context)
   const page = await context.newPage()
   page.on('pageerror', (e) => console.log('pageerror', e.message))
   const snap = (name) => page.screenshot({ path: `${OUT}/${device}-${name}.jpg`, type: 'jpeg', quality: 74 })

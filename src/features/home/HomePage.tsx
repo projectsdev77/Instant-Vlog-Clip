@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router'
 import { MoreHorizontal, Play, Plus } from 'lucide-react'
@@ -17,7 +17,10 @@ import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
 import { sumShots } from '@/domain/shots'
-import { Captions, Lock, Mic, Music2, Smartphone } from 'lucide-react'
+import { Captions, CirclePlay, Lock, Mic, Music2, Smartphone } from 'lucide-react'
+import { TutorialIntro } from '@/features/tutorial/TutorialIntro'
+import { useTutorial } from '@/features/tutorial/tutorial'
+import { SAMPLE_PROMPT, SAMPLE_TITLE } from '@/features/tutorial/samples'
 
 function vlogLength(p: Project): number {
   const edit = p.currentEdit >= 0 ? p.edits[p.currentEdit] : undefined
@@ -48,6 +51,16 @@ export function HomePage() {
 
   const list = projects ?? []
   const firstVisit = projects !== undefined && list.length === 0
+  const { introSeen, openIntro } = useTutorial()
+  // First visit: show how it works before anything else.
+  useEffect(() => {
+    if (firstVisit && !introSeen) openIntro()
+  }, [firstVisit, introSeen, openIntro])
+  const trySample = async () => {
+    const p = await createProject()
+    await db.projects.update(p.id, { title: SAMPLE_TITLE, prompt: SAMPLE_PROMPT })
+    navigate(`${stepPath(p.id, 'clips')}?sample=1`)
+  }
   const mine: CoverItem[] = firstVisit
     ? []
     : list.slice(0, 3).map((p, i) => ({
@@ -78,6 +91,10 @@ export function HomePage() {
           <Wordmark />
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={openIntro} className="flex h-10 items-center gap-1.5 rounded-full border border-white/16 px-3.5 text-[14px] font-semibold text-white/90 transition hover:bg-white/10">
+            <CirclePlay className="size-4" strokeWidth={2.4} />
+            How it works
+          </button>
           {aiMode === 'mock' && <DemoBadge className="hidden md:inline-flex" />}
           <AccountButton />
         </div>
@@ -189,6 +206,8 @@ export function HomePage() {
           </div>
         )}
       </section>
+
+      <TutorialIntro onTrySample={() => void trySample()} onOwnClips={() => void start()} />
 
       {/* Phone: main action pinned in thumb reach */}
       {!desktop && (

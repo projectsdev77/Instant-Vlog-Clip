@@ -1,12 +1,15 @@
 // Effects flow in demo-AI mode: TikTok template → generated edit has transitions/moves/speed → split, freeze, speed, camera → export.
 // FIX=public/examples uses the real stock footage instead of the test patterns.
 import { chromium } from 'playwright'
+import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 const dir = process.env.FIX ?? 'e2e/fixtures'; const fixtures = readdirSync(dir).filter((f) => f.endsWith('.webm')).map((f) => join(dir, f))
 const SP = process.env.OUT ?? 'test-results'
 const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] })
-const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true })).newPage()
+const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true })
+await skipTutorial(context)
+const page = await context.newPage()
 const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 const step = (s) => console.log('✓', s)
 await page.goto('http://localhost:5173')

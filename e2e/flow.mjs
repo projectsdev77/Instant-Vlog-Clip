@@ -1,5 +1,6 @@
 // End-to-end flow in demo-AI mode: clips → script → voice → generate → edit → export.
 import { chromium } from 'playwright'
+import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -10,6 +11,7 @@ const fixtures = readdirSync('e2e/fixtures').map((f) => join('e2e/fixtures', f))
 
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['microphone'], acceptDownloads: true })
+await skipTutorial(context)
 const page = await context.newPage()
 const errors = []
 page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errors.push(m.text()))

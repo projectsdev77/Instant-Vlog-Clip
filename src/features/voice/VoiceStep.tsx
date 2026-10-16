@@ -1,3 +1,4 @@
+import { Tour } from '@/features/tutorial/Tour'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AudioLines, Captions, Check, Mic, Play, Square } from 'lucide-react'
@@ -45,7 +46,7 @@ export function VoiceStep() {
     <>
       <StepPage>
         <StepHeading step={3} title="Who tells the story?" />
-        <div role="radiogroup" aria-label="Voiceover" className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+        <div data-tour="voice-mode" role="radiogroup" aria-label="Voiceover" className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
           {MODES.map((m) => {
             const selected = mode === m.id
             return (
@@ -96,10 +97,11 @@ export function VoiceStep() {
         </div>
       </StepPage>
       <StepFooter summary={summary}>
-        <Button variant="ember" disabled={!canContinue} onClick={next}>
+        <Button variant="ember" disabled={!canContinue} onClick={next} data-tour="make">
           Make my vlog
         </Button>
       </StepFooter>
+      <Tour page="voice" />
       {tele !== null && <Teleprompter lines={lines} start={tele} onClose={() => setTele(null)} />}
     </>
   )

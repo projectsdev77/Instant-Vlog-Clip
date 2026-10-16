@@ -17,6 +17,7 @@ import { LookPanel } from './LookPanel'
 import { TellAiBar, TellAiSheet } from './TellAi'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { Tour } from '@/features/tutorial/Tour'
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'scenes', label: 'Scenes' },
@@ -83,7 +84,7 @@ export function EditStep() {
           {plan.note ? ` · ${plan.note}` : ''}
         </p>
         {desktop && (
-          <Button variant="ember" onClick={() => setExporting(true)}>
+          <Button variant="ember" onClick={() => setExporting(true)} data-tour="export">
             Export video
           </Button>
         )}
@@ -97,7 +98,9 @@ export function EditStep() {
             editing && 'sticky top-[68px] z-10 -mx-4 w-[calc(100%+2rem)] border-b border-border bg-[rgb(9_9_10/.92)] px-4 py-3 backdrop-blur-[14px] md:mx-0 md:w-[340px] md:border-0 md:bg-transparent md:p-0',
           )}
         >
+          <div data-tour="preview" className="mx-auto w-fit md:w-auto">
           <PreviewPlayer timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} compact={editing && !desktop} />
+          </div>
         </div>
 
         <div className="min-w-0 flex-[1_1_420px]">
@@ -111,6 +114,7 @@ export function EditStep() {
                     key={p.id}
                     type="button"
                     aria-pressed={panel === p.id}
+                    data-tour={`tab-${p.id}`}
                     onClick={() => setPanel(p.id)}
                     className={cn('h-11 min-w-0 flex-1 rounded-full text-[14px] font-semibold md:text-[15px] transition duration-150 ease-ember', panel === p.id ? 'bg-white text-ink' : 'text-muted hover:text-fg')}
                   >
@@ -118,7 +122,7 @@ export function EditStep() {
                   </button>
                 ))}
               </nav>
-              {panel === 'scenes' && <ScenesPanel plan={plan} timeline={timeline} project={project} clips={clips} activeScene={activeScene} onOpen={openScene} />}
+              {panel === 'scenes' && <div data-tour="scenes"><ScenesPanel plan={plan} timeline={timeline} project={project} clips={clips} activeScene={activeScene} onOpen={openScene} /></div>}
               {panel === 'look' && <LookPanel project={project} plan={plan} clips={clips} />}
               {panel === 'voice' && <VoicePanel project={project} />}
               {panel === 'music' && <MusicPanel project={project} />}
@@ -132,15 +136,16 @@ export function EditStep() {
       {/* Phone bottom bar */}
       {!desktop && (
       <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 bg-gradient-to-b from-transparent to-bg to-32% px-4 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
-        <Button variant="quiet" className="min-w-0 flex-1 justify-start" onClick={() => setAiSheet(true)}>
+        <Button variant="quiet" className="min-w-0 flex-1 justify-start" onClick={() => setAiSheet(true)} data-tour="tell-ai">
           <Sparkles className="size-[18px] text-ember-300" strokeWidth={2.2} /> Tell the AI
         </Button>
-        <Button variant="ember" onClick={() => setExporting(true)}>
+        <Button variant="ember" onClick={() => setExporting(true)} data-tour="export">
           Export
         </Button>
       </div>
       )}
 
+      {!editing && !exporting && !aiSheet && <Tour page="edit" />}
       <TellAiSheet open={aiSheet} onClose={() => setAiSheet(false)} thinking={thinking} onAsk={ask} />
       {exporting && <ExportSheet project={project} timeline={timeline} clips={clips} onClose={() => setExporting(false)} />}
     </main>

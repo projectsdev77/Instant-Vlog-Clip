@@ -1,5 +1,7 @@
-import { useRef, useState, type DragEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Tour } from '@/features/tutorial/Tour'
+import { loadSampleFiles } from '@/features/tutorial/samples'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Camera, Plus, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -72,6 +74,7 @@ export function ClipsStep() {
             <button
               type="button"
               onClick={pick}
+              data-tour="clips-add"
               className={cn(
                 'group flex h-[360px] w-full flex-col items-center justify-center gap-3 rounded-[28px] border-[1.5px] border-dashed px-6 text-center transition duration-150 ease-ember md:h-[340px]',
                 dragging ? 'border-accent bg-accent-soft' : 'border-white/18 hover:border-accent hover:bg-[rgb(255_90_31/.05)]',
@@ -92,7 +95,7 @@ export function ClipsStep() {
               <p className="mb-4 text-[14px] font-medium text-muted">
                 {starred ? `${starred} clip${starred > 1 ? 's' : ''} marked must-include. ` : ''}Tap the star on any clip that has to be in.
               </p>
-              <ul className={cn('grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]', dragging && 'opacity-60')}>
+              <ul data-tour="clips-grid" className={cn('grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]', dragging && 'opacity-60')}>
                 {clips.map((c) => (
                   <ClipTile key={c.id} clip={c} onStar={() => updateClip(c.id, { mustInclude: !c.mustInclude })} onRemove={() => removeClip(c.id)} />
                 ))}
@@ -119,6 +122,8 @@ export function ClipsStep() {
           Continue
         </Button>
       </StepFooter>
+      <SampleLoader />
+      <Tour page="clips" />
     </>
   )
 }
@@ -181,7 +186,7 @@ function LengthPicker() {
   const footage = usable.reduce((a, c) => a + c.durationSec, 0)
   const target = project.settings.targetSec
   return (
-    <section className="mt-8 max-w-[560px] rounded-[var(--radius-panel)] bg-surface p-[22px]" aria-label="Video length">
+    <section data-tour="length" className="mt-8 max-w-[560px] rounded-[var(--radius-panel)] bg-surface p-[22px]" aria-label="Video length">
       <ChipGroup label="How long?" options={LENGTHS} value={target} onChange={(targetSec) => updateProject((p) => ({ settings: { ...p.settings, targetSec } }))} />
       <p className="mt-3 text-[14px] font-medium text-muted">
         {usable.length > 0 && <span className="tabular">{`${usable.length} clip${usable.length > 1 ? 's' : ''} · ${formatDuration(footage)} of footage. `}</span>}
@@ -191,5 +196,44 @@ function LengthPicker() {
         <p className="mt-2 text-[14px] font-medium text-ember-300">That’s more than your footage, so the vlog may come out shorter. Add a few more clips for the full {target}s.</p>
       )}
     </section>
+  )
+}
+
+/** "Try it with sample clips" from the tutorial: adds the example videos once. */
+function SampleLoader() {
+  const [params, setParams] = useSearchParams()
+  const { project, clips } = useProject()
+  const [loading, setLoading] = useState(false)
+  const started = useRef(false)
+  const wanted = params.get('sample') === '1' && !!project && clips.length === 0
+  useEffect(() => {
+    if (!wanted || started.current) return
+    started.current = true
+    setParams(
+      (p) => {
+        p.delete('sample')
+        return p
+      },
+      { replace: true },
+    )
+    void (async () => {
+      setLoading(true)
+      try {
+        const { rejected } = await importFiles(await loadSampleFiles())
+        rejected.forEach((r) => toast(r, 'error'))
+      } catch (e) {
+        toast((e as Error).message, 'error')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [wanted, setParams])
+  if (!loading) return null
+  return (
+    <div className="fixed inset-x-0 top-24 z-30 flex justify-center px-4" role="status">
+      <span className="flex items-center gap-2.5 rounded-full bg-surface-2 px-4 py-2.5 text-[14px] font-semibold shadow-lift">
+        <Spinner className="size-4" /> Adding sample clips…
+      </span>
+    </div>
   )
 }
