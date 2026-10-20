@@ -159,7 +159,7 @@ Not yet verified:
 
 Not built yet (see spec):
 - ffmpeg.wasm fallback for codecs the browser can't decode (those clips currently show an error on their tile).
-- **Home page example videos** ([public/examples/](public/examples/)) are cut from Mixkit free stock footage (Mixkit License: free for commercial use, no attribution). Confirm the license, or swap in the client's own footage, before launch. Each is a 7.8 s, 360×640 WebM + MP4 + poster JPG; the front card's captions are in [covers.ts](src/features/home/covers.ts).
+- **Home page example videos** ([public/examples/](public/examples/)), including the two "What you get" tiles (`vlogger`, `cafe-selfie`: Mixkit #46352 and #8784, 12 s, 720p), are cut from Mixkit free stock footage (Mixkit License: free for commercial use, no attribution). Confirm the license, or swap in the client's own footage, before launch. Each is a 7.8 s, 360×640 WebM + MP4 + poster JPG; the front card's captions are in [covers.ts](src/features/home/covers.ts).
 - A licensed music library. The five tracks are generated placeholders ([src/render/musicTracks.ts](src/render/musicTracks.ts)); give a track a `url` to use a real file.
 - Export runs on the main thread (WebCodecs does the heavy work off-thread). Move it to a worker if the UI stutters on slower phones.
 - P1 features: photos, beat-synced cuts, per-frame subject tracking, templates, cloud sync, more languages.

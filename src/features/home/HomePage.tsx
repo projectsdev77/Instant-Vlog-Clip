@@ -16,8 +16,9 @@ import { aiMode } from '@/ai/mode'
 import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
+import { WhatYouGet } from './WhatYouGet'
 import { sumShots } from '@/domain/shots'
-import { Captions, CirclePlay, Lock, Mic, Music2, Smartphone } from 'lucide-react'
+import { CirclePlay } from 'lucide-react'
 import { TutorialIntro } from '@/features/tutorial/TutorialIntro'
 import { useTutorial } from '@/features/tutorial/tutorial'
 import { SAMPLE_PROMPT, SAMPLE_TITLE } from '@/features/tutorial/samples'
@@ -130,6 +131,8 @@ export function HomePage() {
         </ol>
       </section>
 
+      <WhatYouGet />
+
       {list.length > 0 && (
         <section className="relative mx-auto mt-10 max-w-[1120px] px-4 md:px-10">
           <div className="mb-5 flex items-baseline justify-between">
@@ -168,34 +171,6 @@ export function HomePage() {
           </ul>
         </section>
       )}
-
-      <section className="relative mx-auto mt-16 max-w-[1120px] px-4 md:mt-20 md:px-10" aria-labelledby="what-you-get">
-        <div className="eyebrow">What you get</div>
-        <h2 id="what-you-get" className="title-1 mt-2 max-w-[18ch]">A vlog that sounds like you made it.</h2>
-        <ul className="mt-8 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
-          {FEATURES.map((f) => (
-            <li key={f.title} className="rounded-[var(--radius-panel)] bg-surface p-6">
-              <span className="grid size-11 place-items-center rounded-xl bg-accent-soft text-ember-300">
-                <f.icon className="size-5" strokeWidth={2.2} />
-              </span>
-              <div className="mt-5 text-[17px] font-bold">{f.title}</div>
-              <p className="mt-1.5 text-[15px] text-muted">{f.body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="relative mx-auto mt-4 max-w-[1120px] px-4 md:px-10">
-        <div className="flex flex-col gap-6 rounded-[var(--radius-panel)] bg-surface p-6 md:flex-row md:items-center md:gap-10 md:p-10">
-          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white text-ink">
-            <Lock className="size-6" strokeWidth={2.2} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="title-2">Your videos never leave your device.</h2>
-            <p className="mt-2 max-w-[62ch] text-[16px] text-muted">Clips are read and the final video is made right in your browser. The AI only sees small preview frames and the words of your script, never your footage.</p>
-          </div>
-        </div>
-      </section>
 
       <section className="relative mx-auto mt-16 max-w-[1120px] px-4 text-center md:mt-24 md:px-10">
         <h2 className="mx-auto max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.04em] text-balance">Your camera roll is full of vlogs.</h2>
@@ -238,13 +213,6 @@ export function HomePage() {
     </div>
   )
 }
-
-const FEATURES = [
-  { icon: Mic, title: 'Narrated by AI or by you', body: 'Pick one of six natural voices, or read your lines with the built-in teleprompter.' },
-  { icon: Captions, title: 'Captions that follow along', body: 'Every word appears as it’s spoken, in a style you choose.' },
-  { icon: Music2, title: 'Music that knows when to dip', body: 'A soundtrack for the mood, quieter whenever someone talks.' },
-  { icon: Smartphone, title: 'Ready to post', body: 'Vertical by default, sized for TikTok, Reels and Shorts. Share straight from your phone.' },
-]
 
 function NewVlogButton({ onClick, block }: { onClick: () => void; block?: boolean }) {
   return (
