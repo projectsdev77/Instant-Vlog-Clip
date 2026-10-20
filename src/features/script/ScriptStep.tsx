@@ -20,7 +20,7 @@ import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLay
 import { stepIndex, stepPath } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
-import { generateScript } from './scriptActions'
+import { generateScript, type ScriptStage } from './scriptActions'
 import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
 import { resolveTemplate } from '@/domain/templates'
 import { Tour } from '@/features/tutorial/Tour'
@@ -29,6 +29,7 @@ export function ScriptStep() {
   const { project, updateProject } = useProject()
   const navigate = useNavigate()
   const [busy, setBusy] = useState<null | 'write' | 'polish'>(null)
+  const [stage, setStage] = useState<ScriptStage | null>(null)
   const [confirmRewrite, setConfirmRewrite] = useState(false)
   const [focusId, setFocusId] = useState<string | null>(null)
   const sensors = useSensors(
@@ -67,13 +68,15 @@ export function ScriptStep() {
   const run = async (mode: 'write' | 'polish') => {
     setConfirmRewrite(false)
     setBusy(mode)
+    setStage(null)
     try {
-      await generateScript(mode)
+      await generateScript(mode, setStage)
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
       else toast((e as Error).message, 'error')
     } finally {
       setBusy(null)
+      setStage(null)
     }
   }
 
@@ -120,7 +123,7 @@ export function ScriptStep() {
               </Field>
               {busy ? (
                 <div className="inline-flex h-12 items-center gap-2.5 rounded-full bg-surface-2 px-5 text-[15px] font-semibold" role="status">
-                  <Spinner /> {busy === 'write' ? 'Writing from your clips…' : 'Polishing…'}
+                  <Spinner /> {stage?.stage === 'clips' && stage.total ? `Looking at your clips (${stage.done} of ${stage.total})…` : busy === 'write' ? 'Writing your lines…' : 'Polishing…'}
                 </div>
               ) : filled.length === 0 ? (
                 <Button onClick={() => run('write')} data-tour="write-ai">

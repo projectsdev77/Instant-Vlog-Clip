@@ -20,6 +20,23 @@ export async function analyzeClipsInBackground(opts: { waitForImports?: boolean 
   await Promise.all([runLimited(clips.map((c) => () => analyzeOne(c)), 3), ...inFlight.values()])
 }
 
+/**
+ * Waits for clip analysis, but at most `ms`: the AI can be slow, and callers
+ * can work from on-device signals for any clip still pending (analysis keeps
+ * going in the background).
+ */
+export async function analyzeClipsUpTo(ms: number, onProgress?: (done: number, total: number) => void): Promise<void> {
+  const tick = onProgress && setInterval(() => {
+    const { done, total } = analysisProgress(useProject.getState().clips)
+    onProgress(done, total)
+  }, 300)
+  try {
+    await Promise.race([analyzeClipsInBackground({ waitForImports: true }), new Promise((r) => setTimeout(r, ms))])
+  } finally {
+    if (tick) clearInterval(tick)
+  }
+}
+
 export function analyzeOne(clip: Clip): Promise<void> {
   const existing = inFlight.get(clip.id)
   if (existing) return existing

@@ -10,7 +10,7 @@ import { hasFreshAudio, lineSceneDuration } from '@/domain/timing'
 import type { EditPlan, Project } from '@/domain/types'
 import { pickTrack, trackById } from '@/render/musicTracks'
 import { currentEdit, useProject } from '@/store/projectStore'
-import { analyzeClipsInBackground, analysisProgress } from './analysis'
+import { analyzeClipsUpTo } from './analysis'
 import { voiceAllLines } from './voice'
 
 export type Stage = 'watching' | 'voicing' | 'picking' | 'cutting' | 'finishing'
@@ -103,16 +103,8 @@ async function run(onProgress: (p: Progress) => void) {
   if (!store.project) return
 
   onProgress({ stage: 'watching' })
-  const watch = analyzeClipsInBackground({ waitForImports: true })
-  const ticker = setInterval(() => {
-    const { done, total } = analysisProgress(useProject.getState().clips)
-    onProgress({ stage: 'watching', detail: `${done} of ${total} clips`, fraction: total ? done / total : 1 })
-  }, 300)
-  try {
-    await watch
-  } finally {
-    clearInterval(ticker)
-  }
+  // At most 60 s: clips the AI hasn't finished are edited from on-device signals.
+  await analyzeClipsUpTo(60_000, (done, total) => onProgress({ stage: 'watching', detail: `${done} of ${total} clips`, fraction: total ? done / total : 1 }))
 
   let project = useProject.getState().project!
   const usable = useProject.getState().clips.filter((c) => c.status !== 'error' && c.durationSec > 0)

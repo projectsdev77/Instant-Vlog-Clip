@@ -3,15 +3,19 @@ import { buildCatalog } from '@/ai/catalog'
 import { uid } from '@/domain/ids'
 import type { Script } from '@/domain/types'
 import { useProject } from '@/store/projectStore'
-import { analyzeClipsInBackground } from '@/pipeline/analysis'
+import { analyzeClipsUpTo } from '@/pipeline/analysis'
 import { deleteMedia } from '@/lib/mediaStore'
 
 /** Asks the AI to write (or polish) the script and stores it on the project. */
-export async function generateScript(mode: 'write' | 'polish'): Promise<void> {
+export type ScriptStage = { stage: 'clips'; done: number; total: number } | { stage: 'writing' }
+
+export async function generateScript(mode: 'write' | 'polish', onStage?: (s: ScriptStage) => void): Promise<void> {
   const { project, updateProject } = useProject.getState()
   if (!project) return
-  // Script quality depends on knowing what's in the clips.
-  await analyzeClipsInBackground({ waitForImports: true })
+  // Script quality depends on knowing what's in the clips, but don't wait forever:
+  // after 25 s, write from what's known (on-device signals for the rest).
+  await analyzeClipsUpTo(25_000, (done, total) => onStage?.({ stage: 'clips', done, total }))
+  onStage?.({ stage: 'writing' })
   const { clips } = useProject.getState()
   const current = project.script?.lines.map((l) => l.text.trim()).filter(Boolean) ?? []
   const res = await ai.writeScript({

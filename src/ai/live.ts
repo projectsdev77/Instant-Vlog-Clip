@@ -4,12 +4,23 @@ import { analysisFromWire } from './catalog'
 import { AiError, type AiService } from './service'
 import { guestId } from './guest'
 
+/** How long each AI action may take before we give up (the model can be slow, especially on free plans). */
+const TIMEOUT_MS: Record<AiAction['action'], number> = {
+  'analyze-clip': 60_000,
+  'write-script': 90_000,
+  'plan-edit': 120_000,
+  synthesize: 45_000,
+  transcribe: 60_000,
+}
+
 async function call<T>(body: AiAction, attempt = 0): Promise<T> {
   if (!supabaseUrl || !supabaseAnonKey) throw new AiError('AI is not configured (missing Supabase settings).', 'auth')
   const session = (await supabase?.auth.getSession())?.data.session
   let res: Response
+  const timeout = AbortSignal.timeout(TIMEOUT_MS[body.action])
   try {
     res = await fetch(`${supabaseUrl}/functions/v1/ai`, {
+      signal: timeout,
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -20,6 +31,7 @@ async function call<T>(body: AiAction, attempt = 0): Promise<T> {
       body: JSON.stringify(body),
     })
   } catch {
+    if (timeout.aborted) throw new AiError('The AI took too long to answer. Please try again.', 'upstream')
     if (attempt < 1) return call(body, attempt + 1)
     throw new AiError("Can't reach the AI service. Check your connection.", 'network')
   }
