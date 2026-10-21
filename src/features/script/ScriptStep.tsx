@@ -106,7 +106,12 @@ export function ScriptStep() {
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
       else if (e instanceof AiError && e.code === 'quota') toast(e.message, 'error')
-      else toast('Couldn’t write right now. Your lines are unchanged. Try again.', 'error')
+      else {
+        console.warn(`Script ${mode} failed`, e)
+        // Say why when the AI told us (e.g. its usage limit), so it's clear what to do.
+        const why = e instanceof AiError && e.message ? ` (${e.message.replace(/\.$/, '')})` : ''
+        toast(`Couldn’t write right now${why}. Your lines are unchanged. Try again.`, 'error')
+      }
     } finally {
       setBusy(null)
       setStage(null)
