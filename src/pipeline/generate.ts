@@ -3,15 +3,17 @@ import { ai, AiError } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
 import { planToWire } from '@/ai/wire'
 import { planTemplate, resolveTemplate, stylize } from '@/domain/templates'
+import { layoutIsStale } from '@/domain/voiceTrack'
 import { planFallback } from '@/domain/fallback'
-import { videoTargetSec, type PlanContext } from '@/domain/planContext'
+import { sceneDuration, videoTargetSec, type PlanContext } from '@/domain/planContext'
 import { repairPlan } from '@/domain/repair'
-import { hasFreshAudio, lineSceneDuration } from '@/domain/timing'
+import { hasFreshAudio } from '@/domain/timing'
 import type { EditPlan, Project } from '@/domain/types'
 import { pickTrack, trackById } from '@/render/musicTracks'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { analyzeClipsUpTo } from './analysis'
 import { voiceAllLines } from './voice'
+import { transcribeAll } from './voiceTrack'
 
 export type Stage = 'watching' | 'voicing' | 'picking' | 'cutting' | 'finishing'
 
@@ -31,9 +33,23 @@ function musicVibe(p: Project) {
   return t.vibe === 'auto' ? p.settings.vibe : t.vibe
 }
 
-export function planContext(p: Project, clips = useProject.getState().clips): PlanContext {
+/** The scene timing the user recorded over ("Record my own"), while it still matches the script. */
+export function recordedLayout(p: Project) {
+  if (p.voice.mode !== 'recorded' || !p.voiceTrack?.layout || !p.voiceTrack.takes.length) return undefined
+  const ids = (p.script?.lines ?? []).filter((l) => l.text.trim()).map((l) => l.id)
+  return layoutIsStale(p.voiceTrack, ids) ? undefined : p.voiceTrack.layout
+}
+
+/**
+ * `fixedLayout`: keep the recorded scene structure exactly (making the vlog,
+ * the studio preview). Re-fits after user edits only keep the line lengths.
+ */
+export function planContext(p: Project, clips = useProject.getState().clips, opts: { fixedLayout?: boolean } = {}): PlanContext {
   const lines = p.script?.lines.filter((l) => l.text.trim()) ?? []
+  const layout = recordedLayout(p)
   return {
+    sceneSec: layout && new Map(layout.filter((s) => s.lineId).map((s) => [s.lineId!, s.sec])),
+    fixedLayout: opts.fixedLayout ? layout : undefined,
     clips: clips.filter((c) => c.status !== 'error' && c.durationSec > 0),
     script: lines.length ? { ...p.script!, lines } : undefined,
     voiceMode: p.voice.mode,
@@ -48,7 +64,7 @@ export function planContext(p: Project, clips = useProject.getState().clips): Pl
 export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; current?: EditPlan } = {}): Promise<{ plan: EditPlan; usedFallback: boolean }> {
   const catalog: CatalogEntry[] = buildCatalog(ctx.clips)
   const template = resolveTemplate(opts.current?.templateId ?? ctx.settings.template, ctx.settings.vibe)
-  const lines: PlanLine[] = (ctx.script?.lines ?? []).map((l) => ({ lineId: l.id, text: l.text, visualIntent: l.visualIntent, sceneSec: Math.round(lineSceneDuration(l, ctx.voiceMode) * 100) / 100 }))
+  const lines: PlanLine[] = (ctx.script?.lines ?? []).map((l) => ({ lineId: l.id, text: l.text, visualIntent: l.visualIntent, sceneSec: Math.round(sceneDuration(ctx, l) * 100) / 100 }))
   const base = {
     aspect: ctx.settings.aspect,
     vibe: ctx.settings.vibe,
@@ -59,12 +75,14 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     feedback: opts.feedback,
     currentPlan: opts.current ? planToWire(opts.current) : undefined,
     template: planTemplate(template),
+    layout: ctx.fixedLayout?.map((x) => ({ lineId: x.lineId ?? '', sceneSec: Math.round(x.sec * 100) / 100 })),
   }
   const finish = (plan: EditPlan, fromAi: boolean): EditPlan =>
     stylize(plan, template, {
       keepChoices: fromAi,
       topUp: !opts.feedback,
-      bpm: trackById(ctx.musicTrackId)?.bpm,
+      // Beat sync moves cuts; over a recorded voice the timing must stay put.
+      bpm: ctx.fixedLayout ? undefined : trackById(ctx.musicTrackId)?.bpm,
       clipDurations: new Map(ctx.clips.map((c) => [c.id, c.durationSec])),
       look: opts.current?.templateId === template.id ? opts.current.look : undefined,
       fades: opts.current?.templateId === template.id ? opts.current.fades : undefined,
@@ -114,13 +132,19 @@ async function run(onProgress: (p: Progress) => void) {
   if (project.voice.mode === 'ai') {
     await voiceAllLines((done, total) => onProgress({ stage: 'voicing', detail: total ? `${done} of ${total} lines` : undefined, fraction: total ? done / total : 1 }))
   } else if (project.voice.mode === 'recorded') {
-    const missing = project.script?.lines.filter((l) => !hasFreshAudio(l)).length ?? 0
-    if (missing) throw new Error(`${missing} line${missing > 1 ? 's are' : ' is'} not recorded yet. Go back to Voice to record ${missing > 1 ? 'them' : 'it'}.`)
+    if (project.voiceTrack?.takes.length) {
+      // Captions come from what was said in each take.
+      onProgress({ stage: 'voicing', detail: 'Making captions from your voice' })
+      await transcribeAll()
+    } else {
+      const missing = project.script?.lines.filter((l) => !hasFreshAudio(l)).length ?? 0
+      if (missing) throw new Error('Record your voiceover first: go back to Voice and press Record.')
+    }
   }
 
   project = useProject.getState().project!
   onProgress({ stage: 'picking' })
-  const ctx = planContext(project)
+  const ctx = planContext(project, undefined, { fixedLayout: true })
   const { plan } = await planWithAi(ctx)
 
   onProgress({ stage: 'cutting' })

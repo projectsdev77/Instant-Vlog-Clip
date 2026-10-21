@@ -77,6 +77,12 @@ export type PlanRequest = {
   previousIssues?: string[]
   /** edit template (transitions, effects, pacing) */
   template?: PlanTemplate
+  /**
+   * The user recorded their own voice over this exact scene timing: output
+   * exactly these scenes, in this order, each adding up to its sceneSec.
+   * lineId "" = footage-only scene.
+   */
+  layout?: { lineId: string; sceneSec: number }[]
 }
 
 export type TransitionWire = 'cut' | 'crossfade' | 'dip' | 'whip' | 'slide' | 'zoom' | 'flash' | 'blur'
@@ -129,7 +135,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-21.6'
+export const AI_FUNCTION_VERSION = '2026-10-21.7'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }

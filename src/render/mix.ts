@@ -48,8 +48,17 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
     if (!buf) continue
     const src = ctx.createBufferSource()
     src.buffer = buf
-    src.connect(voiceGain)
-    src.start(v.start)
+    let out: AudioNode = voiceGain
+    if (v.gain !== undefined && Math.abs(v.gain - 1) > 1e-3) {
+      const g = ctx.createGain()
+      g.gain.value = v.gain
+      g.connect(voiceGain)
+      out = g
+    }
+    src.connect(out)
+    // Voice-track takes play a slice of the recording; line audio plays whole.
+    if (v.offset !== undefined) src.start(v.start, v.offset, v.durationSec)
+    else src.start(v.start)
   }
 
   // Clip sound
@@ -134,4 +143,22 @@ export function normalize(buf: AudioBuffer, targetDb = -16) {
       d[i] = Math.abs(x) <= 0.8 ? x : Math.sign(x) * (0.8 + 0.19 * Math.tanh((Math.abs(x) - 0.8) / 0.19))
     }
   }
+}
+
+/** Just the voice track, for playback in the voice studio. */
+export async function renderVoiceOnly(voice: Timeline['voice'], durationSec: number): Promise<AudioBuffer> {
+  const duration = Math.max(0.5, durationSec)
+  const ctx = new OfflineAudioContext(1, Math.ceil(duration * SR), SR)
+  const bufs = await Promise.all(voice.map(async (v) => ({ v, buf: await voiceBuffer(v.mediaKey) })))
+  for (const { v, buf } of bufs) {
+    if (!buf) continue
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    const g = ctx.createGain()
+    g.gain.value = v.gain ?? 1
+    src.connect(g).connect(ctx.destination)
+    if (v.offset !== undefined) src.start(v.start, v.offset, v.durationSec)
+    else src.start(v.start)
+  }
+  return await ctx.startRendering()
 }

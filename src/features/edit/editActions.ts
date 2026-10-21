@@ -107,14 +107,14 @@ export async function changeVoice(voiceId: string) {
 
 export async function tellAi(feedback: string) {
   const { project, plan } = requireEdit()
-  const { plan: next, usedFallback } = await planWithAi(planContext(project), { feedback, current: plan })
+  const { plan: next, usedFallback } = await planWithAi(planContext(project, undefined, { fixedLayout: true }), { feedback, current: plan })
   if (usedFallback) throw new Error("The AI editor isn't available right now. Try again in a moment.")
   await state().pushEdit({ ...next, createdBy: 'ai', note: `“${feedback}”` })
 }
 
 export async function regenerate() {
   const { project } = requireEdit()
-  const { plan } = await planWithAi(planContext(project))
+  const { plan } = await planWithAi(planContext(project, undefined, { fixedLayout: true }))
   await state().pushEdit(plan)
 }
 

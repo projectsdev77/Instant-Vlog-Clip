@@ -1,6 +1,7 @@
 import { shotLength } from './shots'
 import { hasFreshAudio, LINE_LEAD_IN, lineWords } from './timing'
-import { DEFAULT_LOOK, type Clip, type EditPlan, type Look, type Script, type ScriptLine, type Shot, type Transition, type VoiceMode, type Word } from './types'
+import { DEFAULT_LOOK, type Clip, type EditPlan, type Look, type Script, type ScriptLine, type Shot, type Transition, type VoiceMode, type VoiceTrack, type Word } from './types'
+import { resolveTakes, trackWords } from './voiceTrack'
 
 export type TimelineShot = {
   shot: Shot
@@ -13,7 +14,18 @@ export type TimelineShot = {
   prev?: TimelineShot
 }
 
-export type TimelineVoice = { lineId: string; start: number; mediaKey: string; durationSec: number }
+export type TimelineVoice = {
+  /** the line it reads (AI voice / per-line recordings); empty for voice-track takes */
+  lineId: string
+  start: number
+  mediaKey: string
+  /** how long it plays */
+  durationSec: number
+  /** where to start inside the audio (voice-track takes) */
+  offset?: number
+  /** 0..2 */
+  gain?: number
+}
 
 export type CaptionChunk = { start: number; end: number; words: Word[] }
 
@@ -55,7 +67,13 @@ export function transitionSec(tr: Transition): number {
 export const FADE_IN_SEC = 0.5
 export const FADE_OUT_SEC = 0.8
 
-export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: Script | undefined, voiceMode: VoiceMode): Timeline {
+/**
+ * Lays the plan out in time. With "Record my own" and a voice track, the
+ * voice and the captions come from the takes (what was actually said);
+ * otherwise from each line's audio and text.
+ */
+export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: Script | undefined, voiceMode: VoiceMode, voiceTrack?: VoiceTrack): Timeline {
+  const fromTrack = voiceMode === 'recorded' && !!voiceTrack?.takes.length
   const lines = new Map<string, ScriptLine>((script?.lines ?? []).map((l) => [l.id, l]))
   const shots: TimelineShot[] = []
   const scenes: TimelineScene[] = []
@@ -76,7 +94,7 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
     }
     const line = scene.lineId ? lines.get(scene.lineId) : undefined
     scenes.push({ start: sceneStart, end: t, lineId: scene.lineId, onScreenText: line?.onScreenText })
-    if (!line) return
+    if (!line || fromTrack) return
     const speechStart = sceneStart + LINE_LEAD_IN
     if (voiceMode !== 'none' && hasFreshAudio(line)) {
       voice.push({ lineId: line.id, start: speechStart, mediaKey: line.audio!.mediaKey, durationSec: line.audio!.durationSec })
@@ -85,6 +103,20 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
     const ws = lineWords(line, voiceMode).map((w) => ({ ...w, start: w.start + speechStart, end: w.end + speechStart }))
     captions.push(...chunkWords(ws, t))
   })
+
+  if (fromTrack) {
+    const segments = resolveTakes(voiceTrack!.takes).filter((g) => g.start < t)
+    for (const g of segments) {
+      const end = Math.min(g.end, t)
+      voice.push({ lineId: '', start: g.start, mediaKey: g.take.mediaKey, durationSec: end - g.start, offset: g.offset, gain: g.take.volume })
+      speech.push([g.start, end])
+    }
+    // Captions: what was said, chunked; each chunk ends where its segment ends.
+    for (const g of segments) {
+      const ws = trackWords([g]).filter((w) => w.start < t)
+      captions.push(...chunkWords(ws, Math.min(g.end, t)))
+    }
+  }
 
   const titleUntil = plan.title.showUntilSec === 'always' ? t : Math.min(t, plan.title.showUntilSec)
   return { duration: t, shots, scenes, voice, captions, title: { text: plan.title.text, until: titleUntil }, speech, look: plan.look ?? DEFAULT_LOOK, fades: plan.fades ?? { in: false, out: false } }

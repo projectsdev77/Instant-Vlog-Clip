@@ -1,8 +1,7 @@
 import { uid } from './ids'
 import { rankedMoments } from './moments'
-import { videoTargetSec, vibeShotLength, vibeTransition, type PlanContext } from './planContext'
+import { sceneDuration, videoTargetSec, vibeShotLength, vibeTransition, type PlanContext } from './planContext'
 import { fitShots, isTalking, shotFromMoment, sumShots } from './shots'
-import { lineSceneDuration } from './timing'
 import type { Clip, ClipAudioMode, EditPlan, Moment, Scene, ScriptLine, Shot } from './types'
 
 type Candidate = { clip: Clip; moment: Moment }
@@ -76,7 +75,7 @@ export function planFallback(ctx: PlanContext): EditPlan {
 
   if (lines.length) {
     lines.forEach((line, i) => {
-      const target = lineSceneDuration(line, ctx.voiceMode)
+      const target = sceneDuration(ctx, line)
       const parts = Math.max(1, Math.min(3, Math.round(target / 3.5)))
       const shots: Shot[] = []
       for (let p = 0; p < parts; p++) {

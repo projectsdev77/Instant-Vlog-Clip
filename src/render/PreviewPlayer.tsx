@@ -10,6 +10,9 @@ import { cn } from '@/lib/cn'
 import { drawFrame } from './compositor'
 import { loadVideoFont, outputSize, styleById } from './styles'
 
+/** Lets a parent drive the player (the voice studio starts playback when recording starts). */
+export type PlayerControl = { play: (from?: number) => void; pause: () => void; seek: (t: number) => void; time: () => number; playing: () => boolean }
+
 type Props = {
   timeline: Timeline
   project: Project
@@ -21,6 +24,10 @@ type Props = {
   autoPlay?: boolean
   /** small pinned preview (phone, while editing a scene) */
   compact?: boolean
+  controlRef?: React.MutableRefObject<PlayerControl | null>
+  onPlayingChange?: (playing: boolean) => void
+  /** no soundtrack on purpose (e.g. while recording): don't show "Mixing audio" */
+  silent?: boolean
 }
 
 /**
@@ -28,7 +35,7 @@ type Props = {
  * drawn onto a canvas by the same compositor the exporter uses, and the
  * pre-mixed soundtrack is the master clock.
  */
-export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact }: Props) {
+export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact, controlRef, onPlayingChange, silent }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const holderRef = useRef<HTMLDivElement>(null)
   const videos = useRef(new Map<string, HTMLVideoElement>())
@@ -131,6 +138,27 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
     }
   }, [startAudio, stopAudio])
 
+  useEffect(() => {
+    if (!controlRef) return
+    controlRef.current = {
+      play: (from) => {
+        if (from !== undefined) timeRef.current = Math.max(0, Math.min(from, tlRef.current.duration))
+        play()
+      },
+      pause,
+      seek: (t) => {
+        timeRef.current = Math.max(0, Math.min(t, tlRef.current.duration))
+        setTime(timeRef.current)
+        if (playingRef.current) startAudio(timeRef.current)
+      },
+      time: () => timeRef.current,
+      playing: () => playingRef.current,
+    }
+  })
+  useEffect(() => {
+    onPlayingChange?.(playing)
+  }, [playing, onPlayingChange])
+
   const autoStarted = useRef(false)
   useEffect(() => {
     if (!autoPlay || !mix || autoStarted.current) return
@@ -231,7 +259,7 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
             </span>
           )}
         </button>
-        {!mix && !compact && (
+        {!mix && !compact && !silent && (
           <span className="absolute top-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold">
             <Spinner className="size-3" /> Mixing audio
           </span>

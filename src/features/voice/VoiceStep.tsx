@@ -1,46 +1,39 @@
 import { Tour } from '@/features/tutorial/Tour'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { AudioLines, Captions, Check, Mic, Play, Square } from 'lucide-react'
+import { AudioLines, Captions, Check, Mic, Play } from 'lucide-react'
 import { voices, AiError, ai } from '@/ai'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
-import type { ScriptLine, VoiceMode } from '@/domain/types'
-import { hasFreshAudio } from '@/domain/timing'
+import type { VoiceMode } from '@/domain/types'
 import { cn } from '@/lib/cn'
-import { getMediaUrl } from '@/lib/mediaStore'
 import { useProject } from '@/store/projectStore'
 import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath } from '@/features/project/steps'
-import { Teleprompter } from './Teleprompter'
+import { VoiceStudio } from './VoiceStudio'
 
 const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] = [
   { id: 'ai', title: 'AI voice', body: 'Six natural voices read your lines.', icon: AudioLines },
-  { id: 'recorded', title: 'Record my own', body: 'Read each line with a teleprompter.', icon: Mic },
+  { id: 'recorded', title: 'Record my own', body: 'Talk over the video, in one take or many.', icon: Mic },
   { id: 'none', title: 'No voiceover', body: 'Your lines appear as captions only.', icon: Captions },
 ]
 
-export const isRecorded = (l: ScriptLine) => hasFreshAudio(l) && l.audio?.source === 'recorded'
-
 export function VoiceStep() {
-  const { project, updateProject } = useProject()
+  const { project, clips, updateProject } = useProject()
   const navigate = useNavigate()
-  const [tele, setTele] = useState<number | null>(null)
   if (!project) return null
   const lines = project.script?.lines ?? []
-  const recorded = lines.filter(isRecorded).length
+  const takes = project.voiceTrack?.takes ?? []
   const mode = project.voice.mode
   const voice = voices.find((v) => v.id === project.voice.voiceId) ?? voices[0]
-  const canContinue = mode !== 'recorded' || recorded === lines.length
+  const canContinue = mode !== 'recorded' || takes.length > 0
 
   const next = async () => {
     if (stepIndex(project.step) < stepIndex('generate')) await updateProject({ step: 'generate' })
     navigate(stepPath(project.id, 'generate'))
   }
-  const firstUnrecorded = () => Math.max(0, lines.findIndex((l) => !isRecorded(l)))
-
-  const summary = mode === 'ai' ? `${voice.name} · ${voice.description.toLowerCase()}` : mode === 'recorded' ? `${recorded} of ${lines.length} lines recorded` : 'Captions only, no voiceover'
+  const summary = mode === 'ai' ? `${voice.name} · ${voice.description.toLowerCase()}` : mode === 'recorded' ? (takes.length ? `${takes.length} take${takes.length === 1 ? '' : 's'} recorded` : 'Record at least one take') : 'Captions only, no voiceover'
 
   return (
     <>
@@ -80,7 +73,7 @@ export function VoiceStep() {
 
         <div className="mt-8">
           {mode === 'ai' && <VoicePicker sample={lines[0]?.text ?? "So here's how today went."} />}
-          {mode === 'recorded' && <RecordLines lines={lines} onOpen={(i) => setTele(i)} openFirst={() => setTele(firstUnrecorded())} />}
+          {mode === 'recorded' && <VoiceStudio project={project} clips={clips} />}
           {mode === 'none' && (
             <div className="flex flex-wrap items-center gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
               <div className="grid aspect-[9/16] w-[92px] place-items-end overflow-hidden rounded-[var(--radius-thumb)] bg-[linear-gradient(175deg,#cfe6ea_0%,#6fa7b4_34%,#2b5763_70%,#0c1a1f_100%)] p-2">
@@ -102,7 +95,6 @@ export function VoiceStep() {
         </Button>
       </StepFooter>
       <Tour page="voice" />
-      {tele !== null && <Teleprompter lines={lines} start={tele} onClose={() => setTele(null)} />}
     </>
   )
 }
@@ -187,59 +179,5 @@ export function Bars() {
         <span key={d} className="h-full w-[3px] origin-bottom animate-bar rounded-full bg-current" style={{ animationDelay: `${d}s` }} />
       ))}
     </span>
-  )
-}
-
-function RecordLines({ lines, onOpen, openFirst }: { lines: ScriptLine[]; onOpen: (i: number) => void; openFirst: () => void }) {
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-panel)] bg-surface p-5">
-        <p className="max-w-[52ch] text-muted">Read each line out loud. We trim the silence, even out the volume and time the captions to your voice.</p>
-        <Button onClick={openFirst}>
-          <span className="size-2.5 rounded-full bg-danger" /> Open teleprompter
-        </Button>
-      </div>
-      <ol className="space-y-2">
-        {lines.map((l, i) => {
-          const done = isRecorded(l)
-          return (
-            <li key={l.id} className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-3 pl-4">
-              <span className={cn('grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold', done ? 'bg-success text-success-fg' : 'bg-surface-2 text-muted')}>
-                {done ? <Check className="size-4" strokeWidth={3} /> : i + 1}
-              </span>
-              <span className="min-w-0 flex-1 text-[15px]">{l.text}</span>
-              {done && <PlayButton mediaKey={l.audio!.mediaKey} />}
-              <Button size="sm" variant={done ? 'quiet' : 'primary'} className={cn(done && 'bg-white/8')} onClick={() => onOpen(i)}>
-                {done ? 'Redo' : 'Record'}
-              </Button>
-            </li>
-          )
-        })}
-      </ol>
-    </div>
-  )
-}
-
-function PlayButton({ mediaKey }: { mediaKey: string }) {
-  const [playing, setPlaying] = useState(false)
-  const ref = useRef<HTMLAudioElement | null>(null)
-  useEffect(() => () => ref.current?.pause(), [])
-  const toggle = async () => {
-    if (playing) {
-      ref.current?.pause()
-      setPlaying(false)
-      return
-    }
-    const url = await getMediaUrl(mediaKey)
-    if (!url) return
-    ref.current = new Audio(url)
-    ref.current.onended = () => setPlaying(false)
-    setPlaying(true)
-    void ref.current.play()
-  }
-  return (
-    <button type="button" onClick={toggle} className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 hover:bg-[#262321]" aria-label={playing ? 'Stop' : 'Play recording'}>
-      {playing ? <Square className="size-3.5" fill="currentColor" /> : <Play className="ml-0.5 size-4" fill="currentColor" />}
-    </button>
   )
 }

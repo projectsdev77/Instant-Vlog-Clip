@@ -1,6 +1,6 @@
 import { resolveTemplate } from './templates'
 import { lineSceneDuration } from './timing'
-import type { Clip, ProjectSettings, Script, VoiceMode } from './types'
+import type { Clip, ProjectSettings, Script, ScriptLine, VoiceMode } from './types'
 
 /** Everything needed to build or check an edit plan. */
 export type PlanContext = {
@@ -11,6 +11,15 @@ export type PlanContext = {
   title: string
   musicTrackId: string | null
   musicGainDb: number
+  /** scene length per line when the user recorded over a fixed timing ("Record my own") */
+  sceneSec?: Map<string, number>
+  /** when making the vlog over a recording: exactly these scenes, in this order, with these lengths */
+  fixedLayout?: { lineId?: string; sec: number }[]
+}
+
+/** How long the scene carrying `line` lasts. */
+export function sceneDuration(ctx: Pick<PlanContext, 'voiceMode' | 'sceneSec'>, line: ScriptLine): number {
+  return ctx.sceneSec?.get(line.id) ?? lineSceneDuration(line, ctx.voiceMode)
 }
 
 /** Clips worth showing: readable and not accidental (pocket shots, floor, etc.). */
@@ -19,8 +28,8 @@ export function usableClips(clips: Clip[]): Clip[] {
 }
 
 /** Total length of the narrated scenes. */
-export function narrationSec(ctx: Pick<PlanContext, 'script' | 'voiceMode'>): number {
-  return (ctx.script?.lines ?? []).reduce((a, l) => a + lineSceneDuration(l, ctx.voiceMode), 0)
+export function narrationSec(ctx: Pick<PlanContext, 'script' | 'voiceMode' | 'sceneSec'>): number {
+  return (ctx.script?.lines ?? []).reduce((a, l) => a + sceneDuration(ctx, l), 0)
 }
 
 /**

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
+import { stepPath } from '@/features/project/steps'
 import { Check, ChevronRight, Music2, VolumeX } from 'lucide-react'
 import { voices } from '@/ai'
 import { Spinner } from '@/components/ui/Spinner'
@@ -64,7 +66,14 @@ export function VoicePanel({ project }: { project: Project }) {
   if (project.voice.mode === 'none') return <p className="rounded-[var(--radius-card)] bg-surface p-4 text-muted">This vlog has no voiceover. Your lines show as captions. Pick a voice in the Voice step to add one.</p>
   return (
     <div className="space-y-4">
-      {project.voice.mode === 'recorded' && <p className="text-[14px] text-muted">You’re using your own recordings. Pick a voice below to switch to AI.</p>}
+      {project.voice.mode === 'recorded' && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4">
+          <p className="min-w-0 flex-1 text-[14px] text-muted">You’re using your own voice{project.voiceTrack?.takes.length ? ` (${project.voiceTrack.takes.length} take${project.voiceTrack.takes.length === 1 ? '' : 's'})` : ''}. Re-record, move or trim it in the studio, then make the vlog again. Or pick a voice below to switch to AI.</p>
+          <Link to={stepPath(project.id, 'voice')} className="flex h-10 items-center rounded-full bg-white px-4 text-[14px] font-bold text-ink">
+            Open voice studio
+          </Link>
+        </div>
+      )}
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
         {voices.map((v) => {
           const selected = project.voice.mode === 'ai' && project.voice.voiceId === v.id

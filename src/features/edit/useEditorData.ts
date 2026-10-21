@@ -8,7 +8,7 @@ export function useEditorData(project: Project | null, plan: EditPlan | undefine
   const timeline = useMemo<Timeline | null>(() => {
     if (!project || !plan) return null
     const byId = new Map(clips.map((c) => [c.id, c]))
-    return buildTimeline({ ...plan, title: { ...plan.title, text: project.title } }, byId, project.script, project.voice.mode)
+    return buildTimeline({ ...plan, title: { ...plan.title, text: project.title } }, byId, project.script, project.voice.mode, project.voiceTrack)
   }, [project, plan, clips])
 
   const [mix, setMix] = useState<{ key: string; buf: AudioBuffer } | null>(null)

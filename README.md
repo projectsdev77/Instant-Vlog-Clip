@@ -104,7 +104,7 @@ Add clips ──► on device: metadata, thumbnail, quality signals, contact she
             AI clip analysis (description, tags, best moments, focus point)
                  │
 Script ─────► AI writes or polishes first-person lines grounded in the clips
-Voice  ─────► AI voice per line, or the user's recordings (trimmed, levelled, word-timed)
+Voice  ─────► AI voice per line, or the user's own voiceover recorded in the voice studio (takes, levelled, transcribed)
                  │
 Generate ──► AI edit planner → Edit Decision List (JSON) → validate & repair → fallback if needed
                  │
@@ -113,6 +113,8 @@ Export ────► WebCodecs + Mediabunny, frame-accurate, on device → MP4
 ```
 
 **Length.** The user picks it on the Clips step (Auto, 15, 30 or 60 s). Each narration line gets a scene exactly as long as the line; the rest of the length is footage-only scenes (the clips' own sound under the music), spread between the lines. Every usable clip appears at least once, even if that runs past the chosen length, and speech is never cut. Auto means the narration plus room for every clip, or, with no script, a length that fits the footage.
+
+**Voice studio ("Record my own").** The user records while the video plays, with the script lines shown on the video like a teleprompter. One long take or many short ones, from any point. Takes sit on a track under the scenes: drag to move, drag the edges to trim, split at the playhead, re-record, delete, set the volume; where takes overlap the newer one wins. The scene timing is frozen at the first take, so Make keeps it exactly and the AI only picks the footage for each scene. Captions come from what the user actually said (speech-to-text of each take). If the script changes after recording, a banner offers to re-time the video ([src/features/voice/VoiceStudio.tsx](src/features/voice/VoiceStudio.tsx), [src/domain/voiceTrack.ts](src/domain/voiceTrack.ts)).
 
 **First-visit tutorial.** On a first visit the home page opens a five-slide intro ("How it works", also in the header to see again). It ends with **Try it with sample clips** (starts a vlog with the three example videos from `public/examples`) or **Use my own clips**. Either way, a tip then points at the key control on each step (12 in total: choose clips, star, length, write it for me, template, voice, make, preview, scenes, look, tell the AI, export). Tips don't block the page; doing what a tip points at counts as done, and "Skip tutorial" turns them off. Progress is kept in this browser ([src/features/tutorial/](src/features/tutorial/)).
 
@@ -151,7 +153,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 
 ## Status and known gaps
 
-The full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium with a simulated AI, which has since been removed: the app now always uses the real AI, so the browser tests need live keys. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
+The full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium. The app always uses the real AI, so the browser tests (`e2e/*.mjs`) need live keys or a local stand-in for the AI function at `VITE_SUPABASE_URL`. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
 
 Not yet verified:
 - **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs (ElevenLabs default voices) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.

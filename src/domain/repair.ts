@@ -2,9 +2,9 @@ import { z } from 'zod'
 import { audioModeFor, planFallback } from './fallback'
 import { uid } from './ids'
 import { rankedMoments } from './moments'
-import { usableClips, vibeShotLength, vibeTransition, videoTargetSec, type PlanContext } from './planContext'
+import { sceneDuration, usableClips, vibeShotLength, vibeTransition, videoTargetSec, type PlanContext } from './planContext'
 import { fitShots, srcSpan, MAX_HOLD, MAX_SPEED, MIN_SPEED, round, shotFromMoment, shotLength, sumShots } from './shots'
-import { lineSceneDuration, MAX_SHOT, MIN_SHOT } from './timing'
+import { MAX_SHOT, MIN_SHOT } from './timing'
 import { MOTIONS, RAMPS, TRANSITIONS, type EditPlan, type Scene, type Shot, type Transition } from './types'
 
 const num = z.coerce.number().refine(Number.isFinite)
@@ -146,8 +146,39 @@ export function repairPlan(
     })
     .filter((s): s is { id: string | undefined; lineId: string | undefined; shots: Shot[] } => !!s)
 
+  // Fits shots to exactly `target` seconds, adding fresh footage if they're too short.
+  const fitTo = (shots: Shot[], target: number, underVoice: boolean) => {
+    if (!shots.length) {
+      const s = freshShot(target, { underVoice })
+      shots = s ? [s] : []
+    }
+    let fitted = fitShots(shots, target, clips)
+    let guard = 0
+    while (fitted.deficit > 0.05 && guard++ < 6) {
+      const s = freshShot(fitted.deficit, { underVoice })
+      if (!s) break
+      fitted = fitShots([...fitted.shots, s], target, clips)
+    }
+    return fitted.shots
+  }
+
   let scenes: Scene[]
-  if (lines.length) {
+  if (ctx.fixedLayout?.length) {
+    // The user recorded over this exact timing: keep every scene's place and length;
+    // only the footage inside them is chosen here.
+    const lineIds = new Set(lines.map((l) => l.id))
+    const byLine = new Map<string, Shot[]>()
+    const footage: Shot[][] = []
+    for (const s of rawScenes) {
+      if (s.lineId && lineIds.has(s.lineId)) byLine.set(s.lineId, [...(byLine.get(s.lineId) ?? []), ...s.shots])
+      else footage.push(s.shots)
+    }
+    scenes = ctx.fixedLayout.map((slot) => {
+      const narratedSlot = !!slot.lineId && lineIds.has(slot.lineId)
+      const shots = narratedSlot ? (byLine.get(slot.lineId!) ?? []) : (footage.shift() ?? [])
+      return { id: uid('sc_'), lineId: narratedSlot ? slot.lineId : undefined, shots: fitTo(shots, slot.sec, narratedSlot) }
+    })
+  } else if (lines.length) {
     // Exactly one scene per line, in script order. Footage-only scenes (no
     // lineId) stay after the line they followed.
     const byLine = new Map<string, Shot[]>()
@@ -168,7 +199,7 @@ export function repairPlan(
       prevLine = s.lineId
     }
     scenes = lines.flatMap((line) => {
-      const target = lineSceneDuration(line, ctx.voiceMode)
+      const target = sceneDuration(ctx, line)
       let shots = byLine.get(line.id) ?? []
       if (!shots.length) {
         issues.push(`line "${line.id}" has no scene`)
@@ -189,7 +220,7 @@ export function repairPlan(
   }
 
   scenes = scenes.filter((s) => s.shots.length)
-  if (opts.fill !== false && scenes.length) scenes = fillScenes(scenes, ctx, { freshShot, usedRanges })
+  if (opts.fill !== false && scenes.length && !ctx.fixedLayout?.length) scenes = fillScenes(scenes, ctx, { freshShot, usedRanges })
 
   if (!scenes.length) {
     return { plan: planFallback(ctx), issues: [...issues, 'Plan has no usable shots'], usedFallback: true }

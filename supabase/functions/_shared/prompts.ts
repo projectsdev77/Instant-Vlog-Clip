@@ -106,7 +106,17 @@ export function planUserText(req: PlanRequest): string {
       ].join('\n'),
     )
   }
-  if (req.lines.length) {
+  if (req.layout?.length) {
+    const text = new Map(req.lines.map((l) => [l.lineId, l]))
+    parts.push(
+      `The user already recorded their own voice over a fixed timing. Output exactly these ${req.layout.length} scenes, in this order, with these lengths; only choose the footage (and effects) for each:\n${req.layout
+        .map((s, i) => {
+          const l = s.lineId ? text.get(s.lineId) : undefined
+          return l ? `${i + 1}. lineId=${s.lineId} sceneSec=${s.sceneSec.toFixed(2)} text="${l.text}" visualIntent="${l.visualIntent}"` : `${i + 1}. lineId="" (footage only) sceneSec=${s.sceneSec.toFixed(2)}`
+        })
+        .join('\n')}`,
+    )
+  } else if (req.lines.length) {
     const speech = req.lines.reduce((a, l) => a + l.sceneSec, 0)
     parts.push(
       `Narration lines:\n${req.lines.map((l) => `- lineId=${l.lineId} sceneSec=${l.sceneSec.toFixed(2)} text="${l.text}" visualIntent="${l.visualIntent}"`).join('\n')}`,
@@ -181,7 +191,9 @@ export function scriptChecklist(req: ScriptRequest): string {
 
 export function planChecklist(req: PlanRequest): string {
   const ids = req.catalog.map((c) => `${c.clipId} (0–${c.durationSec.toFixed(1)}s)`).join(', ')
-  const scenes = req.lines.length
+  const scenes = req.layout?.length
+    ? `${req.layout.map((s, i) => `  ${i + 1}. lineId ${s.lineId ? s.lineId : '""'}: shots add up to ${s.sceneSec.toFixed(2)}s`).join('\n')}\n  (exactly these scenes, nothing added or removed)`
+    : req.lines.length
     ? `${req.lines.map((l, i) => `  ${i + 1}. lineId ${l.lineId}: shots add up to ${l.sceneSec.toFixed(2)}s`).join('\n')}\n  plus footage-only scenes (lineId "") between and after them, so the total is about ${req.targetSec}s`
     : `  scenes with lineId "" adding up to about ${req.targetSec}s`
   return [

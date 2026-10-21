@@ -36,7 +36,7 @@ try {
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
 
-  // 2. Own voice: type lines, record each with the teleprompter
+  // 2. Own voice: type lines, record over the video in the voice studio (one take, then a second one)
   await newVlogWithClips(fixtures)
   const box = page.locator('ol textarea').first()
   await box.fill('I woke up early and grabbed coffee.')
@@ -45,15 +45,14 @@ try {
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.waitForURL(/\/voice$/)
   await page.getByRole('radio', { name: /Record my own/ }).click()
-  await page.getByRole('button', { name: 'Open teleprompter' }).click()
-  for (let i = 0; i < 2; i++) {
-    await page.getByRole('button', { name: 'Start recording' }).click()
-    await page.waitForTimeout(1800)
-    await page.getByRole('button', { name: 'Stop recording' }).click()
-    await page.waitForTimeout(1500)
+  for (const pause of [2500, 1500]) {
+    await page.getByRole('button', { name: 'Record', exact: true }).click()
+    await page.waitForTimeout(pause)
+    await page.getByRole('button', { name: 'Stop' }).click()
+    await page.waitForTimeout(1200)
   }
-  await page.waitForSelector('text=2 of 2 lines recorded', { timeout: 15000 })
-  ok('recorded both lines with the teleprompter')
+  await page.waitForSelector('text=2 takes recorded', { timeout: 15000 })
+  ok('recorded two takes in the voice studio')
   await page.getByRole('button', { name: 'Make my vlog' }).click()
   await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
   const dur1 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()

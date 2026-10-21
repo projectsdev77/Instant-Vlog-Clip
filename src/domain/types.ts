@@ -107,6 +107,38 @@ export type ScriptLine = {
 export type Script = { title: string; lines: ScriptLine[] }
 
 export type VoiceMode = 'ai' | 'recorded' | 'none'
+
+/** One recording on the voice track ("Record my own"). Times in seconds. */
+export type VoiceTake = {
+  id: string
+  /** the recording, in the on-device media store */
+  mediaKey: string
+  /** where it starts on the vlog's timeline */
+  start: number
+  /** the part of the recording that's used */
+  in: number
+  out: number
+  /** full length of the recording */
+  durationSec: number
+  /** 0..2, default 1 */
+  volume: number
+  createdAt: number
+  /** loudness envelope for drawing the waveform (0..1, ~40 values per second) */
+  peaks: number[]
+  /** what was said, word-timed in recording time (for captions) */
+  words?: Word[]
+  transcript?: 'pending' | 'done' | 'failed'
+}
+
+/**
+ * The user's own voiceover, recorded over a preview of the vlog. `layout` is
+ * the scene timing they recorded over (frozen at the first take), so the
+ * final cut keeps it: narrated scenes by line, then footage-only scenes.
+ */
+export type VoiceTrack = {
+  layout?: { lineId?: string; sec: number }[]
+  takes: VoiceTake[]
+}
 export type VoiceSettings = { mode: VoiceMode; voiceId: string; volumeDb: number }
 
 export const TRANSITIONS = ['cut', 'crossfade', 'dip', 'whip', 'slide', 'zoom', 'flash', 'blur'] as const
@@ -206,6 +238,8 @@ export type Project = {
   clipIds: string[]
   script?: Script
   voice: VoiceSettings
+  /** "Record my own" voiceover takes */
+  voiceTrack?: VoiceTrack
   /** undo history, newest last */
   edits: EditPlan[]
   /** index into edits of the version being shown */
