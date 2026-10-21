@@ -1,4 +1,4 @@
-// Captures every screen and state (demo AI mode) at phone and desktop sizes.
+// Captures every screen and state at phone and desktop sizes (needs the AI function, or a local stand-in).
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { mkdirSync, readdirSync } from 'node:fs'
@@ -57,22 +57,6 @@ async function run(device) {
   await page.getByRole('radio', { name: /Record my own/ }).click()
   await wait(200)
   await snap('10-voice-record')
-  // Make with no takes yet: the error state
-  const projectUrl = page.url().replace(/\/voice$/, '')
-  await page.goto(`${projectUrl}/generate`)
-  await page.waitForSelector('text=Try again', { timeout: 60000 })
-  await wait(300)
-  await snap('14-make-error')
-  await page.goto(`${projectUrl}/voice`)
-  await wait(1200)
-  await snap('11-voice-studio')
-  await click('Record')
-  await wait(2000)
-  await snap('12-voice-studio-recording')
-  await click('Stop')
-  await wait(1800)
-  await snap('13-voice-studio-takes')
-  await page.goto(`${projectUrl}/voice`)
   await page.getByRole('radio', { name: /No voiceover/ }).click()
   await wait(200)
   await snap('15-voice-none')
@@ -99,6 +83,22 @@ async function run(device) {
     await wait(250)
     await snap(`${i}-edit-${tab.toLowerCase()}`)
   }
+  // Own voice: switch in the Voice panel, record over the made vlog on the Record page
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
+  await page.getByRole('radio', { name: 'My own voice' }).click()
+  await page.waitForURL(/\/record$/)
+  await wait(1200)
+  await snap('11-record')
+  await page.getByRole('main').getByRole('button', { name: 'Record', exact: true }).click()
+  await wait(2000)
+  await snap('12-record-recording')
+  await click('Stop')
+  await wait(1800)
+  await snap('13-record-takes')
+  await click('Continue to edit')
+  await page.waitForURL(/\/edit(\?|$)/)
+  await page.waitForFunction(() => !document.body.innerText.includes('Mixing audio'), null, { timeout: 30000 })
+  await wait(600)
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Scenes', exact: true }).click()
   if (phone) {
     await click('Tell the AI')

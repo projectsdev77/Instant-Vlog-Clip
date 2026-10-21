@@ -89,6 +89,7 @@ Both `.env` files are git-ignored.
 | `npm test` | Unit tests (Vitest) |
 | `npm run test-clips` | Generates test videos into `e2e/fixtures` (needs ffmpeg) |
 | `npm run e2e` | Browser tests against a running dev server (Playwright Chromium). They use the real AI: they need a configured `.env.local`, send real requests and count toward your limits (set `QUOTAS_DISABLED=true` on the function while testing) |
+| `node e2e/lines.mjs` | Edit's per-line voice tools: mute, read again, add a line |
 | `node e2e/tutorial.mjs` | First-visit tutorial end to end (`DESKTOP=1` for the desktop layout) |
 | `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
@@ -104,17 +105,20 @@ Add clips ──► on device: metadata, thumbnail, quality signals, contact she
             AI clip analysis (description, tags, best moments, focus point)
                  │
 Script ─────► AI writes or polishes first-person lines grounded in the clips
-Voice  ─────► AI voice per line, or the user's own voiceover recorded in the voice studio (takes, levelled, transcribed)
+Voice  ─────► AI voice per line, own voice (recorded after Make), or captions only
                  │
 Generate ──► AI edit planner → Edit Decision List (JSON) → validate & repair → fallback if needed
                  │
+Record ────► own voice only: record over the made vlog (takes, levelled, transcribed)
 Edit ──────► real-time canvas preview, scene cards, "Tell the AI", undo
 Export ────► WebCodecs + Mediabunny, frame-accurate, on device → MP4/WebM → share sheet
 ```
 
 **Length.** The user picks it on the Clips step (Auto, 15, 30 or 60 s). Each narration line gets a scene exactly as long as the line; the rest of the length is footage-only scenes (the clips' own sound under the music), spread between the lines. Every usable clip appears at least once, even if that runs past the chosen length, and speech is never cut. Auto means the narration plus room for every clip, or, with no script, a length that fits the footage.
 
-**Voice studio ("Record my own").** The user records while the video plays, with the script lines shown on the video like a teleprompter. One long take or many short ones, from any point. Takes sit on a track under the scenes: drag to move, drag the edges to trim, split at the playhead, re-record, delete, set the volume; where takes overlap the newer one wins. The scene timing is frozen at the first take, so Make keeps it exactly and the AI only picks the footage for each scene. Captions come from what the user actually said (speech-to-text of each take). If the script changes after recording, a banner offers to re-time the video ([src/features/voice/VoiceStudio.tsx](src/features/voice/VoiceStudio.tsx), [src/domain/voiceTrack.ts](src/domain/voiceTrack.ts)).
+**Own voice ("Record my own").** Choosing it on the Voice step adds a sixth step: Make builds the vlog first (scenes timed to reading the lines), then the **Record** page plays the made vlog, with the script lines on screen if there are any, while the user talks. One long take or many short ones, from any point. Takes sit on a track under the scenes: drag to move, drag the edges to trim, split at the playhead, re-record, delete, set the volume; where takes overlap the newer one wins. Takes stay at their times when the edit changes later. Once a voice is recorded, Tell the AI keeps the current scene timing. Captions come from what the user actually said (speech-to-text of each take), so it also works with no script. "Continue to edit" (or "Skip for now") goes on to Edit; the Voice panel there opens the studio again ([src/features/voice/RecordStep.tsx](src/features/voice/RecordStep.tsx), [src/features/voice/VoiceStudio.tsx](src/features/voice/VoiceStudio.tsx), [src/domain/voiceTrack.ts](src/domain/voiceTrack.ts)).
+
+**Voice in Edit.** The Voice panel switches between AI voice, own voice and no voiceover at any time (AI voice needs lines). In a scene, the user can edit its line, **add a line** (to a footage-only scene, or as a new scene after it, with fresh footage), and with the AI voice **mute** the line (caption only) or **read it again**: Natural, Calmer, More energy, Slower, or just another take ([src/features/edit/SceneEditor.tsx](src/features/edit/SceneEditor.tsx)).
 
 **First-visit tutorial.** On a first visit the home page opens a five-slide intro ("How it works", also in the header to see again). It ends with **Try it with sample clips** (starts a vlog with the three example videos from `public/examples`) or **Use my own clips**. Either way, a tip then points at the key control on each step (12 in total: choose clips, star, length, write it for me, template, voice, make, preview, scenes, look, tell the AI, export). Tips don't block the page; doing what a tip points at counts as done, and "Skip tutorial" turns them off. Progress is kept in this browser ([src/features/tutorial/](src/features/tutorial/)).
 
@@ -153,7 +157,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 
 ## Status and known gaps
 
-The full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium. The app always uses the real AI, so the browser tests (`e2e/*.mjs`) need live keys or a local stand-in for the AI function at `VITE_SUPABASE_URL`. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
+The full flow (import → script → AI voice → generate → edit → export), own voice recorded on the Record page with a fake microphone, the per-line voice tools, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium. The app always uses the real AI, so the browser tests (`e2e/*.mjs`) need live keys or a local stand-in for the AI function at `VITE_SUPABASE_URL`. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
 
 Not yet verified:
 - **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs (ElevenLabs default voices) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.

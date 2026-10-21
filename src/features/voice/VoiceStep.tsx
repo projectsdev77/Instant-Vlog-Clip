@@ -71,7 +71,7 @@ export function VoiceStep() {
         <div className="mt-8">
           {mode === 'ai' && <VoicePicker sample={lines[0]?.text ?? "So here's how today went."} />}
           {mode === 'recorded' && (
-            <div className="flex flex-wrap items-center gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
+            <div className="flex items-start gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
               <span className="grid size-[56px] shrink-0 place-items-center rounded-2xl bg-accent text-white">
                 <Mic className="size-6" strokeWidth={2.2} />
               </span>

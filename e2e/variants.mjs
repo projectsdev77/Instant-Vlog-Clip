@@ -50,7 +50,7 @@ try {
   ok('Make leads to the Record page')
   await page.waitForTimeout(1200)
   for (const pause of [2500, 1500]) {
-    await page.getByRole('button', { name: 'Record', exact: true }).click()
+    await page.getByRole('main').getByRole('button', { name: 'Record', exact: true }).click()
     await page.waitForTimeout(pause)
     await page.getByRole('button', { name: 'Stop' }).click()
     await page.waitForTimeout(1200)
