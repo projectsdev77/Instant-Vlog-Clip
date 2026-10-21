@@ -24,7 +24,7 @@ Use the latest Chrome, Edge or Safari. Video decoding and encoding use WebCodecs
 The app sends requests to one Supabase Edge Function (`supabase/functions/ai`). It uses a language model for clip analysis, scripts and edit plans, and **ElevenLabs** for the AI voice and speech-to-text. Users' video files never leave their device; only small contact-sheet images, short audio and text are sent.
 
 The language model is a setting (`AI_PROVIDER`):
-- **`gemini`** (default): Google Gemini. Get a key at Google AI Studio. The free tier is fine for development, but its limits are low, and Google may use free-tier requests to improve its products. **Switch the key to a paid (billing-enabled) Google account before launch.**
+- **`gemini`** (default): Google Gemini (Flash-Lite by default, see the secrets below). Get a key at Google AI Studio. The free tier is fine for development, but its limits are low, and Google may use free-tier requests to improve its products. **Switch the key to a paid (billing-enabled) Google account before launch.**
 - **`claude`**: Anthropic Claude (`claude-opus-5-5`), with an Anthropic API key.
 
 Nothing else changes between them: same prompts, same response formats, same app. Gemini additionally gets a short checklist at the end of each request (allowed clip IDs, exact scene lengths, word budget) and stricter response limits, since faster models follow rules better when they're restated with the real numbers.
@@ -48,7 +48,7 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
    supabase secrets set AI_PROVIDER=claude ANTHROPIC_API_KEY=... ELEVENLABS_API_KEY=...
    supabase functions deploy ai
    ```
-   Optional secrets: `GEMINI_MODEL` (default `gemini-flash-latest`, which follows Google's current Flash model; pin a version for launch; used for the script and the edit plan), `GEMINI_FAST_MODEL` (default `gemini-flash-lite-latest`; used for quick jobs: polish and clip analysis). Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
+   Optional secrets: `GEMINI_MODEL` (script and edit plan) and `GEMINI_FAST_MODEL` (polish and clip analysis), both defaulting to `gemini-flash-lite-latest`, Google's fastest model (regular Flash took 1–2 minutes per request on a free-tier key); try `gemini-flash-latest` for the script and plan once billing is on. Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
 4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
 5. Create `.env.local` from `.env.example`:
    ```

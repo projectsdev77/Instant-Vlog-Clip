@@ -2,11 +2,12 @@ import { ApiError, FinishReason, GoogleGenAI, ThinkingLevel, type ThinkingConfig
 import { forGemini } from '../_shared/schemas.ts'
 import { type JsonRequest, RateLimitError, RefusalError } from './llm.ts'
 
-// "gemini-flash-latest" follows Google's current Flash model, the one with a
-// free tier. Set GEMINI_MODEL to pin a specific version (e.g. for launch).
-const model = () => Deno.env.get('GEMINI_MODEL') ?? 'gemini-flash-latest'
-// Quick jobs (polish, clip analysis) use the much faster Flash-Lite model.
-// Set GEMINI_FAST_MODEL to change it, or to the same value as GEMINI_MODEL to use one model.
+// Default: Gemini Flash-Lite ("gemini-flash-lite-latest"), Google's fastest model.
+// Regular Flash took 1-2 minutes per request on a free-tier key, past the
+// app's time limits. Set GEMINI_MODEL (script, edit plan) and GEMINI_FAST_MODEL
+// (polish, clip analysis) to use other models, e.g. gemini-flash-latest once
+// the key has billing enabled. Each call's model and time are in the logs.
+const model = () => Deno.env.get('GEMINI_MODEL') ?? 'gemini-flash-lite-latest'
 const fastModel = () => Deno.env.get('GEMINI_FAST_MODEL') ?? 'gemini-flash-lite-latest'
 const modelFor = (effort: JsonRequest['effort']) => (effort === 'low' ? fastModel() : model())
 
