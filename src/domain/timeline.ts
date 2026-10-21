@@ -1,5 +1,5 @@
 import { shotLength } from './shots'
-import { hasFreshAudio, LINE_LEAD_IN, lineWords } from './timing'
+import { LINE_LEAD_IN, lineWords, speaksLine } from './timing'
 import { DEFAULT_LOOK, type Clip, type EditPlan, type Look, type Script, type ScriptLine, type Shot, type Transition, type VoiceMode, type VoiceTrack, type Word } from './types'
 import { resolveTakes, trackWords } from './voiceTrack'
 
@@ -96,7 +96,7 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
     scenes.push({ start: sceneStart, end: t, lineId: scene.lineId, onScreenText: line?.onScreenText })
     if (!line || fromTrack) return
     const speechStart = sceneStart + LINE_LEAD_IN
-    if (voiceMode === 'ai' && hasFreshAudio(line)) {
+    if (speaksLine(line, voiceMode)) {
       voice.push({ lineId: line.id, start: speechStart, mediaKey: line.audio!.mediaKey, durationSec: line.audio!.durationSec })
       speech.push([speechStart, speechStart + line.audio!.durationSec])
     }

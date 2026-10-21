@@ -1,5 +1,5 @@
 import { type Alignment, wordsFromAlignment } from '../_shared/alignment.ts'
-import { ELEVENLABS_VOICE_IDS, type WordWire } from '../_shared/contracts.ts'
+import { ELEVENLABS_VOICE_IDS, type Delivery, type WordWire } from '../_shared/contracts.ts'
 
 // Endpoints per the ElevenLabs API reference (text-to-speech "with timestamps"
 // and speech-to-text "Scribe"). Verify model ids against current docs.
@@ -40,12 +40,20 @@ async function failure(what: string, res: Response): Promise<VoiceServiceError> 
   return new VoiceServiceError(`Voice service: ${msg}`)
 }
 
-export async function synthesize(text: string, voiceId: string): Promise<{ audioBase64: string; mime: string; words: WordWire[] }> {
+/** Voice settings per delivery (ElevenLabs voice_settings; `natural` keeps the voice's defaults). */
+const DELIVERY: Record<Delivery, Record<string, number> | undefined> = {
+  natural: undefined,
+  calm: { stability: 0.75, similarity_boost: 0.75, style: 0, speed: 0.92 },
+  energetic: { stability: 0.3, similarity_boost: 0.75, style: 0.45, speed: 1.06 },
+  slow: { stability: 0.55, similarity_boost: 0.75, style: 0, speed: 0.85 },
+}
+
+export async function synthesize(text: string, voiceId: string, delivery: Delivery = 'natural', seed?: number): Promise<{ audioBase64: string; mime: string; words: WordWire[] }> {
   const voice = ELEVENLABS_VOICE_IDS[voiceId] ?? voiceId
   const res = await fetch(`${BASE}/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {
     method: 'POST',
     headers: { 'xi-api-key': key(), 'content-type': 'application/json' },
-    body: JSON.stringify({ text, model_id: TTS_MODEL }),
+    body: JSON.stringify({ text, model_id: TTS_MODEL, voice_settings: DELIVERY[delivery] ?? DELIVERY.natural, seed }),
   })
   if (!res.ok) throw await failure('text to speech', res)
   const body = (await res.json()) as { audio_base64: string; alignment?: Alignment; normalized_alignment?: Alignment }

@@ -95,7 +95,7 @@ async function handle(req: AiAction) {
         parts: [{ type: 'text', text: planUserText(req.payload) }],
       })
     case 'synthesize':
-      return await synthesize(req.payload.text, req.payload.voiceId)
+      return await synthesize(req.payload.text, req.payload.voiceId, req.payload.delivery, req.payload.seed)
     case 'transcribe':
       return await transcribe(b64ToBytes(req.payload.audioBase64), req.payload.mime, req.payload.language)
   }

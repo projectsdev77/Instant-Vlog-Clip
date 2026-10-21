@@ -16,6 +16,16 @@ describe('timeline', () => {
     expect(shotAt(tl, tl.duration - 0.01)).toBe(tl.shots[tl.shots.length - 1])
   })
 
+  it('a muted line keeps its caption but has no voice', () => {
+    const clips = [makeClip('a', 8), makeClip('b', 8)]
+    const script = makeScript(['one two three', 'four'])
+    script.lines[0].muted = true
+    const plan = planFallback(makeCtx(clips, script))
+    const tl = buildTimeline(plan, new Map(clips.map((c) => [c.id, c])), script, 'ai')
+    expect(tl.voice.map((v) => v.lineId)).toEqual(['l1'])
+    expect(tl.captions.flatMap((c) => c.words.map((w) => w.word))).toEqual(['one', 'two', 'three', 'four'])
+  })
+
   it('chunks captions on punctuation and word limits', () => {
     const ws = 'So I woke up early, grabbed coffee and then biked through the park.'.split(' ').map((w, i) => ({ word: w, start: i * 0.3, end: i * 0.3 + 0.3 }))
     const chunks = chunkWords(ws, 10)

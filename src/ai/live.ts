@@ -90,8 +90,8 @@ export const liveAi: AiService = {
     return lines.map((l, i) => r.lines[i] ?? l)
   },
   planEdit: (req) => call<PlanResponse>({ action: 'plan-edit', payload: req }),
-  async synthesize(text, voiceId, language) {
-    const r = await call<SynthesizeResponse>({ action: 'synthesize', payload: { text, voiceId, language } })
+  async synthesize(text, voiceId, language, opts) {
+    const r = await call<SynthesizeResponse>({ action: 'synthesize', payload: { text, voiceId, language, ...opts } })
     return { audio: base64ToBlob(r.audioBase64, r.mime), words: r.words }
   },
   async transcribe(audio, language) {

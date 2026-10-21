@@ -5,7 +5,7 @@ import type {
   ScriptResponse,
   TranscribeResponse,
 } from '@shared/contracts.ts'
-import type { ClipAnalysis, Word } from '@/domain/types'
+import type { ClipAnalysis, Delivery, Word } from '@/domain/types'
 
 export type SynthesizedLine = { audio: Blob; words: Word[] }
 
@@ -17,7 +17,7 @@ export interface AiService {
   polishLines(lines: string[], language: string): Promise<string[]>
   /** Raw plan; always run it through repairPlan */
   planEdit(req: PlanRequest): Promise<unknown>
-  synthesize(text: string, voiceId: string, language: string): Promise<SynthesizedLine>
+  synthesize(text: string, voiceId: string, language: string, opts?: { delivery?: Delivery; seed?: number }): Promise<SynthesizedLine>
   transcribe(audio: Blob, language: string, knownText?: string): Promise<TranscribeResponse>
 }
 

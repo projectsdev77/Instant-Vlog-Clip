@@ -26,17 +26,20 @@ async function setLineAudio(lineId: string, audio: LineAudio) {
 
 /** AI voice for one line. */
 export async function voiceLine(line: ScriptLine, voiceId: string, language: string): Promise<void> {
-  const { audio, words } = await ai.synthesize(line.text, voiceId, language)
+  const { delivery, seed } = line
+  const { audio, words } = await ai.synthesize(line.text, voiceId, language, { delivery, seed })
   const durationSec = (await decodeAudioFile(audio)).duration
   const mediaKey = uid('vo_')
   await putMedia(mediaKey, audio)
-  await setLineAudio(line.id, { mediaKey, durationSec, words, source: 'ai', voiceId, textHash: textHash(line.text) })
+  await setLineAudio(line.id, { mediaKey, durationSec, words, source: 'ai', voiceId, delivery, seed, textHash: textHash(line.text) })
 }
 
-/** Lines that still need AI voice (new, edited, or voiced with another voice). */
+/** Lines that still need AI voice (new, edited, or voiced with another voice or delivery). Muted lines never do. */
 export function linesNeedingVoice(p: Project): ScriptLine[] {
   if (p.voice.mode !== 'ai' || !p.script) return []
-  return p.script.lines.filter((l) => !hasFreshAudio(l) || l.audio?.source !== 'ai' || l.audio.voiceId !== p.voice.voiceId)
+  return p.script.lines.filter(
+    (l) => !l.muted && (!hasFreshAudio(l) || l.audio?.source !== 'ai' || l.audio.voiceId !== p.voice.voiceId || l.audio.delivery !== l.delivery || l.audio.seed !== l.seed),
+  )
 }
 
 export async function voiceAllLines(onProgress?: (done: number, total: number) => void): Promise<void> {

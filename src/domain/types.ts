@@ -91,6 +91,9 @@ export type LineAudio = {
   words: Word[]
   source: 'ai' | 'recorded'
   voiceId?: string
+  /** how it was read, so a change of delivery re-voices the line */
+  delivery?: Delivery
+  seed?: number
   /** hash of the text this audio was made for; mismatch = stale */
   textHash: string
 }
@@ -102,7 +105,16 @@ export type ScriptLine = {
   visualIntent: string
   onScreenText?: string
   audio?: LineAudio
+  /** AI voice skips this line; it shows as a caption only */
+  muted?: boolean
+  /** how the AI voice reads it (default natural) */
+  delivery?: Delivery
+  /** changes on "Read again" so the reading comes out different */
+  seed?: number
 }
+
+/** How the AI voice reads a line. */
+export type Delivery = 'natural' | 'calm' | 'energetic' | 'slow'
 
 export type Script = { title: string; lines: ScriptLine[] }
 

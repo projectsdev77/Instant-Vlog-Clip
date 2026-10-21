@@ -1,16 +1,72 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, Scissors, Snowflake, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, Plus, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
 import { rankedMoments } from '@/domain/moments'
-import type { Clip, ClipAudioMode, EditPlan, Fit, Moment, Motion, Project, Ramp, Shot, Transition } from '@/domain/types'
+import type { Clip, ClipAudioMode, Delivery, EditPlan, Fit, Moment, Motion, Project, Ramp, Shot, Transition } from '@/domain/types'
 import type { Timeline } from '@/domain/timeline'
 import { shotLength } from '@/domain/shots'
 import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { deleteScene, deleteShot, duplicateShot, editLine, freezeFrame, moveScene, setShotAudio, setShotSpeed, setShotVolume, splitShot, swapShot, trimShot, undo, updateShot } from './editActions'
+import {
+  addLine,
+  DELIVERY_LABEL,
+  deleteScene,
+  deleteShot,
+  duplicateShot,
+  editLine,
+  freezeFrame,
+  moveScene,
+  rereadLine,
+  setLineMuted,
+  setShotAudio,
+  setShotSpeed,
+  setShotVolume,
+  splitShot,
+  swapShot,
+  trimShot,
+  undo,
+  updateShot,
+} from './editActions'
+
+const DELIVERIES: Delivery[] = ['natural', 'calm', 'energetic', 'slow']
+
+/** A button that opens a one-line field for a new line of narration. */
+function AddLine({ label, busy, onAdd }: { label: string; busy: boolean; onAdd: (text: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  if (!open)
+    return (
+      <Button variant="quiet" size="sm" onClick={() => setOpen(true)}>
+        <Plus className="size-4" strokeWidth={2.4} /> {label}
+      </Button>
+    )
+  const submit = () => {
+    if (!text.trim() || busy) return
+    void onAdd(text.trim()).then(() => {
+      setText('')
+      setOpen(false)
+    })
+  }
+  return (
+    <div className="space-y-2">
+      <label htmlFor="new-line" className="block text-[15px] font-semibold">
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <TextInput id="new-line" autoFocus value={text} placeholder="What should it say?" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+        <Button disabled={busy || !text.trim()} onClick={submit}>
+          {busy ? <Spinner /> : 'Add'}
+        </Button>
+        <Button variant="text" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
 import { Thumb } from './GlobalPanels'
 
 type Props = { project: Project; plan: EditPlan; clips: Clip[]; index: number; onClose: () => void; onIndex: (i: number) => void; timeline: Timeline; now: number }
@@ -65,10 +121,46 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
             )}
           </div>
           <p className="text-[13px] font-medium text-faint">
-            {project.voice.mode === 'recorded' ? 'Re-record this line in the Voice step after changing it.' : 'Changing this re-voices just this line.'}
+            {project.voice.mode === 'ai' && !line.muted
+              ? 'Changing this re-voices just this line.'
+              : project.voice.mode === 'recorded'
+                ? 'Your recording stays as it is. Re-record in the voice studio if you want it to match.'
+                : 'This changes the caption.'}
           </p>
         </div>
       )}
+
+      {!line && <AddLine label="Add a line to this scene" busy={busy === 'add'} onAdd={(t) => act('add', async () => onIndex(await addLine(index, t)))} />}
+
+      {line && project.voice.mode === 'ai' && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold">Voice</span>
+            <Button size="sm" variant="quiet" disabled={!!busy} onClick={() => act('mute', () => setLineMuted(line.id, !line.muted))}>
+              {busy === 'mute' ? <Spinner /> : line.muted ? <Volume2 className="size-4" strokeWidth={2.4} /> : <VolumeX className="size-4" strokeWidth={2.4} />}
+              {line.muted ? 'Turn voice on' : 'Mute voice'}
+            </Button>
+          </div>
+          {line.muted ? (
+            <p className="text-[13px] font-medium text-faint">The AI voice skips this line. It still shows as a caption.</p>
+          ) : (
+            <Segs label="Read it">
+              {DELIVERIES.map((d) => (
+                <Seg key={d} on={(line.delivery ?? 'natural') === d} disabled={!!busy} onClick={() => act('read', () => rereadLine(line.id, d))}>
+                  {DELIVERY_LABEL[d]}
+                </Seg>
+              ))}
+              <Seg on={false} disabled={!!busy} onClick={() => act('read', () => rereadLine(line.id, line.delivery ?? 'natural'))}>
+                <span className="flex items-center gap-1.5">
+                  {busy === 'read' ? <Spinner className="size-3.5" /> : <RotateCcw className="size-3.5" strokeWidth={2.6} />} Read again
+                </span>
+              </Seg>
+            </Segs>
+          )}
+        </div>
+      )}
+
+      {line && <AddLine label="Add a line after this scene" busy={busy === 'add'} onAdd={(t) => act('add', async () => onIndex(await addLine(index, t)))} />}
 
       <div className="space-y-3">
         <h3 className="text-[15px] font-semibold">Shots</h3>

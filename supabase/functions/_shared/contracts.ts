@@ -123,7 +123,10 @@ export type PlanResponse = {
   scenes: { lineId: string; shots: PlanShotWire[] }[]
 }
 
-export type SynthesizeRequest = { text: string; voiceId: string; language: string }
+/** How a line is read: `natural` is the voice's own default. */
+export type Delivery = 'natural' | 'calm' | 'energetic' | 'slow'
+/** `seed` varies the reading, so "Read again" sounds different. */
+export type SynthesizeRequest = { text: string; voiceId: string; language: string; delivery?: Delivery; seed?: number }
 export type WordWire = { word: string; start: number; end: number }
 export type SynthesizeResponse = { audioBase64: string; mime: string; words: WordWire[] }
 
@@ -135,7 +138,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-21.7'
+export const AI_FUNCTION_VERSION = '2026-10-21.8'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }

@@ -4,10 +4,10 @@ import { round, shotFromMoment, shotLength, sourceTime, speedOf } from '@/domain
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
-import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode } from '@/domain/types'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type ScriptLine } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext, planWithAi } from '@/pipeline/generate'
-import { voiceAllLines, voiceLine } from '@/pipeline/voice'
+import { linesNeedingVoice, voiceAllLines, voiceLine } from '@/pipeline/voice'
 import { deleteMedia } from '@/lib/mediaStore'
 
 const state = () => useProject.getState()
@@ -98,6 +98,57 @@ export async function editLine(lineId: string, text: string) {
   if (fresh.voice.mode === 'ai') await voiceLine(line, fresh.voice.voiceId, fresh.settings.language)
   await commit(plan, 'Rewrote a line')
 }
+
+async function patchLine(lineId: string, patch: Partial<ScriptLine>) {
+  const { project } = requireEdit()
+  if (!project.script) return
+  await state().updateProject({ script: { ...project.script, lines: project.script.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l)) } })
+  const fresh = state().project!
+  const line = fresh.script!.lines.find((l) => l.id === lineId)!
+  if (fresh.voice.mode === 'ai' && linesNeedingVoice(fresh).some((l) => l.id === lineId)) await voiceLine(line, fresh.voice.voiceId, fresh.settings.language)
+}
+
+/**
+ * Adds a narrated line: to a footage-only scene, or as a new scene after
+ * `sceneIndex` (footage is picked for it). Returns the scene it landed in.
+ */
+export async function addLine(sceneIndex: number, text: string): Promise<number> {
+  const { project, plan } = requireEdit()
+  const intoScene = !plan.scenes[sceneIndex].lineId
+  const line: ScriptLine = { id: uid('ln_'), text, purpose: 'story', visualIntent: text }
+  // The script follows the scene order: the new line goes after the last line before it.
+  const prev = plan.scenes
+    .slice(0, sceneIndex + 1)
+    .map((s) => s.lineId)
+    .filter(Boolean)
+    .pop()
+  const lines = [...(project.script?.lines ?? [])]
+  lines.splice(prev ? lines.findIndex((l) => l.id === prev) + 1 : 0, 0, line)
+  await state().updateProject({ script: { title: project.script?.title ?? project.title, lines } })
+  const fresh = state().project!
+  if (fresh.voice.mode === 'ai') await voiceLine(line, fresh.voice.voiceId, fresh.settings.language)
+  const scenes = intoScene
+    ? plan.scenes.map((s, i) => (i === sceneIndex ? { ...s, lineId: line.id } : s))
+    : [...plan.scenes.slice(0, sceneIndex + 1), { id: uid('sc_'), lineId: line.id, shots: [] }, ...plan.scenes.slice(sceneIndex + 1)]
+  await commit({ ...plan, scenes }, 'Added a line')
+  return state().project!.edits[state().project!.currentEdit].scenes.findIndex((s) => s.lineId === line.id)
+}
+
+/** AI voice off for one line: it stays as a caption, its scene keeps reading time. */
+export async function setLineMuted(lineId: string, muted: boolean) {
+  const { plan } = requireEdit()
+  await patchLine(lineId, { muted })
+  await commit(plan, muted ? 'Muted a line' : 'Unmuted a line')
+}
+
+/** Reads a line again: a different take, optionally in another delivery. */
+export async function rereadLine(lineId: string, delivery: Delivery) {
+  const { plan } = requireEdit()
+  await patchLine(lineId, { delivery, seed: Math.floor(Math.random() * 1_000_000_000) })
+  await commit(plan, delivery === 'natural' ? 'Read a line again' : `Read a line again (${DELIVERY_LABEL[delivery].toLowerCase()})`)
+}
+
+export const DELIVERY_LABEL: Record<Delivery, string> = { natural: 'Natural', calm: 'Calmer', energetic: 'More energy', slow: 'Slower' }
 
 export async function changeVoice(voiceId: string) {
   await state().updateProject((p) => ({ voice: { ...p.voice, voiceId, mode: 'ai' } }))

@@ -1,0 +1,80 @@
+// Per-line voice tools in Edit (AI voice): mute a line, read it again in another delivery, add a new line.
+import { chromium } from 'playwright'
+import { skipTutorial } from './skipTutorial.mjs'
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
+const fixtures = readdirSync('e2e/fixtures').map((f) => join('e2e/fixtures', f))
+const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] })
+const context = await browser.newContext({ viewport: { width: 1360, height: 900 } })
+await skipTutorial(context)
+const page = await context.newPage()
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
+const synth = []
+page.on('request', (r) => {
+  const body = r.method() === 'POST' ? r.postData() : null
+  if (body?.includes('"action":"synthesize"')) synth.push(JSON.parse(body).payload)
+})
+const ok = (m) => console.log(`✓ ${m}`)
+const scenes = () => page.locator('ol[aria-label=Scenes] li').count()
+
+try {
+  await page.goto(BASE)
+  await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
+  await page.locator('input[type=file]').setInputFiles(fixtures)
+  await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.waitForURL(/\/script$/)
+  const box = page.locator('ol textarea').first()
+  await box.fill('Morning coffee by the window.')
+  await box.press('Enter')
+  await page.locator('ol textarea').nth(1).fill('Then a long walk in the park.')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.waitForURL(/\/voice$/)
+  await page.getByRole('button', { name: 'Make my vlog' }).click()
+  await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
+  await page.waitForSelector('ol[aria-label=Scenes] li')
+  const before = await scenes()
+  ok(`AI-voice vlog made (${before} scenes)`)
+
+  // open the first narrated scene
+  await page.locator('ol[aria-label=Scenes] li button').first().click()
+  await page.getByRole('button', { name: 'Mute voice' }).click()
+  await page.waitForSelector('text=The AI voice skips this line')
+  ok('muted the line (caption only)')
+  await page.getByRole('button', { name: 'Turn voice on' }).click()
+  await page.waitForSelector('role=group[name="Read it"]')
+  ok('voice back on')
+  await page.screenshot({ path: 'test-results/lines-scene.png' })
+
+  const n = synth.length
+  await page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Calmer' }).click()
+  await page.waitForFunction(() => document.querySelector('[aria-pressed=true]')?.textContent?.includes('Calmer'))
+  const calm = synth.slice(n).find((p) => p.delivery === 'calm')
+  if (!calm || typeof calm.seed !== 'number') throw new Error('no calm re-read request: ' + JSON.stringify(synth.slice(n)))
+  ok('read again calmer (new seed)')
+  const m = synth.length
+  await page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Read again' }).click()
+  await page.waitForTimeout(1500)
+  const again = synth.slice(m).find((p) => p.delivery === 'calm' && p.seed !== calm.seed)
+  if (!again) throw new Error('Read again did not ask for a new take')
+  ok('read again (same delivery, new take)')
+
+  await page.getByRole('button', { name: 'Add a line after this scene' }).click()
+  await page.getByLabel('Add a line after this scene').fill('A quick stop for ice cream.')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.waitForFunction(() => [...document.querySelectorAll('input')].some((i) => i.value === 'A quick stop for ice cream.'), null, { timeout: 30000 })
+  await page.getByRole('button', { name: 'All scenes' }).click()
+  const after = await scenes()
+  if (after !== before + 1) throw new Error(`expected ${before + 1} scenes, got ${after}`)
+  ok(`added a new line as a scene (${before} → ${after} scenes)`)
+  await page.screenshot({ path: 'test-results/lines.png' })
+} catch (e) {
+  console.log('✗', e.message)
+  await page.screenshot({ path: 'test-results/lines-fail.png' })
+  process.exitCode = 1
+}
+console.log('errors:', errors)
+await browser.close()
