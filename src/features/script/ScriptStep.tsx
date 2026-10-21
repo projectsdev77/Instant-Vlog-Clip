@@ -42,6 +42,8 @@ export function ScriptStep() {
   const [confirmRewrite, setConfirmRewrite] = useState(false)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  /** last AI result or error, kept under the AI box until the next attempt */
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
   /** lines Polish just changed, highlighted for a few seconds */
   const [edited, setEdited] = useState<Set<string>>(new Set())
   const sensors = useSensors(
@@ -93,15 +95,21 @@ export function ScriptStep() {
     setConfirmRewrite(false)
     setBusy(mode)
     setStage(null)
+    setNote(null)
     try {
       const res = await generateScript(mode, setStage)
       const n = res?.lines ?? 0
-      if (mode === 'write') toast(`Wrote ${n} line${n === 1 ? '' : 's'} from your clips.`, 'success')
-      else {
+      if (mode === 'write') {
+        const msg = `Wrote ${n} line${n === 1 ? '' : 's'} from your clips.`
+        toast(msg, 'success')
+        setNote({ ok: true, text: msg })
+      } else {
         const k = res?.changed.length ?? 0
         setEdited(new Set(res?.changed ?? []))
         window.setTimeout(() => setEdited(new Set()), 5000)
-        toast(k ? `Polished ${k} of ${n} line${n === 1 ? '' : 's'}. Same story, tighter wording.` : 'Your lines already read well. Nothing to change.', k ? 'success' : 'info')
+        const msg = k ? `Polished ${k} of ${n} line${n === 1 ? '' : 's'}. Same story, tighter wording.` : 'Your lines already read well. Nothing to change.'
+        toast(msg, k ? 'success' : 'info')
+        setNote({ ok: true, text: msg })
       }
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
@@ -109,8 +117,10 @@ export function ScriptStep() {
       else {
         console.warn(`Script ${mode} failed`, e)
         // Say why when the AI told us (e.g. its usage limit), so it's clear what to do.
-        const why = e instanceof AiError && e.message ? ` (${e.message.replace(/\.$/, '')})` : ''
-        toast(`Couldn’t write right now${why}. Your lines are unchanged. Try again.`, 'error')
+        const why = e instanceof Error && e.message ? ` (${e.message.replace(/\.$/, '')})` : ''
+        const msg = `Couldn’t ${mode === 'polish' ? 'polish' : 'write'} right now${why}. Your lines are unchanged. Try again.`
+        toast(msg, 'error')
+        setNote({ ok: false, text: msg })
       }
     } finally {
       setBusy(null)
@@ -156,7 +166,7 @@ export function ScriptStep() {
                 aria-label="Vlog title"
                 onChange={(e) => updateProject({ title: e.target.value.replace(/\n/g, ' ') })}
                 onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                className="w-full resize-none bg-transparent text-[32px] leading-[1.1] font-extrabold tracking-[-0.04em] [field-sizing:content] caret-ember-300 outline-none placeholder:text-white/30 focus:shadow-[0_2px_0_0_#ff5a1f] md:text-[clamp(34px,4.2vw,48px)]"
+                className="w-full resize-none overflow-hidden bg-transparent text-[32px] leading-[1.1] font-extrabold tracking-[-0.04em] [field-sizing:content] caret-ember-300 outline-none placeholder:text-white/30 focus:shadow-[0_2px_0_0_#ff5a1f] md:text-[clamp(34px,4.2vw,48px)]"
               />
               <p className="max-w-[520px] text-[15px] leading-normal text-white/62">The title opens your vlog. Below, write one short line per moment. Each line becomes a scene and is read aloud.</p>
             </header>
@@ -190,6 +200,11 @@ export function ScriptStep() {
                 </div>
               </div>
               <p className="pl-5 text-[13px] text-white/45">AI writes from your clips. Optional, and you can edit every line.</p>
+              {note && (
+                <p role={note.ok ? 'status' : 'alert'} className={cn('pl-5 text-[13px] font-semibold', note.ok ? 'text-ember-200' : 'text-[#ff8a8a]')}>
+                  {note.text}
+                </p>
+              )}
             </div>
 
             <section aria-labelledby="scenes-h">
@@ -356,7 +371,7 @@ function SceneRow(props: {
             }
           }}
           className={cn(
-            'block min-h-[52px] w-full resize-none rounded-[16px] py-[15px] pr-11 pl-3.5 text-[15px] leading-[22px] [field-sizing:content] outline-none transition placeholder:text-white/35 focus:shadow-[inset_0_0_0_1.5px_#ff5a1f,0_0_0_4px_rgba(255,90,31,.18)] disabled:opacity-60 sm:pr-[52px] sm:pl-4',
+            'block min-h-[52px] w-full resize-none overflow-hidden rounded-[16px] py-[15px] pr-11 pl-3.5 text-[15px] leading-[22px] [field-sizing:content] outline-none transition placeholder:text-white/35 focus:shadow-[inset_0_0_0_1.5px_#ff5a1f,0_0_0_4px_rgba(255,90,31,.18)] disabled:opacity-60 sm:pr-[52px] sm:pl-4',
             props.edited ? 'bg-[rgba(255,90,31,.10)] shadow-[inset_0_0_0_1.5px_rgba(255,122,61,.7)]' : 'bg-surface-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]',
           )}
         />

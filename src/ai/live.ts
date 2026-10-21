@@ -38,7 +38,14 @@ async function call<T>(body: AiAction, attempt = 0): Promise<T> {
     throw new AiError("Can't reach the AI service. Check your connection.", 'network')
   }
   checkVersion(res)
-  if (res.ok) return (await res.json()) as T
+  if (res.ok) {
+    try {
+      return (await res.json()) as T
+    } catch {
+      // An older deployed function answers actions it doesn't know with an empty body.
+      throw new AiError('The AI function sent an empty reply. It is probably out of date: run supabase functions deploy ai', 'upstream')
+    }
+  }
   const err = (await res.json().catch(() => ({ code: 'upstream', error: res.statusText }))) as AiErrorBody
   if (err.code === 'upstream' && attempt < 1) return call(body, attempt + 1)
   throw new AiError(err.error, err.code)
