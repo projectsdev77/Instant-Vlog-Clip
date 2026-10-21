@@ -51,6 +51,8 @@ export type ScriptRequest = {
   catalog: CatalogEntry[]
   /** edit template id (e.g. 'travel'), for style hints */
   template?: string
+  /** write exactly this many lines (Rewrite keeps the user's line count) */
+  lineCount?: number
 }
 
 export type ScriptResponse = {
@@ -129,7 +131,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-21.3'
+export const AI_FUNCTION_VERSION = '2026-10-21.4'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }

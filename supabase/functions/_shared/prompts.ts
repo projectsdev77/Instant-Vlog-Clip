@@ -54,7 +54,12 @@ export function scriptUserText(req: ScriptRequest): string {
   if (req.template === 'travel') parts.push('Template: Travel diary. When a line is about a place the catalog or the user names (a city, landmark, beach, café), put that place name in onScreenText, 1-3 words. Never guess a place.')
   if (req.title) parts.push(`Title the user chose: ${req.title}`)
   if (req.prompt) parts.push(`What the vlog is about (from the user): ${req.prompt}`)
-  if (req.lines.length) parts.push(`User's lines:\n${req.lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`)
+  if (req.lineCount) {
+    parts.push(
+      `Rewrite: the user has ${req.lineCount} lines and wants a fresh version with exactly ${req.lineCount} lines. Use their lines below for what happened and in what order, but write new wording; don't copy them. One line per moment, roughly in the same order.`,
+    )
+    parts.push(`Current lines:\n${req.lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`)
+  } else if (req.lines.length) parts.push(`User's lines:\n${req.lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`)
   parts.push(`Clip catalog (in filming order):\n${catalogText(req.catalog)}`)
   return parts.join('\n\n')
 }
@@ -151,7 +156,11 @@ title: "Sunday in Lisbon"
 4 outro: "Honestly? I'd do it all again tomorrow."`
 
 export function scriptChecklist(req: ScriptRequest): string {
-  const words = req.targetSec === 'auto' ? 'fit the footage, usually 50–110 words in total' : `about ${Math.round(req.targetSec * 2.5)} words in total`
+  const words = req.lineCount
+    ? `exactly ${req.lineCount} lines (no more, no fewer)`
+    : req.targetSec === 'auto'
+      ? 'fit the footage, usually 50–110 words in total'
+      : `about ${Math.round(req.targetSec * 2.5)} words in total`
   const must = req.catalog.filter((c) => c.mustInclude).map((c) => c.clipId)
   return [
     SCRIPT_EXAMPLE,
