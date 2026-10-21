@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, Play, RotateCcw, Scissors, Square, Trash2, Upload } from 'lucide-react'
+import { Mic, Pencil, Play, Plus, RotateCcw, Scissors, Sparkles, Square, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AutoTextarea } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
 import { buildTimeline } from '@/domain/timeline'
-import type { Clip, EditPlan, Project, VoiceTake, VoiceTrack } from '@/domain/types'
+import type { Clip, EditPlan, Project, ScriptLine, VoiceTake, VoiceTrack } from '@/domain/types'
 import { moveTake, splitTake, takeEnd, takeLength, trimTake } from '@/domain/voiceTrack'
 import { cn } from '@/lib/cn'
 import { formatDuration } from '@/lib/format'
+import { addLineAt, removeLineKeepTime, replaceLineKeepTime } from '@/features/edit/editActions'
 import { addTake, deleteTake, transcribeTake, updateTakes } from '@/pipeline/voiceTrack'
 import { renderVoiceOnly } from '@/render/mix'
 import { PreviewPlayer, type PlayerControl } from '@/render/PreviewPlayer'
@@ -159,7 +161,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
                 </span>
               </div>
             ) : (
-              <p className="min-w-0 flex-1 text-[14px] text-muted">
+              <p className="min-w-[200px] flex-1 text-[14px] text-muted">
                 The video plays while you talk. Record it all in one go, or just the parts you want: move the playhead, then press Record.
               </p>
             )}
@@ -208,31 +210,114 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
             />
           )}
 
-          {!lines.length && (
-            <p className="rounded-[var(--radius-card)] bg-surface p-4 text-[15px] text-muted">No script, so just talk over the video. Your captions will show what you said.</p>
-          )}
-          <ol hidden={!lines.length} className="max-h-[260px] space-y-1.5 overflow-y-auto pr-1" aria-label="Your lines">
-            {timeline.scenes.map((s, i) => {
-              if (!s.lineId) return null
-              const line = lines.find((l) => l.id === s.lineId)
-              const active = s.lineId === lineAt
-              return (
-                <li key={`${s.lineId}-${i}`}>
-                  <button
-                    type="button"
-                    onClick={() => control.current?.seek(s.start + 0.01)}
-                    className={cn('flex w-full items-start gap-3 rounded-[var(--radius-card)] p-3 text-left transition', active ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface hover:bg-[#1a1918]')}
-                  >
-                    <span className={cn('tabular mt-0.5 w-11 shrink-0 text-[12px] font-bold', active ? 'text-ember-300' : 'text-white/40')}>{formatDuration(s.start)}</span>
-                    <span className={cn('min-w-0 flex-1', active ? 'text-[17px] font-semibold' : 'text-[15px] text-white/80')}>{line?.text}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ol>
+          <LineList
+            scenes={timeline.scenes}
+            lines={lines}
+            activeLineId={lineAt}
+            now={now}
+            disabled={recording || saving}
+            onSeek={(t) => control.current?.seek(t)}
+          />
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The script lines as a guide: tap to jump there, change or remove one, or add
+ * a new one at the playhead. Scene timing never changes, so takes stay put.
+ */
+function LineList(props: { scenes: { start: number; end: number; lineId?: string }[]; lines: ScriptLine[]; activeLineId?: string; now: number; disabled: boolean; onSeek: (t: number) => void }) {
+  const { lines } = props
+  const [editing, setEditing] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    try {
+      await fn()
+      setEditing(null)
+      setAdding(false)
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const off = props.disabled || busy
+
+  return (
+    <div className="space-y-2">
+      {!lines.length && <p className="rounded-[var(--radius-card)] bg-surface p-4 text-[15px] text-muted">No script, so just talk over the video. Your captions will show what you said.</p>}
+      <ol hidden={!lines.length} className="max-h-[300px] space-y-1.5 overflow-y-auto pr-1" aria-label="Your lines">
+        {props.scenes.map((s, i) => {
+          const line = s.lineId ? lines.find((l) => l.id === s.lineId) : undefined
+          if (!line) return null
+          const active = line.id === props.activeLineId
+          if (editing === line.id)
+            return (
+              <li key={`${line.id}-${i}`} className="space-y-2 rounded-[var(--radius-card)] bg-surface p-3 shadow-[inset_0_0_0_1.5px_rgb(255_255_255/.14)]">
+                <AutoTextarea autoFocus aria-label="Line" value={text} onChange={(e) => setText(e.target.value)} />
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={off || !text.trim()} onClick={() => void run(() => replaceLineKeepTime(line.id, text.trim(), true))}>
+                    {busy ? <Spinner /> : <Sparkles className="size-4" strokeWidth={2.4} />} Save + new footage
+                  </Button>
+                  <Button size="sm" variant="quiet" disabled={off || !text.trim()} onClick={() => void run(() => replaceLineKeepTime(line.id, text.trim(), false))}>
+                    Save, keep footage
+                  </Button>
+                  <Button size="sm" variant="text" disabled={busy} onClick={() => setEditing(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </li>
+            )
+          return (
+            <li key={`${line.id}-${i}`} className={cn('flex items-start gap-1 rounded-[var(--radius-card)] transition', active ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface hover:bg-[#1a1918]')}>
+              <button type="button" onClick={() => props.onSeek(s.start + 0.01)} className="flex min-w-0 flex-1 items-start gap-3 p-3 text-left">
+                <span className={cn('tabular mt-0.5 w-11 shrink-0 text-[12px] font-bold', active ? 'text-ember-300' : 'text-white/40')}>{formatDuration(s.start)}</span>
+                <span className={cn('min-w-0 flex-1', active ? 'text-[17px] font-semibold' : 'text-[15px] text-white/80')}>{line.text}</span>
+              </button>
+              <IconButton label={`Change “${line.text}”`} disabled={off} onClick={() => (setText(line.text), setAdding(false), setEditing(line.id))}>
+                <Pencil className="size-4" strokeWidth={2.4} />
+              </IconButton>
+              <IconButton label={`Remove “${line.text}”`} disabled={off} onClick={() => void run(() => removeLineKeepTime(line.id))}>
+                <X className="size-4" strokeWidth={2.6} />
+              </IconButton>
+            </li>
+          )
+        })}
+      </ol>
+
+      {adding ? (
+        <div className="space-y-2 rounded-[var(--radius-card)] bg-surface p-3 shadow-[inset_0_0_0_1.5px_rgb(255_255_255/.14)]">
+          <AutoTextarea autoFocus aria-label={`New line at ${formatDuration(props.now)}`} placeholder="What do you want to say here?" value={text} onChange={(e) => setText(e.target.value)} />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={off || !text.trim()} onClick={() => void run(() => addLineAt(props.now, text.trim()))}>
+              {busy ? <Spinner /> : <Plus className="size-4" strokeWidth={2.4} />} Add at {formatDuration(props.now)}
+            </Button>
+            <Button size="sm" variant="text" disabled={busy} onClick={() => setAdding(false)}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-[13px] text-faint">It gets footage that suits it. The timing of the rest of the video doesn’t change.</p>
+        </div>
+      ) : (
+        <Button size="sm" variant="quiet" disabled={off} onClick={() => (setText(''), setEditing(null), setAdding(true))}>
+          <Plus className="size-4" strokeWidth={2.4} /> Add a line at {formatDuration(props.now)}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function IconButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick} className="mt-1.5 grid size-9 shrink-0 place-items-center rounded-full text-white/55 transition last:mr-1.5 hover:bg-white/10 hover:text-fg disabled:opacity-40">
+      {children}
+    </button>
   )
 }
 

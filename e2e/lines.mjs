@@ -50,18 +50,19 @@ try {
   await page.screenshot({ path: 'test-results/lines-scene.png' })
 
   const n = synth.length
-  await page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Calmer' }).click()
-  await page.waitForFunction(() => document.querySelector('[aria-pressed=true]')?.textContent?.includes('Calmer'))
+  const isSynth = (r) => r.postData()?.includes('"action":"synthesize"')
+  await Promise.all([page.waitForRequest(isSynth), page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Calmer' }).click()])
   const calm = synth.slice(n).find((p) => p.delivery === 'calm')
   if (!calm || typeof calm.seed !== 'number') throw new Error('no calm re-read request: ' + JSON.stringify(synth.slice(n)))
   ok('read again calmer (new seed)')
   const m = synth.length
-  await page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Read again' }).click()
-  await page.waitForTimeout(1500)
+  await page.waitForFunction(() => !document.querySelector('[role=group][aria-label="Read it"] button:disabled'))
+  await Promise.all([page.waitForRequest(isSynth), page.getByRole('group', { name: 'Read it' }).getByRole('button', { name: 'Read again' }).click()])
   const again = synth.slice(m).find((p) => p.delivery === 'calm' && p.seed !== calm.seed)
   if (!again) throw new Error('Read again did not ask for a new take')
   ok('read again (same delivery, new take)')
 
+  await page.waitForFunction(() => !document.querySelector('[role=group][aria-label="Read it"] button:disabled'))
   await page.getByRole('button', { name: 'Add a line after this scene' }).click()
   await page.getByLabel('Add a line after this scene').fill('A quick stop for ice cream.')
   await page.getByRole('button', { name: 'Add', exact: true }).click()

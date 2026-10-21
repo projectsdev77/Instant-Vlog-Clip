@@ -33,12 +33,12 @@ function musicVibe(p: Project) {
 }
 
 /**
- * Once the user has recorded over the vlog ("Record my own"), its scene timing
- * is what the voice was recorded against, so the AI must keep it.
+ * Own voice ("Record my own"): once the vlog is made, its scene timing is what
+ * the voice is (or will be) recorded against, so the AI and re-fits keep it.
  */
 export function recordedLayout(p: Project) {
   const plan = currentEdit(p)
-  if (p.voice.mode !== 'recorded' || !p.voiceTrack?.takes.length || !plan) return undefined
+  if (p.voice.mode !== 'recorded' || !plan) return undefined
   return plan.scenes.map((s) => ({ lineId: s.lineId, sec: sumShots(s.shots) }))
 }
 

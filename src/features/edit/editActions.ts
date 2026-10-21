@@ -1,6 +1,7 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { refitPlan } from '@/domain/repair'
-import { round, shotFromMoment, shotLength, sourceTime, speedOf } from '@/domain/shots'
+import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
+import { pickFootage } from '@/domain/pickFootage'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
@@ -132,6 +133,79 @@ export async function addLine(sceneIndex: number, text: string): Promise<number>
     : [...plan.scenes.slice(0, sceneIndex + 1), { id: uid('sc_'), lineId: line.id, shots: [] }, ...plan.scenes.slice(sceneIndex + 1)]
   await commit({ ...plan, scenes }, 'Added a line')
   return state().project!.edits[state().project!.currentEdit].scenes.findIndex((s) => s.lineId === line.id)
+}
+
+// Own voice, on the Record page: lines are a guide and every scene keeps its
+// length, so nothing already recorded moves.
+
+const pushUserEdit = (plan: EditPlan, scenes: Scene[], note: string) => state().pushEdit({ ...plan, scenes, createdBy: 'user', createdAt: Date.now(), note })
+
+const setScriptLines = (project: Project, lines: ScriptLine[]) => state().updateProject({ script: { title: project.script?.title ?? project.title, lines } })
+
+/** Rewrites a line; with `newFootage` its scene gets footage that suits the new words (same length). */
+export async function replaceLineKeepTime(lineId: string, text: string, newFootage: boolean) {
+  const { project, plan } = requireEdit()
+  await setScriptLines(
+    project,
+    (project.script?.lines ?? []).map((l) => (l.id === lineId ? { ...l, text, visualIntent: text } : l)),
+  )
+  const i = plan.scenes.findIndex((s) => s.lineId === lineId)
+  if (!newFootage || i < 0) return
+  const shots = pickFootage(text, state().clips, plan, i, sumShots(plan.scenes[i].shots))
+  await pushUserEdit(plan, plan.scenes.map((s, j) => (j === i ? { ...s, shots } : s)), 'New footage for a line')
+}
+
+/** Drops a line; its scene stays, as footage only. */
+export async function removeLineKeepTime(lineId: string) {
+  const { project, plan } = requireEdit()
+  await setScriptLines(project, (project.script?.lines ?? []).filter((l) => l.id !== lineId))
+  await pushUserEdit(plan, plan.scenes.map((s) => (s.lineId === lineId ? { ...s, lineId: undefined } : s)), 'Removed a line')
+}
+
+/** Shortest part a scene can be split into when a line is added. */
+export const MIN_LINE_PART = 1
+
+/**
+ * Adds a line at timeline time `t`. A footage-only scene there takes the line;
+ * a scene that has one is split at `t` and the new line gets the second part.
+ * Either way the part gets fresh footage and the total timing is unchanged.
+ */
+export async function addLineAt(t: number, text: string) {
+  const { project, plan } = requireEdit()
+  let start = 0
+  const i = plan.scenes.findIndex((s) => {
+    const end = start + sumShots(s.shots)
+    if (t < end) return true
+    start = end
+    return false
+  })
+  if (i < 0) throw new Error('Move the playhead inside the video first.')
+  const scene = plan.scenes[i]
+  const len = sumShots(scene.shots)
+  const line: ScriptLine = { id: uid('ln_'), text, purpose: 'story', visualIntent: text }
+  const split = !!scene.lineId
+  if (split && (t - start < MIN_LINE_PART || start + len - t < MIN_LINE_PART)) throw new Error('Move the playhead at least a second away from where a line starts or ends.')
+
+  // The script follows the scene order: the new line goes after the last line before it.
+  const prev = plan.scenes
+    .slice(0, i + 1)
+    .map((s) => s.lineId)
+    .filter(Boolean)
+    .pop()
+  const lines = [...(project.script?.lines ?? [])]
+  lines.splice(prev ? lines.findIndex((l) => l.id === prev) + 1 : 0, 0, line)
+  await setScriptLines(project, lines)
+
+  const clips = new Map(state().clips.map((c) => [c.id, c]))
+  const scenes = split
+    ? [
+        ...plan.scenes.slice(0, i),
+        { ...scene, shots: fitShots(scene.shots, round(t - start), clips).shots },
+        { id: uid('sc_'), lineId: line.id, shots: pickFootage(text, state().clips, plan, i, round(start + len - t)) },
+        ...plan.scenes.slice(i + 1),
+      ]
+    : plan.scenes.map((s, j) => (j === i ? { ...s, lineId: line.id, shots: pickFootage(text, state().clips, plan, i, len) } : s))
+  await pushUserEdit(plan, scenes, 'Added a line')
 }
 
 /** AI voice off for one line: it stays as a caption, its scene keeps reading time. */
