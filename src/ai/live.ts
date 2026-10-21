@@ -1,4 +1,5 @@
-import type { AiAction, AiErrorBody, PlanResponse, ScriptResponse, SynthesizeResponse, TranscribeResponse, AnalyzeClipResponse } from '@shared/contracts.ts'
+import { AI_FUNCTION_VERSION } from '@shared/contracts.ts'
+import type { AiAction, AiErrorBody, PolishResponse, PlanResponse, ScriptResponse, SynthesizeResponse, TranscribeResponse, AnalyzeClipResponse } from '@shared/contracts.ts'
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabase'
 import { analysisFromWire } from './catalog'
 import { AiError, type AiService } from './service'
@@ -8,6 +9,7 @@ import { guestId } from './guest'
 const TIMEOUT_MS: Record<AiAction['action'], number> = {
   'analyze-clip': 60_000,
   'write-script': 90_000,
+  'polish-lines': 45_000,
   'plan-edit': 120_000,
   synthesize: 45_000,
   transcribe: 60_000,
@@ -35,6 +37,7 @@ async function call<T>(body: AiAction, attempt = 0): Promise<T> {
     if (attempt < 1) return call(body, attempt + 1)
     throw new AiError("Can't reach the AI service. Check your connection.", 'network')
   }
+  checkVersion(res)
   if (res.ok) return (await res.json()) as T
   const err = (await res.json().catch(() => ({ code: 'upstream', error: res.statusText }))) as AiErrorBody
   if (err.code === 'upstream' && attempt < 1) return call(body, attempt + 1)
@@ -57,12 +60,28 @@ function base64ToBlob(b64: string, mime: string): Blob {
   return new Blob([bytes], { type: mime })
 }
 
+let versionWarned = false
+/** Tells the developer when the deployed AI function is older than this app expects. */
+function checkVersion(res: Response) {
+  const v = res.headers.get('x-ai-version')
+  if (v === AI_FUNCTION_VERSION || versionWarned) return
+  versionWarned = true
+  const msg = `The AI function on Supabase is out of date (deployed: ${v ?? 'older version'}, app expects ${AI_FUNCTION_VERSION}). Run: supabase functions deploy ai`
+  console.warn(msg)
+  if (import.meta.env.DEV) void import('@/components/ui/Toast').then(({ toast }) => toast(msg, 'error'))
+}
+
 export const liveAi: AiService = {
   async analyzeClip(req) {
     const r = await call<AnalyzeClipResponse>({ action: 'analyze-clip', payload: req })
     return analysisFromWire(r, req.durationSec)
   },
   writeScript: (req) => call<ScriptResponse>({ action: 'write-script', payload: req }),
+  async polishLines(lines, language) {
+    const r = await call<PolishResponse>({ action: 'polish-lines', payload: { lines, language } })
+    if (!Array.isArray(r.lines)) throw new AiError('The AI function is out of date. Redeploy it with: supabase functions deploy ai', 'upstream')
+    return lines.map((l, i) => r.lines[i] ?? l)
+  },
   planEdit: (req) => call<PlanResponse>({ action: 'plan-edit', payload: req }),
   async synthesize(text, voiceId, language) {
     const r = await call<SynthesizeResponse>({ action: 'synthesize', payload: { text, voiceId, language } })

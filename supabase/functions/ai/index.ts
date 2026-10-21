@@ -1,8 +1,10 @@
 // The app's single AI endpoint. Keeps API keys server-side; receives only
 // contact sheets, short audio and text, never the user's video files.
 // The language model is Gemini or Claude (AI_PROVIDER); voice is ElevenLabs.
+import { AI_FUNCTION_VERSION } from '../_shared/contracts.ts'
 import type {
   AiAction,
+  PolishResponse,
   AiErrorBody,
   AnalyzeClipResponse,
   PlanResponse,
@@ -13,13 +15,16 @@ import {
   analyzeChecklist,
   analyzeUserText,
   PLAN_SYSTEM,
+  POLISH_SYSTEM,
+  polishChecklist,
+  polishUserText,
   planChecklist,
   planUserText,
   SCRIPT_SYSTEM,
   scriptChecklist,
   scriptUserText,
 } from '../_shared/prompts.ts'
-import { analyzeClipSchema, planSchema, scriptSchema } from '../_shared/schemas.ts'
+import { analyzeClipSchema, planSchema, polishSchema, scriptSchema } from '../_shared/schemas.ts'
 import { generateJson, RateLimitError, RefusalError } from './llm.ts'
 import { synthesize, transcribe, VoiceServiceError } from './elevenlabs.ts'
 import { authorize, QuotaError, AuthError, SetupError, type UsageKind } from './quota.ts'
@@ -28,6 +33,8 @@ const CORS = {
   'access-control-allow-origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
   'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type, x-guest-id',
   'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-expose-headers': 'x-ai-version',
+  'x-ai-version': AI_FUNCTION_VERSION,
 }
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } })
@@ -64,6 +71,21 @@ async function handle(req: AiAction) {
         checklist: scriptChecklist(req.payload),
         parts: [{ type: 'text', text: scriptUserText(req.payload) }],
       })
+    case 'polish-lines': {
+      const input = req.payload.lines
+      const res = await generateJson<PolishResponse>({
+        system: POLISH_SYSTEM,
+        effort: 'low',
+        schema: polishSchema,
+        maxTokens: 4000,
+        checklist: polishChecklist(req.payload),
+        parts: [{ type: 'text', text: polishUserText(req.payload) }],
+      })
+      // Always one line per input line; anything missing keeps the user's original.
+      const lines = input.map((l, i) => (typeof res.lines?.[i] === 'string' && res.lines[i].trim() ? res.lines[i].trim() : l))
+      console.log(`polish-lines: ${input.length} in, ${lines.filter((l, i) => l !== input[i]).length} changed`)
+      return { lines } satisfies PolishResponse
+    }
     case 'plan-edit':
       return await generateJson<PlanResponse>({
         system: PLAN_SYSTEM,

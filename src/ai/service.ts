@@ -13,6 +13,8 @@ export type SynthesizedLine = { audio: Blob; words: Word[] }
 export interface AiService {
   analyzeClip(req: AnalyzeClipRequest): Promise<ClipAnalysis>
   writeScript(req: ScriptRequest): Promise<ScriptResponse>
+  /** Copy-edits the user's own lines; always returns one line per input line. */
+  polishLines(lines: string[], language: string): Promise<string[]>
   /** Raw plan; always run it through repairPlan */
   planEdit(req: PlanRequest): Promise<unknown>
   synthesize(text: string, voiceId: string, language: string): Promise<SynthesizedLine>

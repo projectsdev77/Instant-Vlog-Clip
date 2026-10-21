@@ -1,4 +1,4 @@
-import type { AnalyzeClipRequest, CatalogEntry, PlanRequest, ScriptRequest } from './contracts.ts'
+import type { AnalyzeClipRequest, CatalogEntry, PlanRequest, PolishRequest, ScriptRequest } from './contracts.ts'
 
 // System prompts are static so they stay prompt-cached between requests.
 
@@ -191,5 +191,31 @@ export function planChecklist(req: PlanRequest): string {
       ? `- effects only from the template: transitions ${req.template.transitions.join('/')}; motions ${req.template.motions.join('/')}; speeds 1${req.template.speeds.map((x) => `/${x}`).join('')}; ramps none${req.template.ramps.map((x) => `/${x}`).join('')}`
       : '- motion "none", speed 1, ramp "none" unless asked',
     '- a shot lasts (out − in) / speed seconds; use that when adding up scenes',
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Polish: a small, focused copy-edit of the user's own lines.
+
+export const POLISH_SYSTEM = `You copy-edit the narration lines of a short personal vlog. The user wrote them; they will be read aloud by a voice.
+
+For each line:
+- Fix every spelling mistake, typo, grammar error, capitalisation and punctuation problem.
+- If a line is awkward, garbled or hard to say out loud, rewrite it as one clear, natural spoken sentence with the same meaning.
+- Keep the user's facts, names, places and casual tone. Slang and humour are fine. Don't add new events or details.
+- If a line is already correct and natural, return it exactly as it is.
+
+Return exactly one output line per input line, in the same order.`
+
+export function polishUserText(req: PolishRequest): string {
+  return `Language: ${req.language}\n\nLines:\n${req.lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`
+}
+
+export function polishChecklist(req: PolishRequest): string {
+  return [
+    'Before answering, check:',
+    `- exactly ${req.lines.length} lines, in the same order`,
+    '- no spelling or grammar mistakes left (e.g. "bery good i likedd it" → "Very good, I liked it.")',
+    '- each line still says what the user meant',
   ].join('\n')
 }

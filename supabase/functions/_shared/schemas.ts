@@ -55,6 +55,10 @@ export const scriptSchema = obj({
   ),
 })
 
+export const polishSchema = obj({
+  lines: arr({ ...str, description: 'The polished line, same position as the input line' }, 1, 30),
+})
+
 export const planSchema = obj({
   note: { ...str, description: 'One short sentence describing the edit for the user' },
   scenes: arr(

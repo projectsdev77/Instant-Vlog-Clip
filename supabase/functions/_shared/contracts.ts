@@ -124,9 +124,20 @@ export type SynthesizeResponse = { audioBase64: string; mime: string; words: Wor
 export type TranscribeRequest = { audioBase64: string; mime: string; language: string }
 export type TranscribeResponse = { text: string; words: WordWire[] }
 
+/**
+ * Version of the AI function this app expects. The function sends it back in
+ * the x-ai-version header; the app warns when the deployed function is older.
+ * Bump it whenever the function's behaviour changes.
+ */
+export const AI_FUNCTION_VERSION = '2026-10-21.1'
+
+export type PolishRequest = { lines: string[]; language: string }
+export type PolishResponse = { lines: string[] }
+
 export type AiAction =
   | { action: 'analyze-clip'; payload: AnalyzeClipRequest }
   | { action: 'write-script'; payload: ScriptRequest }
+  | { action: 'polish-lines'; payload: PolishRequest }
   | { action: 'plan-edit'; payload: PlanRequest }
   | { action: 'synthesize'; payload: SynthesizeRequest }
   | { action: 'transcribe'; payload: TranscribeRequest }
