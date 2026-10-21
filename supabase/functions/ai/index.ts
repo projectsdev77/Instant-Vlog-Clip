@@ -47,12 +47,6 @@ function b64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   return out
 }
 
-/** The script schema with an exact number of lines. */
-function withLineCount(schema: typeof scriptSchema, n: number) {
-  const lines = (schema.properties as Record<string, Record<string, unknown>>).lines
-  return { ...schema, properties: { ...schema.properties, lines: { ...lines, minItems: n, maxItems: n } } }
-}
-
 async function handle(req: AiAction) {
   switch (req.action) {
     case 'analyze-clip': {
@@ -73,8 +67,7 @@ async function handle(req: AiAction) {
       return await generateJson<ScriptResponse>({
         system: SCRIPT_SYSTEM,
         effort: 'medium',
-        // Rewrite keeps the user's line count; the schema enforces it on Gemini too.
-        schema: req.payload.lineCount ? withLineCount(scriptSchema, req.payload.lineCount) : scriptSchema,
+        schema: scriptSchema,
         checklist: scriptChecklist(req.payload),
         parts: [{ type: 'text', text: scriptUserText(req.payload) }],
       })
