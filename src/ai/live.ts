@@ -9,7 +9,7 @@ import { guestId } from './guest'
 const TIMEOUT_MS: Record<AiAction['action'], number> = {
   'analyze-clip': 60_000,
   'write-script': 90_000,
-  'polish-lines': 45_000,
+  'polish-lines': 60_000,
   'plan-edit': 120_000,
   synthesize: 45_000,
   transcribe: 60_000,
