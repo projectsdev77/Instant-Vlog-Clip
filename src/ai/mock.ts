@@ -38,9 +38,35 @@ function shortTitle(prompt: string): string {
 
 const cap = (s: string) => s.replace(/^./, (c) => c.toUpperCase())
 
+/** Common chat-style slips the demo "polish" fixes (the live AI does much more). */
+const FIXES: [RegExp, string][] = [
+  [/\bi\b/g, 'I'],
+  [/\b(i|I)m\b/g, "I'm"],
+  [/\b(i|I)ve\b/g, "I've"],
+  [/\b(i|I)ll\b/g, "I'll"],
+  [/\b(i|I)d\b/g, "I'd"],
+  [/\bdont\b/gi, "don't"],
+  [/\bcant\b/gi, "can't"],
+  [/\bwont\b/gi, "won't"],
+  [/\bdidnt\b/gi, "didn't"],
+  [/\bisnt\b/gi, "isn't"],
+  [/\bwasnt\b/gi, "wasn't"],
+  [/\bthats\b/gi, "that's"],
+  [/\bteh\b/gi, 'the'],
+  [/\balot\b/gi, 'a lot'],
+  [/\bu\b/g, 'you'],
+  [/\bur\b/g, 'your'],
+  [/\bgonna\b/gi, 'going to'],
+  [/\b(\w+)( \1\b)+/gi, '$1'], // "the the" → "the"
+  [/\s+([,.!?])/g, '$1'],
+  [/([!?])\1+/g, '$1'],
+  [/\.{2,}/g, '…'],
+]
+
 function polishLine(line: string): string {
   let s = line.trim().replace(/\s+/g, ' ').replace(/^[-•*]\s*/, '')
   if (!s) return s
+  for (const [re, to] of FIXES) s = s.replace(re, to)
   s = cap(s)
   if (!/[.!?…]$/.test(s)) s += '.'
   return s

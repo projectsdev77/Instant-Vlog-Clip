@@ -1,3 +1,4 @@
+import { aiMode } from '@/ai/mode'
 import { Lock } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -17,8 +18,23 @@ export function Wordmark({ className }: { className?: string }) {
   return <span className={cn('text-[17px] font-bold tracking-[-0.01em] whitespace-nowrap', className)}>Instant Vlog Clip</span>
 }
 
+/**
+ * Which AI is answering: "Demo AI" (simulated, no keys) for everyone in demo
+ * mode; "Live AI" only on a developer's machine (npm run dev) in live mode,
+ * so it's clear real requests (and real limits) are in play.
+ */
 export function DemoBadge({ className }: { className?: string }) {
-  return <span className={cn('inline-flex h-[34px] items-center rounded-full border border-white/22 bg-black/28 px-3 text-[13px] font-semibold', className)}>Demo AI</span>
+  if (aiMode === 'live' && !import.meta.env.DEV) return null
+  const live = aiMode === 'live'
+  return (
+    <span
+      className={cn('inline-flex h-[34px] items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold', live ? 'border-[#4dff9a]/40 bg-black/28 text-[#b8ffd4]' : 'border-white/22 bg-black/28', className)}
+      title={live ? 'Real AI: requests go to your Supabase function and count toward its limits. Only shown while developing.' : 'Simulated AI: no keys, no limits.'}
+    >
+      {live && <span className="size-1.5 rounded-full bg-[#4dff9a]" aria-hidden />}
+      {live ? 'Live AI' : 'Demo AI'}
+    </span>
+  )
 }
 
 export function PrivacyLine({ children = 'Your videos stay on this device.', className }: { children?: React.ReactNode; className?: string }) {

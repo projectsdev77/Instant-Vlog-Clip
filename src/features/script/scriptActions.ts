@@ -9,7 +9,7 @@ import { deleteMedia } from '@/lib/mediaStore'
 /** Asks the AI to write (or polish) the script and stores it on the project. */
 export type ScriptStage = { stage: 'clips'; done: number; total: number } | { stage: 'writing' }
 
-export async function generateScript(mode: 'write' | 'polish', onStage?: (s: ScriptStage) => void): Promise<void> {
+export async function generateScript(mode: 'write' | 'polish', onStage?: (s: ScriptStage) => void): Promise<{ lines: number; changed: string[] } | undefined> {
   const { project, updateProject } = useProject.getState()
   if (!project) return
   // Script quality depends on knowing what's in the clips, but don't wait forever:
@@ -30,10 +30,16 @@ export async function generateScript(mode: 'write' | 'polish', onStage?: (s: Scr
     catalog: buildCatalog(clips),
   })
   if (!res.lines.length) throw new AiError("The AI couldn't write a script for these clips.", 'upstream')
+  // Polish keeps each line's identity when it returns one line per line, so changes can be shown in place.
+  const keep = mode === 'polish' ? (project.script?.lines ?? []).filter((l) => l.text.trim()) : []
+  const sameShape = keep.length === res.lines.length
   const script: Script = {
     title: res.title,
-    lines: res.lines.map((l) => ({ id: uid('l_'), text: l.text, purpose: l.purpose, visualIntent: l.visualIntent, onScreenText: l.onScreenText || undefined })),
+    lines: res.lines.map((l, i) => ({ id: sameShape ? keep[i].id : uid('l_'), text: l.text, purpose: l.purpose, visualIntent: l.visualIntent, onScreenText: l.onScreenText || undefined })),
   }
   for (const l of project.script?.lines ?? []) if (l.audio) void deleteMedia(l.audio.mediaKey)
   await updateProject((p) => ({ script, title: p.title || res.title }))
+  const norm = (t: string) => t.trim().replace(/\s+/g, ' ')
+  const changed = script.lines.filter((l, i) => !sameShape || norm(l.text) !== norm(current[i] ?? '')).map((l) => l.id)
+  return { lines: script.lines.length, changed }
 }

@@ -37,7 +37,12 @@ Style:
 - visualIntent: what footage should play under the line, referencing what's in the catalog.
 - onScreenText: usually empty; only for a short label that adds something (a place name, a price).
 
-Polish mode: the user wrote their own lines. Keep their meaning, facts, order and personality; fix grammar, make each line speakable and natural, split or merge lines only when needed, add a hook only if the first line has none.`
+Polish mode: the user wrote their own lines. Return exactly one line for each of theirs, in the same order, and don't add or drop lines. For each line:
+- Fix spelling, grammar, capitalisation and punctuation, always.
+- If a line is awkward, garbled or hard to say out loud, rewrite it into one clear, natural spoken sentence that says the same thing.
+- Keep their facts, places, names and casual tone (slang and humour are fine); don't make it sound like an ad.
+- If a line is already good, return it unchanged.
+- If you can't tell what a line means, keep its words and only fix the obvious errors.`
 
 export function scriptUserText(req: ScriptRequest): string {
   const parts = [
@@ -153,11 +158,17 @@ export function scriptChecklist(req: ScriptRequest): string {
     '',
     'Before answering, check:',
     '- first person, casual spoken English, each line ≤ 15 words; no hashtags, emojis or quotes around lines',
-    `- length: ${words}`,
-    '- the first line is a hook (purpose "hook"), the last is an outro (purpose "outro"), the rest "story"',
-    "- only things the catalog or the user's notes mention; no invented people, places or events",
-    must.length ? `- these must-include clips each get a line: ${must.join(', ')}` : '- (no must-include clips)',
-    req.mode === 'polish' ? "- polish mode: keep the user's facts, order and voice; only fix wording" : '- write mode: build a small story arc in the order things were filmed',
+    ...(req.mode === 'polish'
+      ? ["- keep every fact the user wrote; don't add new events"]
+      : [
+          `- length: ${words}`,
+          '- the first line is a hook (purpose "hook"), the last is an outro (purpose "outro"), the rest "story"',
+          "- only things the catalog or the user's notes mention; no invented people, places or events",
+          must.length ? `- these must-include clips each get a line: ${must.join(', ')}` : '- (no must-include clips)',
+        ]),
+    req.mode === 'polish'
+      ? `- polish mode: exactly ${req.lines.length} lines back, one per user line, same order; fix every spelling/grammar error; rewrite garbled lines into clear spoken sentences; keep facts and tone`
+      : '- write mode: build a small story arc in the order things were filmed',
     '- onScreenText is "" unless it adds a place name or price',
   ].join('\n')
 }

@@ -42,6 +42,8 @@ export function ScriptStep() {
   const [confirmRewrite, setConfirmRewrite] = useState(false)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  /** lines Polish just changed, highlighted for a few seconds */
+  const [edited, setEdited] = useState<Set<string>>(new Set())
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -92,9 +94,15 @@ export function ScriptStep() {
     setBusy(mode)
     setStage(null)
     try {
-      await generateScript(mode, setStage)
-      const n = useProject.getState().project?.script?.lines.filter((l) => l.text.trim()).length ?? 0
-      toast(mode === 'write' ? `Wrote ${n} line${n === 1 ? '' : 's'} from your clips.` : 'Polished your lines. Same story, tighter wording.', 'success')
+      const res = await generateScript(mode, setStage)
+      const n = res?.lines ?? 0
+      if (mode === 'write') toast(`Wrote ${n} line${n === 1 ? '' : 's'} from your clips.`, 'success')
+      else {
+        const k = res?.changed.length ?? 0
+        setEdited(new Set(res?.changed ?? []))
+        window.setTimeout(() => setEdited(new Set()), 5000)
+        toast(k ? `Polished ${k} of ${n} line${n === 1 ? '' : 's'}. Same story, tighter wording.` : 'Your lines already read well. Nothing to change.', k ? 'success' : 'info')
+      }
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
       else if (e instanceof AiError && e.code === 'quota') toast(e.message, 'error')
@@ -203,6 +211,7 @@ export function ScriptStep() {
                         index={i}
                         clip={clipFor(i)}
                         active={i === activeIndex}
+                        edited={edited.has(l.id)}
                         autoFocus={l.id === focusId}
                         disabled={!!busy}
                         onFocus={() => setActiveId(l.id)}
@@ -291,6 +300,7 @@ function SceneRow(props: {
   index: number
   clip?: Clip
   active: boolean
+  edited: boolean
   autoFocus: boolean
   disabled: boolean
   onFocus: () => void
@@ -340,9 +350,16 @@ function SceneRow(props: {
               props.onMove(e.key === 'ArrowUp' ? -1 : 1)
             }
           }}
-          className="block min-h-[52px] w-full resize-none rounded-[16px] bg-surface-2 py-[15px] pr-11 pl-3.5 text-[15px] sm:pr-[52px] sm:pl-4 leading-[22px] [field-sizing:content] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)] outline-none transition placeholder:text-white/35 focus:shadow-[inset_0_0_0_1.5px_#ff5a1f,0_0_0_4px_rgba(255,90,31,.18)] disabled:opacity-60"
+          className={cn(
+            'block min-h-[52px] w-full resize-none rounded-[16px] py-[15px] pr-11 pl-3.5 text-[15px] leading-[22px] [field-sizing:content] outline-none transition placeholder:text-white/35 focus:shadow-[inset_0_0_0_1.5px_#ff5a1f,0_0_0_4px_rgba(255,90,31,.18)] disabled:opacity-60 sm:pr-[52px] sm:pl-4',
+            props.edited ? 'bg-[rgba(255,90,31,.10)] shadow-[inset_0_0_0_1.5px_rgba(255,122,61,.7)]' : 'bg-surface-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]',
+          )}
         />
-        {sec > 0 && <span className="tabular pointer-events-none absolute top-[17px] right-3 text-[12px] sm:right-3.5 font-semibold text-white/40">~{sec}s</span>}
+        {props.edited ? (
+          <span className="pointer-events-none absolute top-[17px] right-3 text-[12px] font-bold text-ember-300 sm:right-3.5">Polished</span>
+        ) : (
+          sec > 0 && <span className="tabular pointer-events-none absolute top-[17px] right-3 text-[12px] font-semibold text-white/40 sm:right-3.5">~{sec}s</span>
+        )}
       </div>
       <button type="button" onClick={props.onRemove} className="grid size-11 shrink-0 place-items-center rounded-full text-white/45 transition hover:bg-white/6 hover:text-white" aria-label="Remove line">
         <X className="size-5" strokeWidth={2.4} />

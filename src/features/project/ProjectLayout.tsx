@@ -3,7 +3,6 @@ import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from 'rea
 import { Check } from 'lucide-react'
 import { DemoBadge, LogoTile, Wordmark } from '@/components/Brand'
 import { Spinner } from '@/components/ui/Spinner'
-import { aiMode } from '@/ai/mode'
 import { cn } from '@/lib/cn'
 import { getMedia } from '@/lib/mediaStore'
 import { resumePending } from '@/features/clips/importClips'
@@ -93,7 +92,7 @@ function FlowHeader({ projectId, current, reached }: { projectId: string; curren
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-end md:w-[160px]">{aiMode === 'mock' && <DemoBadge />}</div>
+        <div className="flex shrink-0 justify-end md:w-[160px]"><DemoBadge /></div>
       </div>
     </header>
   )

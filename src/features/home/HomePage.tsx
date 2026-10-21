@@ -12,7 +12,6 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { createProject, deleteProject } from '@/store/projectStore'
 import { stepPath } from '@/features/project/steps'
 import type { Project } from '@/domain/types'
-import { aiMode } from '@/ai/mode'
 import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
@@ -96,7 +95,7 @@ export function HomePage() {
             <CirclePlay className="size-4" strokeWidth={2.4} />
             How it works
           </button>
-          {aiMode === 'mock' && <DemoBadge className="hidden md:inline-flex" />}
+          <DemoBadge className="hidden md:inline-flex" />
           <AccountButton />
         </div>
       </header>
