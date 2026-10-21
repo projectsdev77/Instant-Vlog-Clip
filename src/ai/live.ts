@@ -5,12 +5,12 @@ import { analysisFromWire } from './catalog'
 import { AiError, type AiService } from './service'
 import { guestId } from './guest'
 
-/** How long each AI action may take before we give up (the model can be slow, especially on free plans). */
+/** How long each AI action may take before we give up (the model can be slow, especially on free plans). Supabase stops a function after 150 s. */
 const TIMEOUT_MS: Record<AiAction['action'], number> = {
   'analyze-clip': 60_000,
-  'write-script': 90_000,
+  'write-script': 120_000,
   'polish-lines': 60_000,
-  'plan-edit': 120_000,
+  'plan-edit': 140_000,
   synthesize: 45_000,
   transcribe: 60_000,
 }

@@ -5,6 +5,10 @@ import { type JsonRequest, RateLimitError, RefusalError } from './llm.ts'
 // "gemini-flash-latest" follows Google's current Flash model, the one with a
 // free tier. Set GEMINI_MODEL to pin a specific version (e.g. for launch).
 const model = () => Deno.env.get('GEMINI_MODEL') ?? 'gemini-flash-latest'
+// Quick jobs (polish, clip analysis) use the much faster Flash-Lite model.
+// Set GEMINI_FAST_MODEL to change it, or to the same value as GEMINI_MODEL to use one model.
+const fastModel = () => Deno.env.get('GEMINI_FAST_MODEL') ?? 'gemini-flash-lite-latest'
+const modelFor = (effort: JsonRequest['effort']) => (effort === 'low' ? fastModel() : model())
 
 let client: GoogleGenAI | null = null
 const getClient = () => {
@@ -31,7 +35,7 @@ export async function geminiJson<T>(req: JsonRequest): Promise<T> {
   const started = Date.now()
   const send = () =>
     getClient().models.generateContent({
-      model: model(),
+      model: modelFor(req.effort),
       contents: [
         {
           role: 'user',
@@ -61,11 +65,11 @@ export async function geminiJson<T>(req: JsonRequest): Promise<T> {
       } else throw e
     }
   } catch (e) {
-    console.error(`gemini ${model()} failed after ${Date.now() - started} ms`)
+    console.error(`gemini ${modelFor(req.effort)} failed after ${Date.now() - started} ms`)
     if (e instanceof ApiError && e.status === 429) throw new RateLimitError('The AI is busy right now (usage limit reached). Try again in a minute.')
     throw e
   }
-  console.log(`gemini ${model()} effort=${req.effort} ${Date.now() - started} ms`)
+  console.log(`gemini ${modelFor(req.effort)} effort=${req.effort} ${Date.now() - started} ms`)
   if (res.promptFeedback?.blockReason) throw new RefusalError('The AI declined this request')
   const finish = res.candidates?.[0]?.finishReason
   if (finish === FinishReason.SAFETY) throw new RefusalError('The AI declined this request')

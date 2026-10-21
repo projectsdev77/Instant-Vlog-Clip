@@ -48,7 +48,7 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
    supabase secrets set AI_PROVIDER=claude ANTHROPIC_API_KEY=... ELEVENLABS_API_KEY=...
    supabase functions deploy ai
    ```
-   Optional secrets: `GEMINI_MODEL` (default `gemini-flash-latest`, which follows Google's current Flash model; pin a version for launch), `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
+   Optional secrets: `GEMINI_MODEL` (default `gemini-flash-latest`, which follows Google's current Flash model; pin a version for launch; used for the script and the edit plan), `GEMINI_FAST_MODEL` (default `gemini-flash-lite-latest`; used for quick jobs: polish and clip analysis). Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
 4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
 5. Create `.env.local` from `.env.example`:
    ```
