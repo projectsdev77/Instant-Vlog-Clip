@@ -1,22 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, Sparkles, Wand2, X } from 'lucide-react'
+import { Plus, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ChipGroup } from '@/components/ui/Chip'
 import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
-import { Field, TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
 import { uid } from '@/domain/ids'
-import type { ScriptLine } from '@/domain/types'
+import type { Clip, ScriptLine } from '@/domain/types'
 import { WORDS_PER_SECOND, words } from '@/domain/timing'
 import { formatDuration } from '@/lib/format'
+import { cn } from '@/lib/cn'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useProject } from '@/store/projectStore'
 import { analyzeClipsInBackground } from '@/pipeline/analysis'
-import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLayout'
+import { StepFooter, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
@@ -24,14 +25,23 @@ import { generateScript, type ScriptStage } from './scriptActions'
 import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
 import { resolveTemplate } from '@/domain/templates'
 import { Tour } from '@/features/tutorial/Tour'
+import { ScenePreview } from './ScenePreview'
+
+/** Spoken time for a line, rounded the way the screen shows it ("~3s"). */
+const lineSec = (text: string) => {
+  const w = words(text).length
+  return w ? Math.max(1, Math.round(w / WORDS_PER_SECOND)) : 0
+}
 
 export function ScriptStep() {
-  const { project, updateProject } = useProject()
+  const { project, clips, updateProject } = useProject()
   const navigate = useNavigate()
+  const desktop = useMediaQuery('(min-width: 768px)')
   const [busy, setBusy] = useState<null | 'write' | 'polish'>(null)
   const [stage, setStage] = useState<ScriptStage | null>(null)
   const [confirmRewrite, setConfirmRewrite] = useState(false)
   const [focusId, setFocusId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -43,8 +53,8 @@ export function ScriptStep() {
     void analyzeClipsInBackground()
   }, [])
 
-  // Start with one empty line to type into.
-  const hasScript = !!project?.script
+  // Always at least one row to type into.
+  const hasScript = !!project?.script?.lines.length
   useEffect(() => {
     if (!hasScript) void updateProject((p) => ({ script: { title: p.title, lines: [{ id: uid('l_'), text: '', purpose: 'hook', visualIntent: '' }] } }))
   }, [hasScript, updateProject])
@@ -52,7 +62,14 @@ export function ScriptStep() {
   if (!project) return null
   const lines = project.script?.lines ?? []
   const filled = lines.filter((l) => l.text.trim())
-  const spokenSec = filled.reduce((a, l) => a + words(l.text).length, 0) / WORDS_PER_SECOND
+  const totalSec = filled.reduce((a, l) => a + words(l.text).length, 0) / WORDS_PER_SECOND
+  const usable = clips.filter((c) => c.status !== 'error')
+  const clipFor = (i: number): Clip | undefined => (usable.length ? usable[i % usable.length] : undefined)
+  // The scene being written: the line focused last, else the first filled one, else line 1.
+  const focused = lines.findIndex((l) => l.id === activeId)
+  const activeIndex = Math.max(0, focused >= 0 ? focused : lines.findIndex((l) => l.text.trim()))
+  const active = lines[activeIndex]
+  const firstFilled = lines.findIndex((l) => l.text.trim())
 
   const setLines = (next: ScriptLine[]) => updateProject((p) => ({ script: { title: p.script?.title ?? p.title, lines: next } }))
   const updateLine = (id: string, text: string) => setLines(lines.map((l) => (l.id === id ? { ...l, text, visualIntent: l.visualIntent || text } : l)))
@@ -63,7 +80,12 @@ export function ScriptStep() {
     next.splice(index + 1, 0, { id, text: '', purpose: 'story', visualIntent: '' })
     void setLines(next)
   }
-  const removeLine = (id: string) => setLines(lines.length > 1 ? lines.filter((l) => l.id !== id) : lines.map((l) => ({ ...l, text: '' })))
+  const removeLine = (id: string) => setLines(lines.length > 1 ? lines.filter((l) => l.id !== id) : [{ id: uid('l_'), text: '', purpose: 'hook', visualIntent: '' }])
+  const moveLine = (from: number, to: number) => {
+    if (to < 0 || to >= lines.length) return
+    setFocusId(lines[from].id)
+    void setLines(arrayMove(lines, from, to))
+  }
 
   const run = async (mode: 'write' | 'polish') => {
     setConfirmRewrite(false)
@@ -71,9 +93,12 @@ export function ScriptStep() {
     setStage(null)
     try {
       await generateScript(mode, setStage)
+      const n = useProject.getState().project?.script?.lines.filter((l) => l.text.trim()).length ?? 0
+      toast(mode === 'write' ? `Wrote ${n} line${n === 1 ? '' : 's'} from your clips.` : 'Polished your lines. Same story, tighter wording.', 'success')
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
-      else toast((e as Error).message, 'error')
+      else if (e instanceof AiError && e.code === 'quota') toast(e.message, 'error')
+      else toast('Couldn’t write right now. Your lines are unchanged. Try again.', 'error')
     } finally {
       setBusy(null)
       setStage(null)
@@ -82,9 +107,7 @@ export function ScriptStep() {
 
   const onDragEnd = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
-    const from = lines.findIndex((l) => l.id === e.active.id)
-    const to = lines.findIndex((l) => l.id === e.over!.id)
-    void setLines(arrayMove(lines, from, to))
+    void setLines(arrayMove(lines, lines.findIndex((l) => l.id === e.active.id), lines.findIndex((l) => l.id === e.over!.id)))
   }
 
   const go = async (skipScript: boolean) => {
@@ -101,102 +124,157 @@ export function ScriptStep() {
     navigate(stepPath(project.id, 'voice'))
   }
 
+  const busyLabel = stage?.stage === 'clips' && stage.total ? `Looking at your clips (${stage.done} of ${stage.total})…` : busy === 'write' ? 'Writing from your clips…' : 'Polishing…'
+  const summary = filled.length ? `${filled.length} scene${filled.length === 1 ? '' : 's'} · about ${formatDuration(totalSec)}` : 'Add a line to continue'
+
   return (
     <>
-      <StepPage>
-        <StepHeading step={2} title="Say what happened" sub="One short line per moment. Each line becomes a scene and is read aloud." />
-        <div className="flex flex-wrap items-start gap-6">
-          <div className="min-w-0 flex-[1_1_520px] space-y-6">
-            <Field label="Title" hint="Shown big at the start of your vlog.">
-              <TextInput value={project.title} placeholder="My Day in NYC" maxLength={40} className="h-14 text-[17px] font-semibold" onChange={(e) => updateProject({ title: e.target.value })} />
-            </Field>
+      <StepPage className="pt-6 md:pt-10">
+        <div className="flex flex-wrap items-start gap-7 md:gap-12">
+          {/* Main column */}
+          <div className="flex min-w-0 flex-[3_1_560px] flex-col gap-8">
+            <header className="flex flex-col gap-2.5">
+              <span className="text-[13px] font-semibold tracking-[.14em] text-ember-300 uppercase">Step 2 of 5 · Script</span>
+              <textarea
+                rows={1}
+                value={project.title}
+                maxLength={60}
+                placeholder="Name your vlog"
+                aria-label="Vlog title"
+                onChange={(e) => updateProject({ title: e.target.value.replace(/\n/g, ' ') })}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                className="w-full resize-none bg-transparent text-[32px] leading-[1.1] font-extrabold tracking-[-0.04em] [field-sizing:content] caret-ember-300 outline-none placeholder:text-white/30 focus:shadow-[0_2px_0_0_#ff5a1f] md:text-[clamp(34px,4.2vw,48px)]"
+              />
+              <p className="max-w-[520px] text-[15px] leading-normal text-white/62">The title opens your vlog. Below, write one short line per moment. Each line becomes a scene and is read aloud.</p>
+            </header>
 
-            <section className="space-y-4 rounded-[var(--radius-panel)] bg-surface p-[18px]">
-              <Field
-                label={
-                  <>
-                    What’s it about? <span className="font-medium text-faint">Optional</span>
-                  </>
-                }
-              >
-                <TextInput value={project.prompt} placeholder="a lazy park day, coffee and a bike ride" maxLength={200} onChange={(e) => updateProject({ prompt: e.target.value })} />
-              </Field>
-              {busy ? (
-                <div className="inline-flex h-12 items-center gap-2.5 rounded-full bg-surface-2 px-5 text-[15px] font-semibold" role="status">
-                  <Spinner /> {stage?.stage === 'clips' && stage.total ? `Looking at your clips (${stage.done} of ${stage.total})…` : busy === 'write' ? 'Writing your lines…' : 'Polishing…'}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex min-h-[60px] items-center gap-2.5 rounded-full bg-surface py-1.5 pr-1.5 pl-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
+                <Sparkles className="size-[17px] shrink-0 text-ember-300" strokeWidth={2.2} aria-hidden />
+                <input
+                  value={project.prompt}
+                  maxLength={200}
+                  placeholder="What’s it about? A lazy park day, coffee, a bike ride…"
+                  aria-label="What’s it about?"
+                  onChange={(e) => updateProject({ prompt: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && !busy && (filled.length ? setConfirmRewrite(true) : void run('write'))}
+                  className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-white/40"
+                />
+                <div aria-live="polite" className="shrink-0">
+                  {busy ? (
+                    <span className="flex h-12 items-center gap-2.5 rounded-full bg-surface-2 px-4 text-[14px] font-semibold" role="status">
+                      <Spinner className="size-4" /> <span className="max-w-[46vw] truncate md:max-w-none">{busyLabel}</span>
+                    </span>
+                  ) : filled.length === 0 ? (
+                    <button type="button" onClick={() => run('write')} data-tour="write-ai" className="h-12 rounded-full bg-white px-5 text-[15px] font-bold whitespace-nowrap text-ink transition hover:bg-white/90">
+                      Write it for me
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmRewrite(true)} className="h-12 rounded-full bg-surface-2 px-5 text-[15px] font-semibold whitespace-nowrap transition hover:bg-white/14">
+                      Rewrite
+                    </button>
+                  )}
                 </div>
-              ) : filled.length === 0 ? (
-                <Button onClick={() => run('write')} data-tour="write-ai">
-                  <Sparkles className="size-4" strokeWidth={2.4} /> Write it for me
-                </Button>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="quiet" onClick={() => setConfirmRewrite(true)}>
-                    <Sparkles className="size-4" strokeWidth={2.4} /> Rewrite with AI
-                  </Button>
-                  <Button variant="quiet" onClick={() => run('polish')}>
-                    <Wand2 className="size-4" strokeWidth={2.4} /> Polish my lines
-                  </Button>
-                </div>
-              )}
-            </section>
+              </div>
+              <p className="pl-5 text-[13px] text-white/45">AI writes from your clips. Optional, and you can edit every line.</p>
+            </div>
 
-            <section>
-              <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="text-[19px] font-bold tracking-[-0.01em]">Your lines</h2>
-                <span className="tabular text-[13px] font-medium text-muted">About {formatDuration(spokenSec)} spoken</span>
+            <section aria-labelledby="scenes-h">
+              <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/8 pb-3">
+                <h2 id="scenes-h" className="text-[22px] font-bold tracking-[-0.02em]">
+                  Scenes
+                </h2>
+                <div className="flex items-center gap-2">
+                  {filled.length > 0 && !busy && (
+                    <button type="button" onClick={() => run('polish')} className="h-9 rounded-full px-3 text-[14px] font-bold text-ember-300 transition hover:bg-[rgba(255,90,31,.08)]">
+                      Polish wording
+                    </button>
+                  )}
+                  <span className="tabular text-[13px] text-white/55">About {formatDuration(totalSec)} spoken</span>
+                </div>
               </div>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={lines.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                  <ol className="space-y-2">
+                  <ol className="flex flex-col gap-1.5">
                     {lines.map((l, i) => (
-                      <LineRow key={l.id} line={l} index={i} autoFocus={l.id === focusId} disabled={!!busy} onChange={(t) => updateLine(l.id, t)} onRemove={() => removeLine(l.id)} onEnter={() => addLineAfter(i)} />
+                      <SceneRow
+                        key={l.id}
+                        line={l}
+                        index={i}
+                        clip={clipFor(i)}
+                        active={i === activeIndex}
+                        autoFocus={l.id === focusId}
+                        disabled={!!busy}
+                        onFocus={() => setActiveId(l.id)}
+                        onChange={(t) => updateLine(l.id, t)}
+                        onRemove={() => removeLine(l.id)}
+                        onEnter={() => addLineAfter(i)}
+                        onMove={(d) => moveLine(i, i + d)}
+                      />
                     ))}
                   </ol>
                 </SortableContext>
               </DndContext>
-              <div className="mt-2 pl-[34px]">
-                <Button variant="link" size="sm" className="px-0" onClick={() => addLineAfter(lines.length - 1)} disabled={!!busy}>
-                  <Plus className="size-4" strokeWidth={2.6} /> Add line
-                </Button>
-                <p className="text-[13px] font-medium text-faint">Press Enter for a new line. Drag the dots to reorder.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 pl-[44px] sm:pl-[62px]">
+                <button type="button" onClick={() => addLineAfter(lines.length - 1)} disabled={!!busy} className="flex h-11 items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-white/20 px-4 text-[14px] font-semibold transition hover:border-ember-300 hover:text-ember-300 disabled:opacity-50">
+                  <Plus className="size-4" strokeWidth={2.6} /> Add scene
+                </button>
+                <span className="text-[13px] text-white/45">Enter adds a line · drag the dots to reorder</span>
               </div>
             </section>
           </div>
 
-          <aside className="w-full max-w-[380px] flex-[1_1_300px] space-y-6 rounded-[var(--radius-panel)] bg-surface p-[22px] md:sticky md:top-[92px]">
-            <ChipGroup label="Format" options={ASPECTS} value={project.settings.aspect} onChange={(aspect) => updateProject((p) => ({ settings: { ...p.settings, aspect } }))} />
-            <div data-tour="template" className="space-y-6">
-            <ChipGroup
-              label="Template"
-              options={TEMPLATE_OPTIONS}
-              value={project.settings.template ?? 'auto'}
-              onChange={(template) => updateProject((p) => ({ settings: { ...p.settings, template, vibe: template === 'auto' ? 'auto' : resolveTemplate(template, p.settings.vibe).vibe } }))}
-            />
-            <p className="-mt-3 text-[13px] font-medium text-muted">{templateHint(project.settings.template ?? 'auto')}</p>
+          {/* Side column */}
+          <aside className="flex w-full min-w-0 flex-[1_1_320px] flex-col gap-4 md:sticky md:top-24">
+            {desktop && (
+              <ScenePreview
+                aspect={project.settings.aspect}
+                clip={clipFor(activeIndex)}
+                title={project.title}
+                text={active?.text.trim() ?? ''}
+                index={activeIndex}
+                total={lines.length}
+                showTitle={activeIndex === firstFilled}
+              />
+            )}
+            <div className="flex flex-col gap-5 rounded-[24px] bg-surface p-[22px]">
+              <ChipGroup label="Format" options={ASPECTS} value={project.settings.aspect} onChange={(aspect) => updateProject((p) => ({ settings: { ...p.settings, aspect } }))} />
+              <div className="h-px bg-white/8" />
+              <div data-tour="template" className="flex flex-col gap-2.5">
+                <ChipGroup
+                  label="Template"
+                  options={TEMPLATE_OPTIONS}
+                  value={project.settings.template ?? 'auto'}
+                  onChange={(template) => updateProject((p) => ({ settings: { ...p.settings, template, vibe: template === 'auto' ? 'auto' : resolveTemplate(template, p.settings.vibe).vibe } }))}
+                />
+                <p className="text-[13px] text-white/55">{templateHint(project.settings.template ?? 'auto')}</p>
+              </div>
             </div>
-            <p className="text-[13px] font-medium text-faint">Sets the transitions, effects, color and captions the AI edits with. You can switch it later.</p>
           </aside>
         </div>
       </StepPage>
 
       <StepFooter
+        actionsGrow
         summary={
-          <Button variant="text" size="sm" className="-ml-4" onClick={() => go(true)} disabled={!!busy}>
-            No script, just music
-          </Button>
+          <button type="button" onClick={() => go(true)} disabled={!!busy} className="-ml-3 h-11 rounded-full px-3 text-[15px] font-semibold text-white/80 transition hover:text-white disabled:opacity-50">
+            Skip, music only
+          </button>
         }
       >
-        <Button disabled={!filled.length || !!busy} onClick={() => go(false)}>
+        <span className="tabular min-w-0 truncate text-[13px] text-white/55">{summary}</span>
+        <Button className="h-[52px] shrink-0 px-[26px] text-[16px]" disabled={!filled.length || !!busy} onClick={() => go(false)}>
           Continue
         </Button>
       </StepFooter>
       <Tour page="script" />
 
       <Sheet open={confirmRewrite} title="Replace your lines?" onClose={() => setConfirmRewrite(false)}>
-        <p className="text-muted">AI will write new lines from your clips. Your current lines will be replaced.</p>
+        <p className="text-muted">
+          AI will write new lines from your clips. Your {filled.length} current line{filled.length === 1 ? '' : 's'} will be replaced.
+        </p>
         <div className="mt-6 flex flex-col gap-2">
-          <Button block onClick={() => run('write')}>
+          <Button block className="h-[52px]" onClick={() => run('write')}>
             Replace lines
           </Button>
           <Button block variant="outline" onClick={() => setConfirmRewrite(false)}>
@@ -208,29 +286,65 @@ export function ScriptStep() {
   )
 }
 
-function LineRow(props: { line: ScriptLine; index: number; autoFocus: boolean; disabled: boolean; onChange: (t: string) => void; onRemove: () => void; onEnter: () => void }) {
-  const { line, index } = props
+function SceneRow(props: {
+  line: ScriptLine
+  index: number
+  clip?: Clip
+  active: boolean
+  autoFocus: boolean
+  disabled: boolean
+  onFocus: () => void
+  onChange: (t: string) => void
+  onRemove: () => void
+  onEnter: () => void
+  onMove: (delta: -1 | 1) => void
+}) {
+  const { line, index, active } = props
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id })
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (props.autoFocus) ref.current?.focus()
+  }, [props.autoFocus])
+  const sec = lineSec(line.text)
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`flex items-center gap-1.5 ${isDragging ? 'relative z-10 opacity-90' : ''}`}>
-      <button type="button" className="grid h-11 w-7 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-faint hover:text-fg" aria-label={`Reorder line ${index + 1}`} {...attributes} {...listeners}>
-        <GripVertical className="size-5" />
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn('flex items-start gap-1.5 rounded-[20px] p-1 sm:gap-2.5 sm:p-1.5', isDragging && 'relative z-10 bg-[rgba(255,90,31,.08)]')}
+    >
+      <button type="button" className="mt-1 grid h-11 w-[22px] shrink-0 cursor-grab touch-none place-items-center text-white/30 hover:text-white/60" aria-label="Drag to reorder" {...attributes} {...listeners}>
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden>
+          {[2, 8, 14].flatMap((y) => [2, 8].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" />))}
+        </svg>
       </button>
-      <TextInput
-        value={line.text}
-        placeholder={index === 0 ? 'e.g. So here’s a sunny Saturday in the park.' : 'Next moment…'}
-        disabled={props.disabled}
-        autoFocus={props.autoFocus}
-        aria-label={`Line ${index + 1}`}
-        onChange={(e) => props.onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            props.onEnter()
-          }
-        }}
-      />
-      <button type="button" onClick={props.onRemove} className="grid size-11 shrink-0 place-items-center rounded-full text-faint hover:bg-white/8 hover:text-fg" aria-label={`Remove line ${index + 1}`}>
+      <span className={cn('tabular mt-[17px] w-6 shrink-0 text-[13px] font-bold', active ? 'text-ember-300' : 'text-white/35')}>{String(index + 1).padStart(2, '0')}</span>
+      <span className={cn('relative h-[52px] w-9 shrink-0 overflow-hidden rounded-[10px] bg-surface-2', active ? 'shadow-[0_0_0_2px_#ff5a1f]' : 'shadow-[0_0_0_1px_rgba(255,255,255,.14)]')}>
+        {props.clip?.thumbnail && <img src={props.clip.thumbnail} alt="" className="size-full object-cover" />}
+      </span>
+      <div className="relative min-w-0 flex-1">
+        <textarea
+          ref={ref}
+          rows={1}
+          value={line.text}
+          placeholder={index === 0 ? 'e.g. So here’s a sunny Saturday in the park.' : 'Next moment…'}
+          disabled={props.disabled}
+          aria-label={`Scene ${index + 1}`}
+          onFocus={props.onFocus}
+          onChange={(e) => props.onChange(e.target.value.replace(/\n/g, ' '))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              props.onEnter()
+            } else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+              e.preventDefault()
+              props.onMove(e.key === 'ArrowUp' ? -1 : 1)
+            }
+          }}
+          className="block min-h-[52px] w-full resize-none rounded-[16px] bg-surface-2 py-[15px] pr-11 pl-3.5 text-[15px] sm:pr-[52px] sm:pl-4 leading-[22px] [field-sizing:content] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)] outline-none transition placeholder:text-white/35 focus:shadow-[inset_0_0_0_1.5px_#ff5a1f,0_0_0_4px_rgba(255,90,31,.18)] disabled:opacity-60"
+        />
+        {sec > 0 && <span className="tabular pointer-events-none absolute top-[17px] right-3 text-[12px] sm:right-3.5 font-semibold text-white/40">~{sec}s</span>}
+      </div>
+      <button type="button" onClick={props.onRemove} className="grid size-11 shrink-0 place-items-center rounded-full text-white/45 transition hover:bg-white/6 hover:text-white" aria-label="Remove line">
         <X className="size-5" strokeWidth={2.4} />
       </button>
     </li>

@@ -26,6 +26,7 @@ export async function generateScript(mode: 'write' | 'polish', onStage?: (s: Scr
     lines: current,
     targetSec: project.settings.targetSec,
     vibe: project.settings.vibe,
+    template: project.settings.template === 'auto' ? undefined : project.settings.template,
     catalog: buildCatalog(clips),
   })
   if (!res.lines.length) throw new AiError("The AI couldn't write a script for these clips.", 'upstream')

@@ -51,7 +51,7 @@ try {
   ok(`script tip: ${await tipTitle()}`)
   await shot('tip-script')
   await page.getByRole('button', { name: 'Write it for me' }).click()
-  await page.waitForFunction(() => document.querySelectorAll('ol input').length >= 3 && [...document.querySelectorAll('ol input')].every((t) => t.value), null, { timeout: 30000 })
+  await page.waitForFunction(() => document.querySelectorAll('ol textarea').length >= 3 && [...document.querySelectorAll('ol textarea')].every((t) => t.value), null, { timeout: 30000 })
   await tip.waitFor()
   await page.waitForTimeout(500)
   ok(`script tip after writing: ${await tipTitle()}`)

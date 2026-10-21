@@ -119,13 +119,16 @@ export function StepHeading({ step, title, sub }: { step?: number; title: string
   )
 }
 
-/** Pinned footer: summary on the left, main action on the right, within thumb reach. */
-export function StepFooter({ summary, children }: { summary?: ReactNode; children: ReactNode }) {
+/**
+ * Pinned footer: summary on the left, main action on the right, within thumb reach.
+ * `actionsGrow`: the right side takes the spare room (so text there can truncate).
+ */
+export function StepFooter({ summary, children, actionsGrow }: { summary?: ReactNode; children: ReactNode; actionsGrow?: boolean }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 bg-gradient-to-b from-transparent to-bg to-32%">
       <div className="pointer-events-auto mx-auto flex max-w-[1120px] items-center gap-3 px-4 pt-5 pb-[max(30px,env(safe-area-inset-bottom))] md:px-10 md:pt-7 md:pb-7">
-        <div className="min-w-0 flex-1 text-[15px] font-medium text-muted">{summary}</div>
-        <div className="flex shrink-0 items-center gap-2">{children}</div>
+        <div className={cn('text-[15px] font-medium text-muted', actionsGrow ? 'shrink-0' : 'min-w-0 flex-1')}>{summary}</div>
+        <div className={cn('flex items-center gap-2', actionsGrow ? 'min-w-0 flex-1 justify-end sm:gap-4' : 'shrink-0')}>{children}</div>
       </div>
     </div>
   )

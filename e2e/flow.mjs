@@ -30,10 +30,10 @@ async function main() {
   await page.getByRole('button', { name: 'Continue' }).click()
 
   await page.waitForURL(/\/script$/)
-  await page.getByPlaceholder('a lazy park day').fill('a sunny Saturday in the park')
+  await page.getByLabel('What’s it about?').fill('a sunny Saturday in the park')
   await page.getByRole('button', { name: 'Write it for me' }).click()
-  await page.waitForFunction(() => document.querySelectorAll('ol input').length >= 3 && [...document.querySelectorAll('ol input')].every((t) => t.value), null, { timeout: 30000 })
-  const lines = await page.locator('ol input').evaluateAll((els) => els.map((e) => e.value))
+  await page.waitForFunction(() => document.querySelectorAll('ol textarea').length >= 3 && [...document.querySelectorAll('ol textarea')].every((t) => t.value), null, { timeout: 30000 })
+  const lines = await page.locator('ol textarea').evaluateAll((els) => els.map((e) => e.value))
   console.log('  script:', lines)
   await shot('2-script')
   step('script written')

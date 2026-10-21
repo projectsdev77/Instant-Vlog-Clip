@@ -38,10 +38,10 @@ try {
 
   // 2. Own voice: type lines, record each with the teleprompter
   await newVlogWithClips(fixtures)
-  const box = page.locator('ol input').first()
+  const box = page.locator('ol textarea').first()
   await box.fill('I woke up early and grabbed coffee.')
   await box.press('Enter')
-  await page.locator('ol input').nth(1).fill('Then I biked through the park.')
+  await page.locator('ol textarea').nth(1).fill('Then I biked through the park.')
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.waitForURL(/\/voice$/)
   await page.getByRole('radio', { name: /Record my own/ }).click()
@@ -67,7 +67,7 @@ try {
 
   // 4. No script: music montage
   await newVlogWithClips(fixtures)
-  await page.getByRole('button', { name: 'No script, just music' }).click()
+  await page.getByRole('button', { name: 'Skip, music only' }).click()
   await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
   const dur2 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`no-script montage generated (${dur2}, ${await page.locator('ol[aria-label=Scenes] li').count()} scenes)`)

@@ -90,6 +90,9 @@ export function LookPanel({ project, plan, clips }: { project: Project; plan: Ed
           <Pill on={fades.out} onClick={() => run(setFades({ ...fades, out: !fades.out }))}>
             Fade out
           </Pill>
+          <Pill on={!!look.letterbox} onClick={() => run(setLook({ letterbox: !look.letterbox }))}>
+            Letterbox bars
+          </Pill>
         </div>
       </section>
     </div>

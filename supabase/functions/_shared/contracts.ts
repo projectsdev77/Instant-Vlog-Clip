@@ -49,6 +49,8 @@ export type ScriptRequest = {
   targetSec: number | 'auto'
   vibe: string
   catalog: CatalogEntry[]
+  /** edit template id (e.g. 'travel'), for style hints */
+  template?: string
 }
 
 export type ScriptResponse = {

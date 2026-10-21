@@ -167,6 +167,8 @@ export type Look = {
   /** 0..1 */
   grain: number
   fit: Fit
+  /** cinematic black bars at the top and bottom */
+  letterbox?: boolean
 }
 
 export const DEFAULT_LOOK: Look = { filter: 'none', intensity: 1, brightness: 0, contrast: 0, saturation: 0, warmth: 0, vignette: 0, grain: 0, fit: 'fill' }
@@ -189,7 +191,7 @@ export type EditPlan = {
   templateId?: TemplateId
 }
 
-export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon'
+export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft'
 
 export type ProjectStep = 'clips' | 'script' | 'voice' | 'generate' | 'edit'
 

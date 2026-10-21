@@ -40,7 +40,7 @@ export function WhatYouGet() {
 
         <Card label="Captions" title="Captions that follow along" body="Every word lights up as it’s spoken, in a style you pick.">
           <div className="flex flex-wrap gap-1.5">
-            {['Ember', 'Classic', 'Bold', '+2'].map((s, i) => (
+            {['Ember', 'Classic', 'Bold', '+3'].map((s, i) => (
               <span key={s} className={`flex h-[30px] flex-none items-center rounded-full px-3 text-[12px] whitespace-nowrap ${i === 0 ? 'bg-white font-bold text-ink' : 'bg-surface-2 font-semibold'}`}>
                 {s}
               </span>

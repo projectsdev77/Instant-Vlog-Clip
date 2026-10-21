@@ -313,6 +313,13 @@ export function drawFrame(ctx: Ctx2D, W: number, H: number, t: number, tl: Timel
       draw(ts, local)
     }
     lookOverlays(ctx, W, H, look, t)
+    if (look.letterbox) {
+      // ~2.39:1 bars on wide video; slimmer bars on tall video so the subject keeps the frame
+      const bar = W >= H ? Math.max(0, (H - W / 2.39) / 2) : H * 0.09
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, W, bar)
+      ctx.fillRect(0, H - bar, W, bar)
+    }
     if (prev && tr === 'flash' && local < dur) {
       const a = 1 - Math.abs(local / dur - 0.5) * 2
       ctx.fillStyle = `rgba(255,255,255,${Math.max(0, a) ** 0.7})`

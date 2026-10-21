@@ -58,7 +58,8 @@ function writeLines(req: ScriptRequest): ScriptResponse['lines'] {
       text: c.shotType === 'talking_head' ? 'Quick update from me.' : `${CONNECTORS[i % CONNECTORS.length]} ${what}.`,
       purpose: 'story' as const,
       visualIntent: c.description,
-      onScreenText: '',
+      // Travel diary labels places; the demo uses the clip's name as the place.
+      onScreenText: req.template === 'travel' && c.shotType !== 'talking_head' ? cap(what) : '',
     }
   })
   const about = req.prompt.trim().replace(/[.!]$/, '')

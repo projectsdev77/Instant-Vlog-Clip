@@ -17,8 +17,14 @@ export const LENGTHS: { value: TargetLength; label: string }[] = [
 
 export const TEMPLATE_OPTIONS: { value: TemplateId | 'auto'; label: string }[] = [{ value: 'auto', label: 'Auto' }, ...TEMPLATES.map((t) => ({ value: t.id, label: t.name }))]
 
-export function templateHint(id: TemplateId | 'auto'): string {
-  if (id === 'auto') return 'Auto: the Day in my life style, which suits most vlogs.'
-  const t = TEMPLATES.find((x) => x.id === id)
-  return t ? `${t.name}: ${t.description}.` : ''
+const TEMPLATE_HINTS: Record<TemplateId | 'auto', string> = {
+  auto: 'Picks the Day in my life style, which suits most vlogs.',
+  daily: 'Soft cuts, warm colour, captions at the bottom.',
+  trend: 'Quick cuts on the beat, bold punchy captions.',
+  cinematic: 'Slow fades, letterbox bars, film colour.',
+  travel: 'Upbeat cuts with place-name titles.',
+  aesthetic: 'Muted tones, minimal lowercase captions.',
+  clean: 'Straight cuts, no effects, plain captions.',
 }
+
+export const templateHint = (id: TemplateId | 'auto') => TEMPLATE_HINTS[id]

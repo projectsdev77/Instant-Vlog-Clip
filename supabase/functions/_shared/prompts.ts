@@ -46,6 +46,7 @@ export function scriptUserText(req: ScriptRequest): string {
     `Target length: ${req.targetSec === 'auto' ? 'auto' : `${req.targetSec} seconds`}`,
     `Vibe: ${req.vibe}`,
   ]
+  if (req.template === 'travel') parts.push('Template: Travel diary. When a line is about a place the catalog or the user names (a city, landmark, beach, café), put that place name in onScreenText, 1-3 words. Never guess a place.')
   if (req.title) parts.push(`Title the user chose: ${req.title}`)
   if (req.prompt) parts.push(`What the vlog is about (from the user): ${req.prompt}`)
   if (req.lines.length) parts.push(`User's lines:\n${req.lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`)
