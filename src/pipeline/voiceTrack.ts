@@ -35,12 +35,16 @@ export async function addTake(blob: Blob, start: number): Promise<VoiceTake> {
   const mediaKey = uid('m_')
   await putMedia(mediaKey, wav)
   const take: VoiceTake = { id: uid('t_'), mediaKey, start, in: 0, out: durationSec, durationSec, volume: 1, createdAt: Date.now(), peaks, transcript: 'pending' }
-  await setTrack((t) => ({ takes: [...t.takes, take] }))
+  // The first take settles how the user records: read the script, or say their own thing.
+  const hasLines = !!state().project?.script?.lines.some((l) => l.text.trim())
+  await setTrack((t) => ({ ...t, follow: t.follow ?? (hasLines ? 'script' : 'own'), takes: [...t.takes, take] }))
   void transcribeTake(take.id)
   return take
 }
 
-export const updateTakes = (fn: (takes: VoiceTake[]) => VoiceTake[]) => setTrack((t) => ({ takes: fn(t.takes) }))
+export const updateTakes = (fn: (takes: VoiceTake[]) => VoiceTake[]) => setTrack((t) => ({ ...t, takes: fn(t.takes) }))
+
+export const setFollow = (follow: 'script' | 'own') => setTrack((t) => ({ ...t, follow }))
 
 export async function deleteTake(id: string) {
   const take = state().project?.voiceTrack?.takes.find((t) => t.id === id)

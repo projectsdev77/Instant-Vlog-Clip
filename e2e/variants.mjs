@@ -99,6 +99,13 @@ try {
   await page.waitForURL(/\/record$/, { timeout: 30000 })
   await page.waitForSelector('text=No script, so just talk', { timeout: 15000 })
   ok('no-script vlog: My own voice in Edit opens the Record page')
+  if ((await page.getByRole('radio', { name: 'Say my own thing' }).getAttribute('aria-checked')) !== 'true') throw new Error('Say my own thing should be picked when there is no script')
+  await page.waitForTimeout(800)
+  await page.getByRole('main').getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForTimeout(3000)
+  await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  await page.waitForFunction(() => /so this is my day/i.test(document.querySelector('ol[aria-label="Your lines"]')?.textContent ?? ''), null, { timeout: 30000 })
+  ok(`say my own thing: the script became what was said (${(await page.locator('ol[aria-label="Your lines"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join(' | ')})`)
 
   // 5. Home lists the vlogs
   await page.goto(BASE)

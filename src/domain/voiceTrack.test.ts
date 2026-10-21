@@ -3,8 +3,8 @@ import { makeClip, makeCtx, makeScript } from '@/test/fixtures'
 import { repairPlan } from './repair'
 import { sumShots } from './shots'
 import { buildTimeline } from './timeline'
-import type { VoiceTake } from './types'
-import { resolveTakes, splitTake, takeEnd, trackWords, trimTake } from './voiceTrack'
+import type { EditPlan, VoiceTake } from './types'
+import { resolveTakes, scriptFromSpeech, splitTake, takeEnd, trackWords, trimTake } from './voiceTrack'
 
 const take = (id: string, start: number, len: number, createdAt: number, words: VoiceTake['words'] = []): VoiceTake => ({
   id, mediaKey: `m-${id}`, start, in: 0, out: len, durationSec: len, volume: 1, createdAt, peaks: [], words,
@@ -67,5 +67,30 @@ describe('making the vlog over a recording', () => {
     expect(tl.voice).toEqual([{ lineId: '', start: 1, mediaKey: 'm-t', durationSec: 2, offset: 0, gain: 1 }])
     expect(tl.captions.flatMap((c) => c.words.map((w) => w.word))).toEqual(['what', 'I', 'said'])
     expect(tl.speech).toEqual([[1, 3]])
+  })
+})
+
+describe('script from what was said', () => {
+  const shot = (clipId: string, len: number) => ({ id: `s-${clipId}`, clipId, in: 0, out: len, crop: { focusX: 0.5, focusY: 0.5, zoom: 1 }, clipAudio: 'duck' as const, transitionIn: 'cut' as const })
+  // scenes: 0-3 line l0 · 3-5 footage only · 5-8 line l1 · 8-10 line l2
+  const plan = { scenes: [{ id: 'a', lineId: 'l0', shots: [shot('a', 3)] }, { id: 'b', shots: [shot('b', 2)] }, { id: 'c', lineId: 'l1', shots: [shot('c', 3)] }, { id: 'd', lineId: 'l2', shots: [shot('d', 2)] }] } as unknown as EditPlan
+  const script = makeScript(['Coffee first.', 'A walk in the park.', 'Good night.'], false)
+  const w = (word: string, start: number) => ({ word, start, end: start + 0.4 })
+  const said = (t: VoiceTake) => ({ ...t, transcript: 'done' as const })
+
+  it('replaces the lines of recorded parts with what was said, keeps the rest', () => {
+    // one take over 0-7 s: says "hello there" in scene 1, "ice cream" in the footage-only scene, nothing in scene 3
+    const t = said(take('t', 0, 7, 1, [w('hello', 0.5), w('there', 1), w('ice', 3.4), w('cream', 4)]))
+    const r = scriptFromSpeech(plan, script.lines, [t])
+    expect(r.changed).toEqual([0, 1, 2])
+    expect(r.scenes.map((s) => s.lineId && r.lines.find((l) => l.id === s.lineId)?.text)).toEqual(['hello there', 'ice cream', undefined, 'Good night.'])
+    expect(r.lines.map((l) => l.text)).toEqual(['hello there', 'ice cream', 'Good night.'])
+    expect(r.scenes.map((s) => sumShots(s.shots))).toEqual([3, 2, 3, 2])
+  })
+
+  it('leaves everything alone until a take has its captions', () => {
+    const r = scriptFromSpeech(plan, script.lines, [take('t', 0, 7, 1, [w('hello', 0.5)])])
+    expect(r.changed).toEqual([])
+    expect(r.lines.map((l) => l.text)).toEqual(script.lines.map((l) => l.text))
   })
 })

@@ -2,6 +2,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { refitPlan } from '@/domain/repair'
 import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
 import { pickFootage } from '@/domain/pickFootage'
+import { scriptFromSpeech } from '@/domain/voiceTrack'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
@@ -160,6 +161,29 @@ export async function removeLineKeepTime(lineId: string) {
   const { project, plan } = requireEdit()
   await setScriptLines(project, (project.script?.lines ?? []).filter((l) => l.id !== lineId))
   await pushUserEdit(plan, plan.scenes.map((s) => (s.lineId === lineId ? { ...s, lineId: undefined } : s)), 'Removed a line')
+}
+
+/**
+ * "Say my own thing": the script becomes what was said in each recorded part,
+ * and those parts get footage that suits the words. Lengths never change.
+ */
+export async function matchScriptToVoice(): Promise<{ changed: number; undo: () => Promise<void> }> {
+  const { project, plan } = requireEdit()
+  const before = project.script?.lines ?? []
+  const r = scriptFromSpeech(plan, before, project.voiceTrack?.takes ?? [])
+  const revert = async () => {
+    await undo()
+    await setScriptLines(state().project!, before)
+  }
+  if (!r.changed.length) return { changed: 0, undo: revert }
+  const draft = { ...plan, scenes: r.scenes }
+  const scenes = r.scenes.map((s, i) => {
+    const line = s.lineId && r.changed.includes(i) ? r.lines.find((l) => l.id === s.lineId) : undefined
+    return line ? { ...s, shots: pickFootage(line.text, state().clips, draft, i, sumShots(s.shots)) } : s
+  })
+  await setScriptLines(project, r.lines)
+  await pushUserEdit(plan, scenes, 'Script and footage follow what you said')
+  return { changed: r.changed.length, undo: revert }
 }
 
 /** Shortest part a scene can be split into when a line is added. */

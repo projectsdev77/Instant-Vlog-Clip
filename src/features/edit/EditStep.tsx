@@ -17,6 +17,7 @@ import { LookPanel } from './LookPanel'
 import { TellAiBar, TellAiSheet } from './TellAi'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import '@/features/voice/followVoice' // own voice: script and footage follow what was said
 import { Tour } from '@/features/tutorial/Tour'
 
 const PANELS: { id: PanelId; label: string }[] = [

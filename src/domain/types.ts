@@ -148,6 +148,8 @@ export type VoiceTake = {
  */
 export type VoiceTrack = {
   takes: VoiceTake[]
+  /** "script": read the script (lines stay as written). "own": say anything; the script becomes what was said. */
+  follow?: 'script' | 'own'
 }
 export type VoiceSettings = { mode: VoiceMode; voiceId: string; volumeDb: number }
 

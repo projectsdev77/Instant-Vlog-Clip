@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, Pencil, Play, Plus, RotateCcw, Scissors, Sparkles, Square, Trash2, Upload, X } from 'lucide-react'
+import { MessageCircle, Mic, Pencil, Play, Plus, RotateCcw, ScrollText, Scissors, Sparkles, Square, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AutoTextarea } from '@/components/ui/TextField'
@@ -10,7 +10,8 @@ import { moveTake, splitTake, takeEnd, takeLength, trimTake } from '@/domain/voi
 import { cn } from '@/lib/cn'
 import { formatDuration } from '@/lib/format'
 import { addLineAt, removeLineKeepTime, replaceLineKeepTime } from '@/features/edit/editActions'
-import { addTake, deleteTake, transcribeTake, updateTakes } from '@/pipeline/voiceTrack'
+import { addTake, deleteTake, setFollow, transcribeTake, updateTakes } from '@/pipeline/voiceTrack'
+import { followOf } from './followVoice'
 import { renderVoiceOnly } from '@/render/mix'
 import { PreviewPlayer, type PlayerControl } from '@/render/PreviewPlayer'
 import { startRecording, type Recording } from './recorder'
@@ -122,6 +123,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
     }
   }
 
+  const follow = followOf(project)
   const sel = track.takes.find((t) => t.id === selected)
   const sceneAt = timeline.scenes.findIndex((s) => now >= s.start && now < s.end)
   const lineAt = timeline.scenes[sceneAt]?.lineId
@@ -129,10 +131,38 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
 
   return (
     <div className="space-y-5">
+      <div className="space-y-2">
+        <div role="radiogroup" aria-label="How do you want to record?" className="grid grid-cols-2 gap-2 sm:max-w-[520px]">
+          {FOLLOW.map((f) => {
+            const on = follow === f.id
+            const off = f.id === 'script' && !lines.length
+            return (
+              <button
+                key={f.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={recording || saving || off}
+                title={off ? 'There’s no script to read' : undefined}
+                onClick={() => !on && void setFollow(f.id)}
+                className={cn('flex items-center gap-2.5 rounded-[var(--radius-card)] p-3 text-left text-[15px] font-bold transition disabled:opacity-40', on ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface hover:bg-[#1a1918]')}
+              >
+                <f.icon className="size-5 shrink-0" strokeWidth={2.2} />
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[14px] text-muted">
+          {follow === 'script'
+            ? 'Your lines show above the video as a guide. The script and footage stay as they are.'
+            : 'Talk about whatever you like. When each take’s captions are ready, your words become the script and the footage is matched to them. Nothing moves.'}
+        </p>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="flex flex-col items-center gap-3">
-          {lines.length > 0 && (
+          {follow === 'script' && lines.length > 0 && (
             <div className="w-full max-w-[340px] rounded-[var(--radius-card)] bg-surface p-3.5" aria-live="polite">
               <div className="text-[11px] font-bold tracking-[.12em] text-ember-300 uppercase">Your line here · a guide, say it your way</div>
               <div className="mt-1 min-h-[1.5em] text-[17px] leading-snug font-semibold">{lines.find((l) => l.id === lineAt)?.text ?? <span className="text-white/35">No line here, just talk or stay quiet</span>}</div>
@@ -223,6 +253,11 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
     </div>
   )
 }
+
+const FOLLOW: { id: 'script' | 'own'; label: string; icon: typeof Mic }[] = [
+  { id: 'script', label: 'Read my script', icon: ScrollText },
+  { id: 'own', label: 'Say my own thing', icon: MessageCircle },
+]
 
 /**
  * The script lines as a guide: tap to jump there, change or remove one, or add
