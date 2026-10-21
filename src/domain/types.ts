@@ -131,12 +131,10 @@ export type VoiceTake = {
 }
 
 /**
- * The user's own voiceover, recorded over a preview of the vlog. `layout` is
- * the scene timing they recorded over (frozen at the first take), so the
- * final cut keeps it: narrated scenes by line, then footage-only scenes.
+ * The user's own voiceover, recorded over the made vlog. Takes sit at fixed
+ * timeline times and never move with edits.
  */
 export type VoiceTrack = {
-  layout?: { lineId?: string; sec: number }[]
   takes: VoiceTake[]
 }
 export type VoiceSettings = { mode: VoiceMode; voiceId: string; volumeDb: number }
@@ -225,7 +223,7 @@ export type EditPlan = {
 
 export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft'
 
-export type ProjectStep = 'clips' | 'script' | 'voice' | 'generate' | 'edit'
+export type ProjectStep = 'clips' | 'script' | 'voice' | 'generate' | 'record' | 'edit'
 
 export type Project = {
   id: string

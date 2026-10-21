@@ -4,7 +4,7 @@ import { round, shotFromMoment, shotLength, sourceTime, speedOf } from '@/domain
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
-import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId } from '@/domain/types'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext, planWithAi } from '@/pipeline/generate'
 import { voiceAllLines, voiceLine } from '@/pipeline/voice'
@@ -102,6 +102,13 @@ export async function editLine(lineId: string, text: string) {
 export async function changeVoice(voiceId: string) {
   await state().updateProject((p) => ({ voice: { ...p.voice, voiceId, mode: 'ai' } }))
   await voiceAllLines()
+  await refitCurrent()
+}
+
+/** Switches between AI voice, own voice and captions only; scenes re-fit to the new timing. */
+export async function setVoiceMode(mode: VoiceMode) {
+  if (mode === 'ai') return changeVoice(state().project!.voice.voiceId)
+  await state().updateProject((p) => ({ voice: { ...p.voice, mode } }))
   await refitCurrent()
 }
 

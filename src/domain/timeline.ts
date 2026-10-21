@@ -96,7 +96,7 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
     scenes.push({ start: sceneStart, end: t, lineId: scene.lineId, onScreenText: line?.onScreenText })
     if (!line || fromTrack) return
     const speechStart = sceneStart + LINE_LEAD_IN
-    if (voiceMode !== 'none' && hasFreshAudio(line)) {
+    if (voiceMode === 'ai' && hasFreshAudio(line)) {
       voice.push({ lineId: line.id, start: speechStart, mediaKey: line.audio!.mediaKey, durationSec: line.audio!.durationSec })
       speech.push([speechStart, speechStart + line.audio!.durationSec])
     }

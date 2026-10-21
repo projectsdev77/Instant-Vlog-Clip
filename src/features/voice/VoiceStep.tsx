@@ -11,29 +11,26 @@ import { cn } from '@/lib/cn'
 import { useProject } from '@/store/projectStore'
 import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath } from '@/features/project/steps'
-import { VoiceStudio } from './VoiceStudio'
 
 const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] = [
   { id: 'ai', title: 'AI voice', body: 'Six natural voices read your lines.', icon: AudioLines },
-  { id: 'recorded', title: 'Record my own', body: 'Talk over the video, in one take or many.', icon: Mic },
+  { id: 'recorded', title: 'Record my own', body: 'Talk over your vlog once it’s made.', icon: Mic },
   { id: 'none', title: 'No voiceover', body: 'Your lines appear as captions only.', icon: Captions },
 ]
 
 export function VoiceStep() {
-  const { project, clips, updateProject } = useProject()
+  const { project, updateProject } = useProject()
   const navigate = useNavigate()
   if (!project) return null
   const lines = project.script?.lines ?? []
-  const takes = project.voiceTrack?.takes ?? []
   const mode = project.voice.mode
   const voice = voices.find((v) => v.id === project.voice.voiceId) ?? voices[0]
-  const canContinue = mode !== 'recorded' || takes.length > 0
 
   const next = async () => {
     if (stepIndex(project.step) < stepIndex('generate')) await updateProject({ step: 'generate' })
     navigate(stepPath(project.id, 'generate'))
   }
-  const summary = mode === 'ai' ? `${voice.name} · ${voice.description.toLowerCase()}` : mode === 'recorded' ? (takes.length ? `${takes.length} take${takes.length === 1 ? '' : 's'} recorded` : 'Record at least one take') : 'Captions only, no voiceover'
+  const summary = mode === 'ai' ? `${voice.name} · ${voice.description.toLowerCase()}` : mode === 'recorded' ? 'You’ll record after the video is made' : 'Captions only, no voiceover'
 
   return (
     <>
@@ -73,7 +70,19 @@ export function VoiceStep() {
 
         <div className="mt-8">
           {mode === 'ai' && <VoicePicker sample={lines[0]?.text ?? "So here's how today went."} />}
-          {mode === 'recorded' && <VoiceStudio project={project} clips={clips} />}
+          {mode === 'recorded' && (
+            <div className="flex flex-wrap items-center gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
+              <span className="grid size-[56px] shrink-0 place-items-center rounded-2xl bg-accent text-white">
+                <Mic className="size-6" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[16px] font-bold">You’ll record over the finished video</div>
+                <p className="mt-1 text-muted">
+                  First the AI makes your vlog. Then it plays{lines.length ? ' with your lines on screen' : ''} while you talk: all in one take, or a bit at a time. You can move, trim and re-record takes.
+                </p>
+              </div>
+            </div>
+          )}
           {mode === 'none' && (
             <div className="flex flex-wrap items-center gap-5 rounded-[var(--radius-panel)] bg-surface p-6">
               <div className="grid aspect-[9/16] w-[92px] place-items-end overflow-hidden rounded-[var(--radius-thumb)] bg-[linear-gradient(175deg,#cfe6ea_0%,#6fa7b4_34%,#2b5763_70%,#0c1a1f_100%)] p-2">
@@ -90,7 +99,7 @@ export function VoiceStep() {
         </div>
       </StepPage>
       <StepFooter summary={summary}>
-        <Button variant="ember" disabled={!canContinue} onClick={next} data-tour="make">
+        <Button variant="ember" onClick={next} data-tour="make">
           Make my vlog
         </Button>
       </StepFooter>

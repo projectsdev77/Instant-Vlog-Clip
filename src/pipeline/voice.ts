@@ -5,7 +5,6 @@ import { hasFreshAudio } from '@/domain/timing'
 import { deleteMedia, putMedia } from '@/lib/mediaStore'
 import { decodeAudioFile } from '@/media/audio'
 import { useProject } from '@/store/projectStore'
-import { cleanUpRecording } from '@/features/voice/recorder'
 import { runLimited } from './analysis'
 
 async function setLineAudio(lineId: string, audio: LineAudio) {
@@ -32,20 +31,6 @@ export async function voiceLine(line: ScriptLine, voiceId: string, language: str
   const mediaKey = uid('vo_')
   await putMedia(mediaKey, audio)
   await setLineAudio(line.id, { mediaKey, durationSec, words, source: 'ai', voiceId, textHash: textHash(line.text) })
-}
-
-/** The user's own recording for one line: cleaned up, stored, word-timed. */
-export async function saveRecording(line: ScriptLine, recording: Blob, language: string): Promise<void> {
-  const { wav, durationSec } = await cleanUpRecording(recording)
-  const mediaKey = uid('rec_')
-  await putMedia(mediaKey, wav)
-  let words: LineAudio['words'] = []
-  try {
-    words = (await ai.transcribe(wav, language, line.text)).words
-  } catch {
-    /* captions fall back to evenly spaced words */
-  }
-  await setLineAudio(line.id, { mediaKey, durationSec, words, source: 'recorded', textHash: textHash(line.text) })
 }
 
 /** Lines that still need AI voice (new, edited, or voiced with another voice). */

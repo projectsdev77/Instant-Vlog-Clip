@@ -30,6 +30,7 @@ export const router = createBrowserRouter([
       { path: 'script', element: page(() => import('@/features/script/ScriptStep').then((m) => ({ default: m.ScriptStep }))) },
       { path: 'voice', element: page(() => import('@/features/voice/VoiceStep').then((m) => ({ default: m.VoiceStep }))) },
       { path: 'generate', element: page(() => import('@/features/generate/GenerateStep').then((m) => ({ default: m.GenerateStep }))) },
+      { path: 'record', element: page(() => import('@/features/voice/RecordStep').then((m) => ({ default: m.RecordStep }))) },
       { path: 'edit', element: page(() => import('@/features/edit/EditStep').then((m) => ({ default: m.EditStep }))) },
     ],
   },

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Progress } from '@/components/ui/Progress'
 import { cn } from '@/lib/cn'
 import { useProject } from '@/store/projectStore'
-import { generateVlog, STAGES, type Progress as P } from '@/pipeline/generate'
+import { afterMake, generateVlog, STAGES, type Progress as P } from '@/pipeline/generate'
 import { stepPath } from '@/features/project/steps'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { COVER_BG } from '@/features/home/covers'
@@ -32,7 +32,8 @@ export function GenerateStep() {
     setError(null)
     try {
       await generateVlog(onProgress)
-      navigate(stepPath(project.id, 'edit') + '?play=1', { replace: true })
+      const next = afterMake(useProject.getState().project!)
+      navigate(stepPath(project.id, next) + (next === 'edit' ? '?play=1' : ''), { replace: true })
     } catch (e) {
       setError((e as Error).message || 'Something went wrong.')
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
@@ -49,7 +50,7 @@ export function GenerateStep() {
   const stageIdx = STAGES.findIndex((s) => s.id === progress.stage)
   const overall = (stageIdx + (progress.fraction ?? 0.5)) / STAGES.length
   const thumbs = clips.filter((c) => c.thumbnail).slice(0, 4)
-  const voicingLabel = project.voice.mode === 'recorded' ? 'Cleaning up your recordings' : project.voice.mode === 'none' ? 'Timing your captions' : 'Voicing your script'
+  const voicingLabel = project.voice.mode === 'recorded' ? (project.voiceTrack?.takes.length ? 'Making captions from your voice' : 'Timing your lines')  : project.voice.mode === 'none' ? 'Timing your captions' : 'Voicing your script'
   const label = (id: string, base: string) => (id === 'voicing' ? voicingLabel : base)
 
   return (
@@ -115,7 +116,7 @@ export function GenerateStep() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button onClick={start}>Try again</Button>
-                <Button variant="outline" onClick={() => navigate(stepPath(project.id, project.voice.mode === 'recorded' ? 'voice' : 'script'))}>
+                <Button variant="outline" onClick={() => navigate(stepPath(project.id, 'script'))}>
                   Go back
                 </Button>
               </div>

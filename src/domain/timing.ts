@@ -23,7 +23,7 @@ export function hasFreshAudio(line: ScriptLine): boolean {
 
 /** Length of the scene that carries this line. */
 export function lineSceneDuration(line: ScriptLine, mode: VoiceMode): number {
-  const speech = mode !== 'none' && hasFreshAudio(line) ? line.audio!.durationSec : estimateSpeechSec(line.text)
+  const speech = mode === 'ai' && hasFreshAudio(line) ? line.audio!.durationSec : estimateSpeechSec(line.text)
   return Math.max(MIN_SCENE, LINE_LEAD_IN + speech + LINE_TAIL)
 }
 
@@ -36,6 +36,6 @@ export function estimatedWords(text: string, offset = 0): Word[] {
 }
 
 export function lineWords(line: ScriptLine, mode: VoiceMode): Word[] {
-  if (mode !== 'none' && hasFreshAudio(line)) return line.audio!.words
+  if (mode === 'ai' && hasFreshAudio(line)) return line.audio!.words
   return estimatedWords(line.text)
 }

@@ -29,25 +29,18 @@ function setTrack(fn: (t: VoiceTrack) => VoiceTrack) {
   return state().updateProject((p: Project) => ({ voiceTrack: fn(p.voiceTrack ?? { takes: [] }) }))
 }
 
-/**
- * Adds a recording to the voice track at timeline time `start`. The first take
- * freezes `layout`, the scene timing it was recorded over.
- */
-export async function addTake(blob: Blob, start: number, layout: VoiceTrack['layout']): Promise<VoiceTake> {
+/** Adds a recording to the voice track at timeline time `start`. */
+export async function addTake(blob: Blob, start: number): Promise<VoiceTake> {
   const { wav, durationSec, peaks } = await prepare(blob)
   const mediaKey = uid('m_')
   await putMedia(mediaKey, wav)
   const take: VoiceTake = { id: uid('t_'), mediaKey, start, in: 0, out: durationSec, durationSec, volume: 1, createdAt: Date.now(), peaks, transcript: 'pending' }
-  await setTrack((t) => ({ layout: t.takes.length && t.layout ? t.layout : layout, takes: [...t.takes, take] }))
+  await setTrack((t) => ({ takes: [...t.takes, take] }))
   void transcribeTake(take.id)
   return take
 }
 
-export const updateTakes = (fn: (takes: VoiceTake[]) => VoiceTake[]) =>
-  setTrack((t) => {
-    const takes = fn(t.takes)
-    return { ...t, takes, layout: takes.length ? t.layout : undefined }
-  })
+export const updateTakes = (fn: (takes: VoiceTake[]) => VoiceTake[]) => setTrack((t) => ({ takes: fn(t.takes) }))
 
 export async function deleteTake(id: string) {
   const take = state().project?.voiceTrack?.takes.find((t) => t.id === id)
@@ -55,9 +48,6 @@ export async function deleteTake(id: string) {
   // Split takes share a recording; only remove the file when nothing uses it.
   if (take && !state().project?.voiceTrack?.takes.some((t) => t.mediaKey === take.mediaKey)) void deleteMedia(take.mediaKey)
 }
-
-/** Clears the recorded timing so the preview follows the current script again (takes stay). */
-export const resetLayout = () => setTrack((t) => ({ ...t, layout: undefined }))
 
 const inFlight = new Map<string, Promise<void>>()
 
@@ -86,7 +76,7 @@ export function transcribeTake(id: string): Promise<void> {
   return run
 }
 
-/** Makes sure every take has captions before the vlog is made (failures are retried once). */
+/** Makes sure every take has captions (failed ones are tried again). */
 export async function transcribeAll(): Promise<void> {
   const takes = state().project?.voiceTrack?.takes ?? []
   const byRecording = new Map(takes.filter((t) => t.transcript !== 'done').map((t) => [t.mediaKey, t.id]))

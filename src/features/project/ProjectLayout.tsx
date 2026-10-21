@@ -8,7 +8,7 @@ import { getMedia } from '@/lib/mediaStore'
 import { resumePending } from '@/features/clips/importClips'
 import { useProject } from '@/store/projectStore'
 import type { ProjectStep } from '@/domain/types'
-import { STEPS, stepIndex, stepPath } from './steps'
+import { stepIndex, stepPath, stepsFor } from './steps'
 
 export function ProjectLayout() {
   const { projectId = '' } = useParams()
@@ -35,15 +35,15 @@ export function ProjectLayout() {
   const current = (location.pathname.split('/').pop() ?? 'clips') as ProjectStep
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-clip">
-      <FlowHeader projectId={project.id} current={current} reached={stepIndex(project.step)} />
+      <FlowHeader projectId={project.id} current={current} reached={stepIndex(project.step)} steps={stepsFor(project.voice.mode)} />
       <Outlet />
     </div>
   )
 }
 
-function FlowHeader({ projectId, current, reached }: { projectId: string; current: ProjectStep; reached: number }) {
+function FlowHeader({ projectId, current, reached, steps }: { projectId: string; current: ProjectStep; reached: number; steps: ReturnType<typeof stepsFor> }) {
   const navigate = useNavigate()
-  const currentIdx = Math.max(0, STEPS.findIndex((s) => s.id === current))
+  const currentIdx = Math.max(0, steps.findIndex((s) => s.id === current))
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-[rgb(9_9_10/.84)] pt-[env(safe-area-inset-top)] backdrop-blur-[14px]">
       <div className="mx-auto flex h-[68px] max-w-[1120px] items-center gap-3 px-4 md:px-10">
@@ -54,8 +54,8 @@ function FlowHeader({ projectId, current, reached }: { projectId: string; curren
 
         {/* Desktop: pill step bar */}
         <nav className="hidden flex-1 justify-center gap-1.5 md:flex" aria-label="Steps">
-          {STEPS.map((s, i) => {
-            const state = i === currentIdx ? 'current' : i <= reached ? 'done' : 'locked'
+          {steps.map((s, i) => {
+            const state = i === currentIdx ? 'current' : stepIndex(s.id) <= reached ? 'done' : 'locked'
             // Make can't be re-entered once the vlog exists.
             const clickable = state === 'done' && s.id !== 'generate'
             return (
@@ -83,11 +83,11 @@ function FlowHeader({ projectId, current, reached }: { projectId: string; curren
         {/* Phone: step label + segments */}
         <div className="min-w-0 flex-1 md:hidden">
           <div className="truncate text-[14px] font-semibold">
-            Step {currentIdx + 1} of {STEPS.length} · {STEPS[currentIdx].label}
+            Step {currentIdx + 1} of {steps.length} · {steps[currentIdx].label}
           </div>
           <div className="mt-1.5 flex gap-1.5" aria-hidden>
-            {STEPS.map((s, i) => (
-              <span key={s.id} className={cn('h-1 flex-1 rounded-full', i === currentIdx ? 'bg-white' : i <= reached ? 'bg-accent' : 'bg-white/12')} />
+            {steps.map((s, i) => (
+              <span key={s.id} className={cn('h-1 flex-1 rounded-full', i === currentIdx ? 'bg-white' : stepIndex(s.id) <= reached ? 'bg-accent' : 'bg-white/12')} />
             ))}
           </div>
         </div>
@@ -109,9 +109,10 @@ export function StepPage({ children, className }: { children: ReactNode; classNa
 }
 
 export function StepHeading({ step, title, sub }: { step?: number; title: string; sub?: ReactNode }) {
+  const total = stepsFor(useProject((s) => s.project?.voice.mode)).length
   return (
     <div className="mb-7 space-y-2">
-      {step && <div className="eyebrow">Step {step} of 5</div>}
+      {step && <div className="eyebrow">Step {step} of {total}</div>}
       <h1 className="title-1">{title}</h1>
       {sub && <p className="max-w-[60ch] text-[17px] text-muted">{sub}</p>}
     </div>

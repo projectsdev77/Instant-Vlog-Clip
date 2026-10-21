@@ -1,18 +1,18 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { stepPath } from '@/features/project/steps'
-import { Check, ChevronRight, Music2, VolumeX } from 'lucide-react'
+import { AudioLines, Captions, Check, ChevronRight, Mic, Music2, VolumeX } from 'lucide-react'
 import { voices } from '@/ai'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
-import type { Clip, EditPlan, Project } from '@/domain/types'
+import type { Clip, EditPlan, Project, VoiceMode } from '@/domain/types'
 import type { Timeline } from '@/domain/timeline'
 import { cn } from '@/lib/cn'
 import { TRACKS } from '@/render/musicTracks'
 import { applyCase, STYLES, type TextStyle } from '@/render/styles'
 import { useProject } from '@/store/projectStore'
-import { changeVoice } from './editActions'
+import { changeVoice, setVoiceMode } from './editActions'
 
 export type PanelId = 'scenes' | 'look' | 'voice' | 'music' | 'style'
 
@@ -60,20 +60,79 @@ export function Thumb({ clip, className }: { clip?: Clip; className?: string }) 
   return <span className={cn('block aspect-[9/16] shrink-0 overflow-hidden bg-surface-2', className)}>{clip?.thumbnail && <img src={clip.thumbnail} alt="" className="size-full object-cover" />}</span>
 }
 
+const VOICE_MODES: { id: VoiceMode; label: string; icon: typeof Mic }[] = [
+  { id: 'ai', label: 'AI voice', icon: AudioLines },
+  { id: 'recorded', label: 'My own voice', icon: Mic },
+  { id: 'none', label: 'No voiceover', icon: Captions },
+]
+
 export function VoicePanel({ project }: { project: Project }) {
   const { updateProject } = useProject()
+  const navigate = useNavigate()
   const [busy, setBusy] = useState<string | null>(null)
-  if (project.voice.mode === 'none') return <p className="rounded-[var(--radius-card)] bg-surface p-4 text-muted">This vlog has no voiceover. Your lines show as captions. Pick a voice in the Voice step to add one.</p>
+  const mode = project.voice.mode
+  const hasLines = !!project.script?.lines.some((l) => l.text.trim())
+  const takes = project.voiceTrack?.takes.length ?? 0
+
+  const run = async (key: string, fn: () => Promise<void>) => {
+    setBusy(key)
+    try {
+      await fn()
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  const pickMode = (m: VoiceMode) => {
+    if (m === mode) {
+      if (m === 'recorded') navigate(stepPath(project.id, 'record'))
+      return
+    }
+    void run(m, async () => {
+      await setVoiceMode(m)
+      if (m === 'recorded') navigate(stepPath(project.id, 'record'))
+    })
+  }
+
   return (
     <div className="space-y-4">
-      {project.voice.mode === 'recorded' && (
+      <div role="radiogroup" aria-label="Voiceover" className="grid grid-cols-3 gap-2">
+        {VOICE_MODES.map((m) => {
+          const selected = m.id === mode
+          const off = m.id === 'ai' && !hasLines
+          return (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={!!busy || off}
+              title={off ? 'Add lines in the Script step for the AI voice to read' : undefined}
+              onClick={() => pickMode(m.id)}
+              className={cn('flex flex-col items-center gap-1.5 rounded-[var(--radius-card)] p-3 text-[13px] font-bold transition disabled:opacity-40', selected ? rowSel : rowIdle)}
+            >
+              {busy === m.id ? <Spinner /> : <m.icon className="size-5" strokeWidth={2.2} />}
+              {m.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {mode === 'none' && <p className="rounded-[var(--radius-card)] bg-surface p-4 text-[14px] text-muted">No voiceover: your lines show as captions. Pick AI voice or My own voice above to add one.</p>}
+
+      {mode === 'recorded' && (
         <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4">
-          <p className="min-w-0 flex-1 text-[14px] text-muted">You’re using your own voice{project.voiceTrack?.takes.length ? ` (${project.voiceTrack.takes.length} take${project.voiceTrack.takes.length === 1 ? '' : 's'})` : ''}. Re-record, move or trim it in the studio, then make the vlog again. Or pick a voice below to switch to AI.</p>
-          <Link to={stepPath(project.id, 'voice')} className="flex h-10 items-center rounded-full bg-white px-4 text-[14px] font-bold text-ink">
+          <p className="min-w-0 flex-1 text-[14px] text-muted">
+            {takes ? `Your own voice, ${takes} take${takes === 1 ? '' : 's'}. Re-record, move or trim it in the studio.` : 'Nothing recorded yet. Open the studio and talk over your vlog.'}
+          </p>
+          <Link to={stepPath(project.id, 'record')} className="flex h-10 items-center rounded-full bg-white px-4 text-[14px] font-bold text-ink">
             Open voice studio
           </Link>
         </div>
       )}
+
+      {mode === 'ai' && (
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
         {voices.map((v) => {
           const selected = project.voice.mode === 'ai' && project.voice.voiceId === v.id
@@ -84,17 +143,7 @@ export function VoicePanel({ project }: { project: Project }) {
                 disabled={!!busy}
                 aria-pressed={selected}
                 className={cn(rowBase, selected ? rowSel : rowIdle)}
-                onClick={async () => {
-                  if (selected) return
-                  setBusy(v.id)
-                  try {
-                    await changeVoice(v.id)
-                  } catch (e) {
-                    toast((e as Error).message, 'error')
-                  } finally {
-                    setBusy(null)
-                  }
-                }}
+                onClick={() => !selected && void run(v.id, () => changeVoice(v.id))}
               >
                 <span className={cn('grid size-10 shrink-0 place-items-center rounded-full text-[15px] font-extrabold', selected ? 'bg-accent' : 'bg-surface-2')}>{v.name[0]}</span>
                 <span className="min-w-0 flex-1">
@@ -107,7 +156,8 @@ export function VoicePanel({ project }: { project: Project }) {
           )
         })}
       </ul>
-      <Slider label="Voice volume" value={project.voice.volumeDb} min={-12} max={6} onChange={(volumeDb) => updateProject((p) => ({ voice: { ...p.voice, volumeDb } }))} />
+      )}
+      {mode !== 'none' && <Slider label="Voice volume" value={project.voice.volumeDb} min={-12} max={6} onChange={(volumeDb) => updateProject((p) => ({ voice: { ...p.voice, volumeDb } }))} />}
     </div>
   )
 }

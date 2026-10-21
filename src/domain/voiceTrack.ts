@@ -1,6 +1,6 @@
 import { uid } from './ids'
 import { round } from './shots'
-import type { VoiceTake, VoiceTrack, Word } from './types'
+import type { VoiceTake, Word } from './types'
 
 /** Seconds of the recording a take uses (= its length on the timeline). */
 export const takeLength = (t: VoiceTake) => Math.max(0, t.out - t.in)
@@ -71,14 +71,6 @@ export function trimTake(take: VoiceTake, edge: 'in' | 'out', t: number): VoiceT
 }
 
 export const moveTake = (take: VoiceTake, start: number): VoiceTake => ({ ...take, start: round(Math.max(0, start)) })
-
-/** True when the recorded layout no longer matches the script's lines. */
-export function layoutIsStale(track: VoiceTrack | undefined, lineIds: string[]): boolean {
-  const layout = track?.layout
-  if (!layout) return false
-  const recorded = layout.filter((s) => s.lineId).map((s) => s.lineId)
-  return recorded.length !== lineIds.length || recorded.some((id, i) => id !== lineIds[i])
-}
 
 /** Loudness envelope of a decoded recording, ~40 values per second, 0..1. */
 export function peaksOf(data: Float32Array, sampleRate: number, perSecond = 40): number[] {

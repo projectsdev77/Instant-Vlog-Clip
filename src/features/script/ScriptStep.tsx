@@ -18,7 +18,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useProject } from '@/store/projectStore'
 import { analyzeClipsInBackground } from '@/pipeline/analysis'
 import { StepFooter, StepPage } from '@/features/project/ProjectLayout'
-import { stepIndex, stepPath } from '@/features/project/steps'
+import { stepIndex, stepPath, stepsFor } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { generateScript, type ScriptStage } from './scriptActions'
@@ -157,7 +157,7 @@ export function ScriptStep() {
           {/* Main column */}
           <div className="flex min-w-0 flex-[3_1_560px] flex-col gap-8">
             <header className="flex flex-col gap-2.5">
-              <span className="text-[13px] font-semibold tracking-[.14em] text-ember-300 uppercase">Step 2 of 5 · Script</span>
+              <span className="text-[13px] font-semibold tracking-[.14em] text-ember-300 uppercase">Step 2 of {stepsFor(project.voice.mode).length} · Script</span>
               <textarea
                 rows={1}
                 value={project.title}

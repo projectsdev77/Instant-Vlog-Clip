@@ -4,7 +4,7 @@ import { repairPlan } from './repair'
 import { sumShots } from './shots'
 import { buildTimeline } from './timeline'
 import type { VoiceTake } from './types'
-import { layoutIsStale, resolveTakes, splitTake, takeEnd, trackWords, trimTake } from './voiceTrack'
+import { resolveTakes, splitTake, takeEnd, trackWords, trimTake } from './voiceTrack'
 
 const take = (id: string, start: number, len: number, createdAt: number, words: VoiceTake['words'] = []): VoiceTake => ({
   id, mediaKey: `m-${id}`, start, in: 0, out: len, durationSec: len, volume: 1, createdAt, peaks: [], words,
@@ -41,12 +41,6 @@ describe('voice track', () => {
       ['there', 12.2],
     ])
   })
-
-  it('notices when the script changed after recording', () => {
-    const track = { takes: [], layout: [{ lineId: 'l0', sec: 2 }, { sec: 3 }, { lineId: 'l1', sec: 2 }] }
-    expect(layoutIsStale(track, ['l0', 'l1'])).toBe(false)
-    expect(layoutIsStale(track, ['l0', 'l2'])).toBe(true)
-  })
 })
 
 describe('making the vlog over a recording', () => {
@@ -69,7 +63,7 @@ describe('making the vlog over a recording', () => {
   it('takes voice and captions from the recording', () => {
     const { plan } = repairPlan({ scenes: [] }, ctx)
     const words = [{ word: 'what', start: 0.1, end: 0.4 }, { word: 'I', start: 0.5, end: 0.6 }, { word: 'said', start: 0.7, end: 1 }]
-    const tl = buildTimeline(plan, new Map(clips.map((c) => [c.id, c])), script, 'recorded', { layout, takes: [take('t', 1, 2, 1, words)] })
+    const tl = buildTimeline(plan, new Map(clips.map((c) => [c.id, c])), script, 'recorded', { takes: [take('t', 1, 2, 1, words)] })
     expect(tl.voice).toEqual([{ lineId: '', start: 1, mediaKey: 'm-t', durationSec: 2, offset: 0, gain: 1 }])
     expect(tl.captions.flatMap((c) => c.words.map((w) => w.word))).toEqual(['what', 'I', 'said'])
     expect(tl.speech).toEqual([[1, 3]])

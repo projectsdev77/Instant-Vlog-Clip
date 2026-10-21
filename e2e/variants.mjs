@@ -36,7 +36,7 @@ try {
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
 
-  // 2. Own voice: type lines, record over the video in the voice studio (one take, then a second one)
+  // 2. Own voice: type lines, choose "Record my own", Make, then record over the made vlog (two takes)
   await newVlogWithClips(fixtures)
   const box = page.locator('ol textarea').first()
   await box.fill('I woke up early and grabbed coffee.')
@@ -45,6 +45,10 @@ try {
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.waitForURL(/\/voice$/)
   await page.getByRole('radio', { name: /Record my own/ }).click()
+  await page.getByRole('button', { name: 'Make my vlog' }).click()
+  await page.waitForURL(/\/record$/, { timeout: 90000 })
+  ok('Make leads to the Record page')
+  await page.waitForTimeout(1200)
   for (const pause of [2500, 1500]) {
     await page.getByRole('button', { name: 'Record', exact: true }).click()
     await page.waitForTimeout(pause)
@@ -52,11 +56,11 @@ try {
     await page.waitForTimeout(1200)
   }
   await page.waitForSelector('text=2 takes recorded', { timeout: 15000 })
-  ok('recorded two takes in the voice studio')
-  await page.getByRole('button', { name: 'Make my vlog' }).click()
-  await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
+  ok('recorded two takes over the made vlog')
+  await page.getByRole('button', { name: 'Continue to edit' }).click()
+  await page.waitForURL(/\/edit(\?|$)/, { timeout: 30000 })
   const dur1 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
-  ok(`own-voice vlog generated (${dur1})`)
+  ok(`own-voice vlog in Edit (${dur1})`)
 
   // 3. Reload: the project and its edit come back
   await page.reload()
@@ -71,6 +75,11 @@ try {
   const dur2 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`no-script montage generated (${dur2}, ${await page.locator('ol[aria-label=Scenes] li').count()} scenes)`)
   await page.screenshot({ path: `${OUT}/montage.png` })
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
+  await page.getByRole('radio', { name: 'My own voice' }).click()
+  await page.waitForURL(/\/record$/, { timeout: 30000 })
+  await page.waitForSelector('text=No script, so just talk', { timeout: 15000 })
+  ok('no-script vlog: My own voice in Edit opens the Record page')
 
   // 5. Home lists the vlogs
   await page.goto(BASE)

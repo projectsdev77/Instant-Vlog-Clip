@@ -3,28 +3,22 @@ import { Mic, Play, RotateCcw, Scissors, Square, Trash2, Upload } from 'lucide-r
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
-import { planToWire } from '@/ai/wire'
-import { planFallback } from '@/domain/fallback'
-import { repairPlan } from '@/domain/repair'
-import { round, sumShots } from '@/domain/shots'
 import { buildTimeline } from '@/domain/timeline'
-import type { Clip, Project, VoiceTake, VoiceTrack } from '@/domain/types'
-import { layoutIsStale, moveTake, splitTake, takeEnd, takeLength, trimTake } from '@/domain/voiceTrack'
+import type { Clip, EditPlan, Project, VoiceTake, VoiceTrack } from '@/domain/types'
+import { moveTake, splitTake, takeEnd, takeLength, trimTake } from '@/domain/voiceTrack'
 import { cn } from '@/lib/cn'
 import { formatDuration } from '@/lib/format'
-import { planContext } from '@/pipeline/generate'
-import { addTake, deleteTake, resetLayout, transcribeTake, updateTakes } from '@/pipeline/voiceTrack'
+import { addTake, deleteTake, transcribeTake, updateTakes } from '@/pipeline/voiceTrack'
 import { renderVoiceOnly } from '@/render/mix'
 import { PreviewPlayer, type PlayerControl } from '@/render/PreviewPlayer'
 import { startRecording, type Recording } from './recorder'
 
 /**
- * "Record my own": a voiceover studio. A preview of the vlog plays with the
- * script lines on screen; the user records over it in one long take or in
- * pieces, then moves, trims, splits or deletes the takes on a voice track.
- * The vlog is later made with exactly this scene timing.
+ * "Record my own": a voiceover studio. The made vlog plays with the script
+ * lines on screen; the user records over it in one long take or in pieces,
+ * then moves, trims, splits or deletes the takes on a voice track.
  */
-export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[] }) {
+export function VoiceStudio({ project, clips, plan: edit }: { project: Project; clips: Clip[]; plan: EditPlan }) {
   const control = useRef<PlayerControl | null>(null)
   const recRef = useRef<{ from: number; rec: Recording } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -39,16 +33,8 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
 
   const track: VoiceTrack = useMemo(() => project.voiceTrack ?? { takes: [] }, [project.voiceTrack])
   const lines = useMemo(() => (project.script?.lines ?? []).filter((l) => l.text.trim()), [project.script])
-  const stale = track.takes.length > 0 && layoutIsStale(track, lines.map((l) => l.id))
   const byId = useMemo(() => new Map(clips.map((c) => [c.id, c])), [clips])
-
-  // The preview the user records over: a quick cut timed to the script (or to the recorded layout).
-  const planKey = JSON.stringify([lines.map((l) => [l.id, l.text]), clips.map((c) => [c.id, c.status, c.durationSec]), project.settings, stale ? null : track.layout, track.takes.length > 0])
-  const plan = useMemo(() => {
-    const ctx = planContext(project, clips, { fixedLayout: true })
-    return { ...repairPlan(planToWire(planFallback(ctx)), ctx, 'fallback').plan, title: { text: project.title, showUntilSec: 3 } }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when what shapes the cut changes
-  }, [planKey])
+  const plan = useMemo(() => ({ ...edit, title: { ...edit.title, text: project.title } }), [edit, project.title])
   const script = useMemo(() => (lines.length ? { title: project.title, lines } : undefined), [lines, project.title])
   // Script lines show on the video as a teleprompter; the voice comes from the takes.
   const timeline = useMemo(() => buildTimeline(plan, byId, script, 'none'), [plan, byId, script])
@@ -65,8 +51,6 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-render the mix only when the voice changes
   }, [voiceKey, duration])
 
-  const layoutNow = () => plan.scenes.map((s) => ({ lineId: s.lineId, sec: round(sumShots(s.shots)) }))
-
   const stop = useCallback(async () => {
     const r = recRef.current
     if (!r) return
@@ -76,7 +60,7 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
     setSaving(true)
     try {
       const blob = await r.rec.stop()
-      const take = await addTake(blob, r.from, layoutNow())
+      const take = await addTake(blob, r.from)
       setSelected(take.id)
     } catch (e) {
       console.warn('Saving the take failed', e)
@@ -84,8 +68,7 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
     } finally {
       setSaving(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan])
+  }, [])
 
   const record = async (from?: number) => {
     if (recRef.current || saving) return
@@ -128,7 +111,7 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
     if (!file) return
     setSaving(true)
     try {
-      const take = await addTake(file, control.current?.time() ?? 0, layoutNow())
+      const take = await addTake(file, control.current?.time() ?? 0)
       setSelected(take.id)
     } catch {
       toast('Couldn’t read that audio file. Try an MP3, M4A or WAV.', 'error')
@@ -144,14 +127,6 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
 
   return (
     <div className="space-y-5">
-      {stale && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-[rgba(255,90,31,.10)] p-4 shadow-[inset_0_0_0_1px_rgba(255,122,61,.4)]">
-          <p className="min-w-0 flex-1 text-[14px]">Your script changed after you recorded, so the video timing no longer matches your lines.</p>
-          <Button size="sm" variant="quiet" onClick={() => void resetLayout()}>
-            Re-time the video to the new script
-          </Button>
-        </div>
-      )}
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="flex flex-col items-center gap-3">
@@ -227,7 +202,10 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
             />
           )}
 
-          <ol className="max-h-[260px] space-y-1.5 overflow-y-auto pr-1" aria-label="Your lines">
+          {!lines.length && (
+            <p className="rounded-[var(--radius-card)] bg-surface p-4 text-[15px] text-muted">No script, so just talk over the video. Your captions will show what you said.</p>
+          )}
+          <ol hidden={!lines.length} className="max-h-[260px] space-y-1.5 overflow-y-auto pr-1" aria-label="Your lines">
             {timeline.scenes.map((s, i) => {
               if (!s.lineId) return null
               const line = lines.find((l) => l.id === s.lineId)
@@ -248,8 +226,6 @@ export function VoiceStudio({ project, clips }: { project: Project; clips: Clip[
           </ol>
         </div>
       </div>
-
-
     </div>
   )
 }

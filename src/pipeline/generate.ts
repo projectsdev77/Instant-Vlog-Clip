@@ -3,11 +3,10 @@ import { ai, AiError } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
 import { planToWire } from '@/ai/wire'
 import { planTemplate, resolveTemplate, stylize } from '@/domain/templates'
-import { layoutIsStale } from '@/domain/voiceTrack'
 import { planFallback } from '@/domain/fallback'
 import { sceneDuration, videoTargetSec, type PlanContext } from '@/domain/planContext'
 import { repairPlan } from '@/domain/repair'
-import { hasFreshAudio } from '@/domain/timing'
+import { sumShots } from '@/domain/shots'
 import type { EditPlan, Project } from '@/domain/types'
 import { pickTrack, trackById } from '@/render/musicTracks'
 import { currentEdit, useProject } from '@/store/projectStore'
@@ -33,16 +32,19 @@ function musicVibe(p: Project) {
   return t.vibe === 'auto' ? p.settings.vibe : t.vibe
 }
 
-/** The scene timing the user recorded over ("Record my own"), while it still matches the script. */
+/**
+ * Once the user has recorded over the vlog ("Record my own"), its scene timing
+ * is what the voice was recorded against, so the AI must keep it.
+ */
 export function recordedLayout(p: Project) {
-  if (p.voice.mode !== 'recorded' || !p.voiceTrack?.layout || !p.voiceTrack.takes.length) return undefined
-  const ids = (p.script?.lines ?? []).filter((l) => l.text.trim()).map((l) => l.id)
-  return layoutIsStale(p.voiceTrack, ids) ? undefined : p.voiceTrack.layout
+  const plan = currentEdit(p)
+  if (p.voice.mode !== 'recorded' || !p.voiceTrack?.takes.length || !plan) return undefined
+  return plan.scenes.map((s) => ({ lineId: s.lineId, sec: sumShots(s.shots) }))
 }
 
 /**
- * `fixedLayout`: keep the recorded scene structure exactly (making the vlog,
- * the studio preview). Re-fits after user edits only keep the line lengths.
+ * `fixedLayout`: keep the recorded scene structure exactly (Tell the AI, make
+ * again). Re-fits after user edits only keep the line lengths.
  */
 export function planContext(p: Project, clips = useProject.getState().clips, opts: { fixedLayout?: boolean } = {}): PlanContext {
   const lines = p.script?.lines.filter((l) => l.text.trim()) ?? []
@@ -131,15 +133,10 @@ async function run(onProgress: (p: Progress) => void) {
   onProgress({ stage: 'voicing' })
   if (project.voice.mode === 'ai') {
     await voiceAllLines((done, total) => onProgress({ stage: 'voicing', detail: total ? `${done} of ${total} lines` : undefined, fraction: total ? done / total : 1 }))
-  } else if (project.voice.mode === 'recorded') {
-    if (project.voiceTrack?.takes.length) {
-      // Captions come from what was said in each take.
-      onProgress({ stage: 'voicing', detail: 'Making captions from your voice' })
-      await transcribeAll()
-    } else {
-      const missing = project.script?.lines.filter((l) => !hasFreshAudio(l)).length ?? 0
-      if (missing) throw new Error('Record your voiceover first: go back to Voice and press Record.')
-    }
+  } else if (project.voice.mode === 'recorded' && project.voiceTrack?.takes.length) {
+    // Captions come from what was said in each take.
+    onProgress({ stage: 'voicing', detail: 'Making captions from your voice' })
+    await transcribeAll()
   }
 
   project = useProject.getState().project!
@@ -151,7 +148,11 @@ async function run(onProgress: (p: Progress) => void) {
   onProgress({ stage: 'finishing' })
   await useProject.getState().updateProject({ musicTrackId: ctx.musicTrackId ?? null, styleId: resolveTemplate(ctx.settings.template, ctx.settings.vibe).styleId })
   await useProject.getState().pushEdit(plan.createdBy === 'fallback' ? plan : { ...plan, note: 'First cut' })
-  await useProject.getState().updateProject({ step: 'edit' })
+  // "Record my own": the voice is recorded next, over the finished video.
+  await useProject.getState().updateProject({ step: afterMake(useProject.getState().project!) })
 }
+
+/** Where Make leads: the Record page when the user's own voice is still to be recorded. */
+export const afterMake = (p: Project) => (p.voice.mode === 'recorded' && !p.voiceTrack?.takes.length ? 'record' : 'edit')
 
 export const hasEdit = (p: Project | null) => !!currentEdit(p)
