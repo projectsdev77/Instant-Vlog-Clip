@@ -37,14 +37,14 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
   const plan = useMemo(() => ({ ...edit, title: { ...edit.title, text: project.title } }), [edit, project.title])
   const script = useMemo(() => (lines.length ? { title: project.title, lines } : undefined), [lines, project.title])
   // Script lines show on the video as a teleprompter; the voice comes from the takes.
-  const timeline = useMemo(() => buildTimeline(plan, byId, script, 'none'), [plan, byId, script])
-  const voiceTimeline = useMemo(() => buildTimeline(plan, byId, script, 'recorded', track), [plan, byId, script, track])
+  // The video shows the real result: captions are what was said, never the script.
+  const timeline = useMemo(() => buildTimeline(plan, byId, script, 'recorded', track), [plan, byId, script, track])
   const duration = timeline.duration
 
-  const voiceKey = JSON.stringify(voiceTimeline.voice)
+  const voiceKey = JSON.stringify(timeline.voice)
   useEffect(() => {
     let alive = true
-    void renderVoiceOnly(voiceTimeline.voice, duration).then((b) => alive && setMix(b))
+    void renderVoiceOnly(timeline.voice, duration).then((b) => alive && setMix(b))
     return () => {
       alive = false
     }
@@ -130,6 +130,12 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="flex flex-col items-center gap-3">
+          {lines.length > 0 && (
+            <div className="w-full max-w-[340px] rounded-[var(--radius-card)] bg-surface p-3.5" aria-live="polite">
+              <div className="text-[11px] font-bold tracking-[.12em] text-ember-300 uppercase">Your line here · a guide, say it your way</div>
+              <div className="mt-1 min-h-[1.5em] text-[17px] leading-snug font-semibold">{lines.find((l) => l.id === lineAt)?.text ?? <span className="text-white/35">No line here, just talk or stay quiet</span>}</div>
+            </div>
+          )}
           <PreviewPlayer timeline={timeline} project={project} mix={recording ? null : mix} silent={recording} controlRef={control} onTime={setNow} onPlayingChange={onPlayingChange} />
         </div>
 

@@ -73,7 +73,8 @@ export const FADE_OUT_SEC = 0.8
  * otherwise from each line's audio and text.
  */
 export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: Script | undefined, voiceMode: VoiceMode, voiceTrack?: VoiceTrack): Timeline {
-  const fromTrack = voiceMode === 'recorded' && !!voiceTrack?.takes.length
+  // Own voice: voice and captions come only from the recording (none until something is recorded).
+  const fromTrack = voiceMode === 'recorded'
   const lines = new Map<string, ScriptLine>((script?.lines ?? []).map((l) => [l.id, l]))
   const shots: TimelineShot[] = []
   const scenes: TimelineScene[] = []
@@ -105,7 +106,7 @@ export function buildTimeline(plan: EditPlan, clips: Map<string, Clip>, script: 
   })
 
   if (fromTrack) {
-    const segments = resolveTakes(voiceTrack!.takes).filter((g) => g.start < t)
+    const segments = resolveTakes(voiceTrack?.takes ?? []).filter((g) => g.start < t)
     for (const g of segments) {
       const end = Math.min(g.end, t)
       voice.push({ lineId: '', start: g.start, mediaKey: g.take.mediaKey, durationSec: end - g.start, offset: g.offset, gain: g.take.volume })
