@@ -1,7 +1,7 @@
 /**
  * Sample clips for trying the app without your own footage: the three short
  * example videos from the home page (Mixkit free stock, see README).
- * File names describe the footage so the demo AI writes a sensible script.
+ * File names describe the footage.
  */
 const SAMPLES = [
   { file: 'cafe', name: 'morning-coffee' },

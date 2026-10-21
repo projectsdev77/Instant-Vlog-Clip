@@ -1,4 +1,4 @@
-// Effects flow in demo-AI mode: TikTok template → generated edit has transitions/moves/speed → split, freeze, speed, camera → export.
+// Effects flow (uses the real AI): TikTok template → generated edit has transitions/moves/speed → split, freeze, speed, camera → export.
 // FIX=public/examples uses the real stock footage instead of the test patterns.
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'

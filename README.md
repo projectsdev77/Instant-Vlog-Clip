@@ -7,20 +7,21 @@ Turn raw phone footage into a short, narrated vlog. Add clips, write a few lines
 - Current screens: [docs/screens/](docs/screens/) (phone and desktop, every state; regenerate with `node e2e/screens.mjs`)
 - Original design brief: https://claude.ai/artifact/CKXX2gxRcFGYCesEh495UG (source in [docs/design-handoff/](docs/design-handoff/))
 
-## Quick start (no accounts needed)
+## Quick start
+
+The app always uses the real AI, so it needs your Supabase project and AI keys (set up below) before it can write scripts, voice lines or make edits.
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+cp .env.example .env.local   # then fill in your Supabase URL and anon key
+npm run dev                   # http://localhost:5173
 ```
-
-The app runs in **demo AI mode** by default (`VITE_AI_MODE=mock`): clip analysis, script writing, the edit planner and the AI voice are simulated in the browser, so every screen works without API keys. Demo voices are a soft murmur timed to the words.
 
 Use the latest Chrome, Edge or Safari. Video decoding and encoding use WebCodecs.
 
-## Live AI mode
+## AI setup
 
-Live mode sends requests to one Supabase Edge Function (`supabase/functions/ai`). It uses a language model for clip analysis, scripts and edit plans, and **ElevenLabs** for the AI voice and speech-to-text. Users' video files never leave their device; only small contact-sheet images, short audio and text are sent.
+The app sends requests to one Supabase Edge Function (`supabase/functions/ai`). It uses a language model for clip analysis, scripts and edit plans, and **ElevenLabs** for the AI voice and speech-to-text. Users' video files never leave their device; only small contact-sheet images, short audio and text are sent.
 
 The language model is a setting (`AI_PROVIDER`):
 - **`gemini`** (default): Google Gemini. Get a key at Google AI Studio. The free tier is fine for development, but its limits are low, and Google may use free-tier requests to improve its products. **Switch the key to a paid (billing-enabled) Google account before launch.**
@@ -51,7 +52,6 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
 4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
 5. Create `.env.local` from `.env.example`:
    ```
-   VITE_AI_MODE=live
    VITE_SUPABASE_URL=https://<your-ref>.supabase.co
    VITE_SUPABASE_ANON_KEY=<anon key>
    VITE_AUTH_GOOGLE=false
@@ -67,7 +67,7 @@ The website is static and goes on Vercel; the AI keys stay on the server side in
 
 | Where | Variables |
 |---|---|
-| Vercel → Project → Settings → Environment Variables | `VITE_AI_MODE=live`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public values) |
+| Vercel → Project → Settings → Environment Variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public values) |
 | Supabase → Edge Functions → Secrets (or `supabase secrets set`) | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, optional `AI_PROVIDER`, `GEMINI_MODEL`, `ALLOWED_ORIGIN`, limits |
 
 `vercel.json` sends every route to `index.html`, so links like `/p/<id>/edit` work on refresh. Set `ALLOWED_ORIGIN` to your Vercel URL so only your site can call the AI function.
@@ -88,7 +88,7 @@ Both `.env` files are git-ignored.
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test-clips` | Generates test videos into `e2e/fixtures` (needs ffmpeg) |
-| `npm run e2e` | Browser tests against a running dev server (Playwright Chromium) |
+| `npm run e2e` | Browser tests against a running dev server (Playwright Chromium). They use the real AI: they need a configured `.env.local`, send real requests and count toward your limits (set `QUOTAS_DISABLED=true` on the function while testing) |
 | `node e2e/tutorial.mjs` | First-visit tutorial end to end (`DESKTOP=1` for the desktop layout) |
 | `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
@@ -126,7 +126,7 @@ The **edit plan** ([src/domain/types.ts](src/domain/types.ts)) is the single sou
 src/
   domain/     edit plan types, timing, repair, fallback planner, timeline (pure, unit-tested)
   media/      probing, on-device signals & contact sheets, audio decode/encode
-  ai/         AI service interface, demo (mock) and live providers, catalog builder
+  ai/         AI service (calls the Edge Function), catalog builder
   pipeline/   background clip analysis, voicing, generation orchestration
   render/     compositor, preview player, audio mix, music, styles, export
   features/   screens: home, clips, script, voice, generate, edit, export, auth
@@ -151,7 +151,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 
 ## Status and known gaps
 
-Built and verified in Chromium with the demo AI: the full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling. Unit tests cover the edit-plan logic and the demo AI.
+The full flow (import → script → AI voice → generate → edit → export), own-voice recording with a fake microphone, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium with a simulated AI, which has since been removed: the app now always uses the real AI, so the browser tests need live keys. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
 
 Not yet verified:
 - **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the six voice IDs (ElevenLabs default voices) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.

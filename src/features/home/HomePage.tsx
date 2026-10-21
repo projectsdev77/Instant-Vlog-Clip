@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router'
 import { MoreHorizontal, Play, Plus } from 'lucide-react'
-import { DemoBadge, LogoTile, PrivacyLine, Wordmark } from '@/components/Brand'
+import { LogoTile, PrivacyLine, Wordmark } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
 import { db } from '@/lib/db'
@@ -95,7 +95,6 @@ export function HomePage() {
             <CirclePlay className="size-4" strokeWidth={2.4} />
             How it works
           </button>
-          <DemoBadge className="hidden md:inline-flex" />
           <AccountButton />
         </div>
       </header>

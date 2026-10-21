@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { create } from 'zustand'
-import { aiMode } from '@/ai/mode'
 import { supabase } from '@/lib/supabase'
 
 /** Sign-in exists only when the app talks to real AI through Supabase. */
-export const authEnabled = aiMode === 'live' && !!supabase
+export const authEnabled = !!supabase
 
 export function useSession(): Session | null {
   const [session, setSession] = useState<Session | null>(null)

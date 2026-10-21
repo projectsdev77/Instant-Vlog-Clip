@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 import { Check } from 'lucide-react'
-import { DemoBadge, LogoTile, Wordmark } from '@/components/Brand'
+import { LogoTile, Wordmark } from '@/components/Brand'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { getMedia } from '@/lib/mediaStore'
@@ -92,7 +92,7 @@ function FlowHeader({ projectId, current, reached }: { projectId: string; curren
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-end md:w-[160px]"><DemoBadge /></div>
+        <div className="flex shrink-0 justify-end md:w-[160px]" aria-hidden />
       </div>
     </header>
   )

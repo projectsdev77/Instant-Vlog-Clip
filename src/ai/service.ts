@@ -9,7 +9,7 @@ import type { ClipAnalysis, Word } from '@/domain/types'
 
 export type SynthesizedLine = { audio: Blob; words: Word[] }
 
-/** Everything the app asks of AI. Implemented by the mock (demo) and live (Edge Function) providers. */
+/** Everything the app asks of AI. Implemented by the live provider (the Supabase Edge Function). */
 export interface AiService {
   analyzeClip(req: AnalyzeClipRequest): Promise<ClipAnalysis>
   writeScript(req: ScriptRequest): Promise<ScriptResponse>

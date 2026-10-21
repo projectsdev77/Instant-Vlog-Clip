@@ -1,4 +1,4 @@
-// End-to-end flow in demo-AI mode: clips → script → voice → generate → edit → export.
+// End-to-end flow (uses the real AI; needs .env.local and a deployed function): clips → script → voice → generate → edit → export.
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
