@@ -72,6 +72,18 @@ try {
   if (after !== before + 1) throw new Error(`expected ${before + 1} scenes, got ${after}`)
   ok(`added a new line as a scene (${before} → ${after} scenes)`)
   await page.screenshot({ path: 'test-results/lines.png' })
+
+  // Title: turn it off; it stays off after Tell the AI
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Text', exact: true }).click()
+  await page.getByRole('radio', { name: 'Off' }).click()
+  await page.waitForSelector('text=Title hidden')
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Scenes', exact: true }).click()
+  await page.getByPlaceholder(/Tell the AI/).fill('make it punchier')
+  await page.getByPlaceholder(/Tell the AI/).press('Enter')
+  await page.waitForSelector('text=/make it punchier/', { timeout: 60000 })
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Text', exact: true }).click()
+  if ((await page.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) !== 'true') throw new Error('title came back after Tell the AI')
+  ok('title turned off, and stays off after Tell the AI')
 } catch (e) {
   console.log('✗', e.message)
   await page.screenshot({ path: 'test-results/lines-fail.png' })

@@ -241,13 +241,20 @@ export async function tellAi(feedback: string) {
   const { project, plan } = requireEdit()
   const { plan: next, usedFallback } = await planWithAi(planContext(project, undefined, { fixedLayout: true }), { feedback, current: plan })
   if (usedFallback) throw new Error("The AI editor isn't available right now. Try again in a moment.")
-  await state().pushEdit({ ...next, createdBy: 'ai', note: `“${feedback}”` })
+  // The user's title choice (off, 3 s, whole video) survives a new AI edit.
+  await state().pushEdit({ ...next, title: { ...next.title, showUntilSec: plan.title.showUntilSec }, createdBy: 'ai', note: `“${feedback}”` })
 }
 
 export async function regenerate() {
-  const { project } = requireEdit()
+  const { project, plan: current } = requireEdit()
   const { plan } = await planWithAi(planContext(project, undefined, { fixedLayout: true }))
-  await state().pushEdit(plan)
+  await state().pushEdit({ ...plan, title: { ...plan.title, showUntilSec: current.title.showUntilSec } })
+}
+
+/** How long the title shows: 0 = not at all, a number of seconds, or the whole video. */
+export async function setTitleShow(showUntilSec: number | 'always') {
+  const { plan } = requireEdit()
+  await commit({ ...plan, title: { ...plan.title, showUntilSec } }, showUntilSec === 0 ? 'Title hidden' : showUntilSec === 'always' ? 'Title on the whole video' : 'Title at the start')
 }
 
 export async function undo() {

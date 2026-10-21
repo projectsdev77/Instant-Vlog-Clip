@@ -11,8 +11,8 @@ import type { Timeline } from '@/domain/timeline'
 import { cn } from '@/lib/cn'
 import { TRACKS } from '@/render/musicTracks'
 import { applyCase, STYLES, type TextStyle } from '@/render/styles'
-import { useProject } from '@/store/projectStore'
-import { changeVoice, setVoiceMode } from './editActions'
+import { currentEdit, useProject } from '@/store/projectStore'
+import { changeVoice, setTitleShow, setVoiceMode } from './editActions'
 
 export type PanelId = 'scenes' | 'look' | 'voice' | 'music' | 'style'
 
@@ -190,16 +190,41 @@ export function MusicPanel({ project }: { project: Project }) {
   )
 }
 
+const TITLE_SHOW: { value: number | 'always'; label: string }[] = [
+  { value: 0, label: 'Off' },
+  { value: 3, label: 'First 3 s' },
+  { value: 'always', label: 'Whole video' },
+]
+
 export function StylePanel({ project, clips }: { project: Project; clips: Clip[] }) {
   const { updateProject } = useProject()
   const sample = clips.find((c) => c.thumbnail)?.thumbnail
+  const show = currentEdit(project)?.title.showUntilSec ?? 3
   return (
     <div className="space-y-5">
-      <label className="block space-y-2">
-        <span className="block text-[15px] font-semibold">Title</span>
-        <TextInput value={project.title} maxLength={40} onChange={(e) => updateProject({ title: e.target.value })} placeholder="My Day" />
-        <span className="block text-[13px] font-medium text-faint">Shows for the first 3 seconds.</span>
-      </label>
+      <div className="space-y-2">
+        <label htmlFor="vlog-title" className="block text-[15px] font-semibold">
+          Title
+        </label>
+        <TextInput id="vlog-title" value={project.title} maxLength={40} disabled={show === 0} onChange={(e) => updateProject({ title: e.target.value })} placeholder="My Day" />
+        <div role="radiogroup" aria-label="Show the title" className="flex flex-wrap gap-1.5">
+          {TITLE_SHOW.map((o) => {
+            const on = o.value === 0 ? show === 0 : o.value === 'always' ? show === 'always' : show !== 0 && show !== 'always'
+            return (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => !on && void setTitleShow(o.value).catch((e: Error) => toast(e.message, 'error'))}
+                className={cn('h-9 rounded-full px-4 text-[14px] font-semibold transition', on ? 'bg-white text-ink' : 'bg-surface-2 text-muted hover:text-fg')}
+              >
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
       <div className="space-y-2">
         <span className="block text-[15px] font-semibold">Captions</span>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">

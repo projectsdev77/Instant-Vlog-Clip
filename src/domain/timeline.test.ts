@@ -26,6 +26,16 @@ describe('timeline', () => {
     expect(tl.captions.flatMap((c) => c.words.map((w) => w.word))).toEqual(['one', 'two', 'three', 'four'])
   })
 
+  it('shows the title for its chosen time: off, a few seconds or the whole video', () => {
+    const clips = [makeClip('a', 8), makeClip('b', 8)]
+    const script = makeScript(['one', 'two'])
+    const plan = planFallback(makeCtx(clips, script))
+    const until = (showUntilSec: number | 'always') => buildTimeline({ ...plan, title: { text: 'Hi', showUntilSec } }, new Map(clips.map((c) => [c.id, c])), script, 'ai')
+    expect(until(0).title.until).toBe(0)
+    expect(until(3).title.until).toBe(3)
+    expect(until('always').title.until).toBe(until('always').duration)
+  })
+
   it('chunks captions on punctuation and word limits', () => {
     const ws = 'So I woke up early, grabbed coffee and then biked through the park.'.split(' ').map((w, i) => ({ word: w, start: i * 0.3, end: i * 0.3 + 0.3 }))
     const chunks = chunkWords(ws, 10)
