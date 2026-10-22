@@ -162,7 +162,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <div role="radiogroup" aria-label="How do you want to record?" className="grid grid-cols-2 gap-2 sm:max-w-[520px]">
+        <div role="radiogroup" aria-label="How do you want to record?" data-tour="record-mode" className="grid grid-cols-2 gap-2 sm:max-w-[520px]">
           {FOLLOW.map((f) => {
             const on = follow === f.id
             const off = f.id === 'script' && !lines.length

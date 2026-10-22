@@ -62,7 +62,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: 'Step 3',
     title: 'Pick a voice and a style',
-    body: 'An AI voice reads your lines, or record your own. The template sets the transitions, effects and color, from cozy to TikTok fast cuts.',
+    body: 'An AI voice reads your lines, or record your own over the finished video. The template sets the transitions, effects and color, from cozy to TikTok fast cuts.',
     art: (
       <div className="mx-auto w-full max-w-[320px] space-y-3">
         <div className="flex flex-wrap justify-center gap-2">
@@ -85,7 +85,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: 'Step 4',
     title: 'Tweak it, then export',
-    body: 'The AI cuts it together with captions and music. Tap any scene to swap shots or add effects, or just tell the AI what to change. Your videos never leave your device.',
+    body: 'The AI cuts it together with captions and music. Tap any scene to swap shots or add effects, or just tell the AI what to change. Your videos stay on your device.',
     art: (
       <div className="flex items-center justify-center gap-4">
         <Phone small>

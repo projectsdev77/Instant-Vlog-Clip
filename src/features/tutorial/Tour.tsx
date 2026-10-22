@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
+import { useProject } from '@/store/projectStore'
 import { useTutorial } from './tutorial'
 
-export type TourPage = 'clips' | 'script' | 'voice' | 'edit'
+export type TourPage = 'clips' | 'script' | 'voice' | 'record' | 'edit'
 
 type Tip = { id: string; page: TourPage; target: string; title: string; body: string }
 
@@ -10,13 +11,15 @@ type Tip = { id: string; page: TourPage; target: string; title: string; body: st
 export const TIPS: Tip[] = [
   { id: 'clips-add', page: 'clips', target: 'clips-add', title: 'Start with your clips', body: 'Choose a few videos from today. Messy is fine: the shaky and accidental bits get skipped.' },
   { id: 'clips-star', page: 'clips', target: 'clips-grid', title: 'Star the must-haves', body: 'Tap the star on any clip that has to be in the vlog. Tap × to remove one.' },
-  { id: 'clips-length', page: 'clips', target: 'length', title: 'Pick a length', body: 'Your narration plays inside it; the rest is your clips with their own sound and music.' },
+  { id: 'clips-length', page: 'clips', target: 'length', title: 'Pick a length', body: 'The vlog keeps close to it. Starred clips always make it in; turn on Use every clip to show them all.' },
   { id: 'script-ai', page: 'script', target: 'write-ai', title: 'Let the AI write it', body: 'It writes short lines from what’s in your clips. Or type your own lines: each one becomes a scene.' },
   { id: 'script-template', page: 'script', target: 'template', title: 'Pick a template', body: 'It sets the transitions, camera moves, color and captions. TikTok fast cuts is punchy; Cinematic is slow and filmic.' },
-  { id: 'voice-mode', page: 'voice', target: 'voice-mode', title: 'Who tells the story?', body: 'An AI voice reads your lines (tap play to hear one), or record yourself, or show captions only.' },
+  { id: 'voice-mode', page: 'voice', target: 'voice-mode', title: 'Who tells the story?', body: 'An AI voice reads your lines (tap play to hear one), you record yourself over the finished video, or your lines show as captions only.' },
   { id: 'voice-make', page: 'voice', target: 'make', title: 'Make it', body: 'The AI picks the best moments, cuts them to your lines and adds captions and music.' },
+  { id: 'record-mode', page: 'record', target: 'record-mode', title: 'Script or your own words?', body: 'Read my script shows each line as a guide. Say my own thing turns what you say into the script.' },
+  { id: 'record-go', page: 'record', target: 'record', title: 'Talk over your vlog', body: 'Press Record: after 3-2-1 the video plays while you talk. Do it in one go or a bit at a time, then move or trim the takes.' },
   { id: 'edit-preview', page: 'edit', target: 'preview', title: 'Your vlog', body: 'Tap to play. What you see here is exactly what you’ll export.' },
-  { id: 'edit-scenes', page: 'edit', target: 'scenes', title: 'Change any scene', body: 'Tap a scene to swap shots, split, freeze, change speed, or add a zoom or transition.' },
+  { id: 'edit-scenes', page: 'edit', target: 'scenes', title: 'Change any scene', body: 'Tap a scene to swap shots, change its line, split, freeze, change speed, or add a zoom or transition.' },
   { id: 'edit-look', page: 'edit', target: 'tab-look', title: 'Change the whole look', body: 'Switch templates, add a filter, or tweak color and fades. Your footage stays.' },
   { id: 'edit-ai', page: 'edit', target: 'tell-ai', title: 'Or just ask', body: 'Tell the AI what to change in plain words, like “make it punchier” or “open with the sunset”.' },
   { id: 'edit-export', page: 'edit', target: 'export', title: 'Export', body: 'Made right on your device, sized for TikTok, Reels and Shorts. That’s it!' },
@@ -40,6 +43,9 @@ const MARGIN = 16
  */
 export function Tour({ page }: { page: TourPage }) {
   const { active, done, markDone, skip, finish } = useTutorial()
+  // Record tips only count for people who record their own voice.
+  const ownVoice = useProject((s) => s.project?.voice.mode === 'recorded')
+  const path = TIPS.filter((t) => t.page !== 'record' || ownVoice)
   const [, force] = useState(0)
   const [tip, setTip] = useState<Tip | null>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
@@ -101,8 +107,8 @@ export function Tour({ page }: { page: TourPage }) {
 
   if (!active || !tip || !rect) return null
 
-  const all = TIPS.findIndex((t) => t.id === tip.id)
-  const lastOfTour = all === TIPS.length - 1
+  const all = path.findIndex((t) => t.id === tip.id)
+  const lastOfTour = all === path.length - 1
   const vw = window.innerWidth
   const vh = window.innerHeight
   const w = Math.min(340, vw - MARGIN * 2)
@@ -138,7 +144,7 @@ export function Tour({ page }: { page: TourPage }) {
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="text-[12px] font-bold tracking-wide text-[#c2410c] uppercase">
-              Tip {all + 1} of {TIPS.length}
+              Tip {all + 1} of {path.length}
             </div>
             <div className="mt-0.5 text-[16px] leading-snug font-extrabold">{tip.title}</div>
             <p className="mt-1 text-[14px] leading-snug text-[#3f3a36]">{tip.body}</p>

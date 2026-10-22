@@ -4,6 +4,7 @@ import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLay
 import { stepIndex, stepPath, stepsFor } from '@/features/project/steps'
 import { transcribeAll } from '@/pipeline/voiceTrack'
 import { currentEdit, useProject } from '@/store/projectStore'
+import { Tour } from '@/features/tutorial/Tour'
 import { VoiceStudio } from './VoiceStudio'
 
 /** "Record my own": the voiceover is recorded over the made vlog, then on to Edit. */
@@ -31,6 +32,7 @@ export function RecordStep() {
         />
         <VoiceStudio project={project} clips={clips} plan={plan} />
       </StepPage>
+      <Tour page="record" />
       <StepFooter summary={takes.length ? `${takes.length} take${takes.length === 1 ? '' : 's'} recorded` : 'Nothing recorded yet'}>
         <Button variant={takes.length ? 'ember' : 'quiet'} onClick={() => void next()}>
           {takes.length ? 'Continue to edit' : 'Skip for now'}
