@@ -21,7 +21,7 @@ import { StepFooter, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath, stepsFor } from '@/features/project/steps'
 import { AiError } from '@/ai'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
-import { generateScript, type ScriptStage } from './scriptActions'
+import { generateScript, ScriptCancelled, type ScriptStage } from './scriptActions'
 import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
 import { resolveTemplate } from '@/domain/templates'
 import { Tour } from '@/features/tutorial/Tour'
@@ -39,6 +39,15 @@ export function ScriptStep() {
   const desktop = useMediaQuery('(min-width: 768px)')
   const [busy, setBusy] = useState<null | 'write' | 'polish'>(null)
   const [stage, setStage] = useState<ScriptStage | null>(null)
+  const runId = useRef(0)
+  const [started, setStarted] = useState(0)
+  const [now, setNow] = useState(0)
+  useEffect(() => {
+    if (!busy) return
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [busy])
+  const waited = busy && now > started ? Math.floor((now - started) / 1000) : 0
   const [confirmRewrite, setConfirmRewrite] = useState(false)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -92,12 +101,14 @@ export function ScriptStep() {
   }
 
   const run = async (mode: 'write' | 'polish') => {
+    const id = ++runId.current
     setConfirmRewrite(false)
     setBusy(mode)
     setStage(null)
     setNote(null)
+    setStarted(Date.now())
     try {
-      const res = await generateScript(mode, setStage)
+      const res = await generateScript(mode, setStage, () => runId.current !== id)
       const n = res?.lines ?? 0
       if (mode === 'write') {
         const msg = `Wrote ${n} line${n === 1 ? '' : 's'} from your clips.`
@@ -112,6 +123,7 @@ export function ScriptStep() {
         setNote({ ok: true, text: msg })
       }
     } catch (e) {
+      if (e instanceof ScriptCancelled) return
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
       else if (e instanceof AiError && e.code === 'quota') toast(e.message, 'error')
       else {
@@ -123,9 +135,18 @@ export function ScriptStep() {
         setNote({ ok: false, text: msg })
       }
     } finally {
-      setBusy(null)
-      setStage(null)
+      if (runId.current === id) {
+        setBusy(null)
+        setStage(null)
+      }
     }
+  }
+  // Cancel: the answer, when it comes, is ignored and nothing changes.
+  const cancelRun = () => {
+    runId.current++
+    setBusy(null)
+    setStage(null)
+    setNote({ ok: true, text: 'Cancelled. Your lines are unchanged.' })
   }
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -199,7 +220,17 @@ export function ScriptStep() {
                   )}
                 </div>
               </div>
-              <p className="pl-5 text-[13px] text-white/45">AI writes from your clips. Optional, and you can edit every line.</p>
+              {busy ? (
+                <p className="flex flex-wrap items-center gap-x-3 pl-5 text-[13px] text-white/55" role="status">
+                  <span className="tabular">{formatDuration(waited)}</span>
+                  {waited >= 30 && <span>The AI is slow right now. Keep waiting, or cancel and write the lines yourself.</span>}
+                  <button type="button" onClick={cancelRun} className="-my-1 rounded-full px-2 py-1 font-semibold text-white/80 underline-offset-2 hover:text-white hover:underline">
+                    Cancel
+                  </button>
+                </p>
+              ) : (
+                <p className="pl-5 text-[13px] text-white/45">AI writes from your clips. Optional, and you can edit every line.</p>
+              )}
               {note && (
                 <p role={note.ok ? 'status' : 'alert'} className={cn('pl-5 text-[13px] font-semibold', note.ok ? 'text-ember-200' : 'text-[#ff8a8a]')}>
                   {note.text}

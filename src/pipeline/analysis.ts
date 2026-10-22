@@ -26,13 +26,13 @@ export async function analyzeClipsInBackground(opts: { waitForImports?: boolean;
  * can work from on-device signals for any clip still pending (analysis keeps
  * going in the background).
  */
-export async function analyzeClipsUpTo(ms: number, onProgress?: (done: number, total: number) => void): Promise<void> {
+export async function analyzeClipsUpTo(ms: number, onProgress?: (done: number, total: number) => void, opts: { retryFailed?: boolean } = { retryFailed: true }): Promise<void> {
   const tick = onProgress && setInterval(() => {
     const { done, total } = analysisProgress(useProject.getState().clips)
     onProgress(done, total)
   }, 300)
   try {
-    await Promise.race([analyzeClipsInBackground({ waitForImports: true, retryFailed: true }), new Promise((r) => setTimeout(r, ms))])
+    await Promise.race([analyzeClipsInBackground({ waitForImports: true, retryFailed: opts.retryFailed }), new Promise((r) => setTimeout(r, ms))])
   } finally {
     if (tick) clearInterval(tick)
   }

@@ -8,13 +8,22 @@ import { analyzeClipsUpTo } from '@/pipeline/analysis'
 /** Asks the AI to write (or polish) the script and stores it on the project. */
 export type ScriptStage = { stage: 'clips'; done: number; total: number } | { stage: 'writing' }
 
-export async function generateScript(mode: 'write' | 'polish', onStage?: (s: ScriptStage) => void): Promise<{ lines: number; changed: string[] } | undefined> {
+/** Thrown when the user cancelled while the AI was working; nothing was changed. */
+export class ScriptCancelled extends Error {}
+
+export async function generateScript(
+  mode: 'write' | 'polish',
+  onStage?: (s: ScriptStage) => void,
+  cancelled: () => boolean = () => false,
+): Promise<{ lines: number; changed: string[] } | undefined> {
   const { project, updateProject } = useProject.getState()
   if (!project) return
-  if (mode === 'polish') return polishScript()
+  if (mode === 'polish') return polishScript(cancelled)
   // Script quality depends on knowing what's in the clips, but don't wait forever:
-  // after 25 s, write from what's known (on-device signals for the rest).
-  await analyzeClipsUpTo(25_000, (done, total) => onStage?.({ stage: 'clips', done, total }))
+  // after 25 s, write from what's known (on-device signals for the rest). Clips the
+  // AI already failed on aren't retried here (Make retries them).
+  await analyzeClipsUpTo(25_000, (done, total) => onStage?.({ stage: 'clips', done, total }), { retryFailed: false })
+  if (cancelled()) throw new ScriptCancelled()
   onStage?.({ stage: 'writing' })
   const { clips } = useProject.getState()
   // Write mode ignores existing lines except as hints the AI may reuse.
@@ -30,6 +39,7 @@ export async function generateScript(mode: 'write' | 'polish', onStage?: (s: Scr
     template: project.settings.template === 'auto' ? undefined : project.settings.template,
     catalog: buildCatalog(clips),
   })
+  if (cancelled()) throw new ScriptCancelled()
   if (!res.lines.length) throw new AiError("The AI couldn't write a script for these clips.", 'upstream')
   const script: Script = {
     title: res.title,
@@ -41,7 +51,7 @@ export async function generateScript(mode: 'write' | 'polish', onStage?: (s: Scr
 }
 
 /** Polish: a focused copy-edit of the user's lines. Each line keeps its place and identity. */
-async function polishScript(): Promise<{ lines: number; changed: string[] } | undefined> {
+async function polishScript(cancelled: () => boolean): Promise<{ lines: number; changed: string[] } | undefined> {
   const { project, updateProject } = useProject.getState()
   const filled = (project?.script?.lines ?? []).filter((l) => l.text.trim())
   if (!project?.script || !filled.length) return
@@ -49,6 +59,7 @@ async function polishScript(): Promise<{ lines: number; changed: string[] } | un
     filled.map((l) => l.text.trim()),
     project.settings.language,
   )
+  if (cancelled()) throw new ScriptCancelled()
   const byId = new Map(filled.map((l, i) => [l.id, polished[i]]))
   const norm = (t: string) => t.trim().replace(/\s+/g, ' ')
   const changed = filled.filter((l, i) => norm(polished[i] ?? l.text) !== norm(l.text)).map((l) => l.id)
