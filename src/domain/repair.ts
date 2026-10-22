@@ -251,7 +251,7 @@ export function refitPlan(plan: EditPlan, ctx: PlanContext): EditPlan {
     scenes: plan.scenes.map((s) => ({ id: s.id, lineId: s.lineId, shots: s.shots })),
   }
   const { plan: fixed } = repairPlan(raw, { ...ctx, settings: { ...ctx.settings, aspect: plan.aspect } }, plan.createdBy, { allowRepeats: true, fill: false })
-  return { ...fixed, title: plan.title, music: plan.music, look: plan.look, fades: plan.fades, templateId: plan.templateId, version: plan.version, createdAt: plan.createdAt }
+  return { ...fixed, title: plan.title, music: plan.music, look: plan.look, fades: plan.fades, templateId: plan.templateId, userScenes: plan.userScenes, version: plan.version, createdAt: plan.createdAt }
 }
 
 /**

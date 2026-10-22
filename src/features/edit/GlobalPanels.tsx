@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { stepPath } from '@/features/project/steps'
-import { AudioLines, Captions, Check, ChevronRight, Mic, Music2, VolumeX } from 'lucide-react'
+import { AudioLines, Captions, Check, ChevronRight, Lock, Mic, Music2, VolumeX } from 'lucide-react'
 import { voices } from '@/ai'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
@@ -44,6 +44,11 @@ export function ScenesPanel({ plan, timeline, project, clips, activeScene, onOpe
                   <span className="tabular">
                     {ts ? (ts.end - ts.start).toFixed(1) : '0.0'}s · {scene.shots.length} shot{scene.shots.length > 1 ? 's' : ''}
                   </span>
+                  {plan.userScenes?.includes(scene.id) && (
+                    <span className="flex items-center gap-1 text-ember-300" title="You picked this footage. Tell the AI keeps it.">
+                      <Lock className="size-3.5" strokeWidth={2.6} /> Yours
+                    </span>
+                  )}
                 </span>
               </span>
               <span className="tabular text-[13px] font-semibold text-faint">{i + 1}</span>

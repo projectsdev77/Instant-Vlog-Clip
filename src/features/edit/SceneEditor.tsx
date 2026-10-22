@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, Plus, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, Lock, Plus, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
@@ -19,6 +19,7 @@ import {
   editLine,
   freezeFrame,
   moveScene,
+  releaseScene,
   rereadLine,
   setLineMuted,
   setShotAudio,
@@ -101,6 +102,16 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
           Scene {index + 1} of {plan.scenes.length}
         </span>
       </div>
+
+      {plan.userScenes?.includes(scene.id) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-surface p-3.5">
+          <Lock className="size-4 shrink-0 text-ember-300" strokeWidth={2.6} />
+          <p className="min-w-0 flex-1 text-[14px] text-muted">You picked this footage, so Tell the AI keeps it.</p>
+          <Button size="sm" variant="quiet" disabled={!!busy} onClick={() => act('release', () => releaseScene(scene.id))}>
+            Let the AI change it
+          </Button>
+        </div>
+      )}
 
       {line && (
         <div className="space-y-2">

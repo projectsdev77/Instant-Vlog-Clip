@@ -2,6 +2,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { refitPlan } from '@/domain/repair'
 import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
 import { pickFootage } from '@/domain/pickFootage'
+import { keepUserScenes, withUserScene } from '@/domain/userScenes'
 import { scriptFromSpeech } from '@/domain/voiceTrack'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
@@ -65,7 +66,7 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
   const fresh = shotFromMoment(clip, moment, shotLength(old) * speedOf(old), { clipAudio: old.clipAudio, transitionIn: old.transitionIn })
   const shot: Shot = { ...old, clipId: fresh.clipId, in: fresh.in, out: fresh.out, crop: fresh.crop, hold: undefined }
   await commit(
-    mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? shot : x)) }))),
+    mapShot(plan, sceneIndex, shotIndex, () => shot),
     'Swapped a shot',
   )
 }
@@ -73,17 +74,13 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
 /** Trims edit the current version in place (no new version). */
 export async function trimShot(sceneIndex: number, shotIndex: number, inPoint: number, outPoint: number) {
   const { project, plan } = requireEdit()
-  const changed = mapScenes(plan, (scenes) =>
-    scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? { ...x, in: inPoint, out: outPoint } : x)) })),
-  )
+  const changed = mapShot(plan, sceneIndex, shotIndex, (x) => ({ ...x, in: inPoint, out: outPoint }))
   await state().replaceCurrentEdit(refitPlan(changed, planContext(project)))
 }
 
 export async function setShotAudio(sceneIndex: number, shotIndex: number, clipAudio: 'mute' | 'duck' | 'full') {
   const { plan } = requireEdit()
-  await state().replaceCurrentEdit(
-    mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.map((x, j) => (j === shotIndex ? { ...x, clipAudio } : x)) }))),
-  )
+  await state().replaceCurrentEdit(mapShot(plan, sceneIndex, shotIndex, (x) => ({ ...x, clipAudio })))
 }
 
 /** Changes a line's words; AI voice is regenerated for just that line. */
@@ -253,18 +250,26 @@ export async function setVoiceMode(mode: VoiceMode) {
   await refitCurrent()
 }
 
+/**
+ * What survives a new AI edit: the scenes the user picked footage for (re-fitted
+ * to the new timing) and the title choice (off, 3 s, whole video).
+ */
+function keepUserChoices(current: EditPlan, next: EditPlan, project: Project): EditPlan {
+  const kept = current.userScenes?.length ? refitPlan(keepUserScenes(current, next), planContext(project)) : next
+  return { ...kept, title: { ...kept.title, showUntilSec: current.title.showUntilSec } }
+}
+
 export async function tellAi(feedback: string) {
   const { project, plan } = requireEdit()
   const { plan: next, usedFallback } = await planWithAi(planContext(project, undefined, { fixedLayout: true }), { feedback, current: plan })
   if (usedFallback) throw new Error("The AI editor isn't available right now. Try again in a moment.")
-  // The user's title choice (off, 3 s, whole video) survives a new AI edit.
-  await state().pushEdit({ ...next, title: { ...next.title, showUntilSec: plan.title.showUntilSec }, createdBy: 'ai', note: `“${feedback}”` })
+  await state().pushEdit({ ...keepUserChoices(plan, next, project), createdBy: 'ai', note: `“${feedback}”` })
 }
 
 export async function regenerate() {
   const { project, plan: current } = requireEdit()
   const { plan } = await planWithAi(planContext(project, undefined, { fixedLayout: true }))
-  await state().pushEdit({ ...plan, title: { ...plan.title, showUntilSec: current.title.showUntilSec } })
+  await state().pushEdit(keepUserChoices(current, plan, project))
 }
 
 /** How long the title shows: 0 = not at all, a number of seconds, or the whole video. */
@@ -284,8 +289,18 @@ const goToVersion = (step: -1 | 1) =>
 export const undo = () => goToVersion(-1)
 export const redo = () => goToVersion(1)
 
+/** Lets AI re-plans change a scene the user had picked footage for. */
+export async function releaseScene(sceneId: string) {
+  const { plan } = requireEdit()
+  await state().replaceCurrentEdit({ ...plan, userScenes: plan.userScenes?.filter((id) => id !== sceneId) })
+}
+
+/** Changes one shot by hand; its scene becomes one the user picked footage for (AI re-plans keep it). */
 const mapShot = (plan: EditPlan, sceneIndex: number, shotIndex: number, fn: (s: Shot) => Shot | Shot[]): EditPlan =>
-  mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.flatMap((x, j) => (j === shotIndex ? fn(x) : [x])) })))
+  withUserScene(
+    mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.flatMap((x, j) => (j === shotIndex ? fn(x) : [x])) }))),
+    plan.scenes[sceneIndex].id,
+  )
 
 const clipDurations = () => new Map(state().clips.map((c) => [c.id, c.durationSec]))
 
@@ -363,8 +378,12 @@ export async function freezeFrame(sceneIndex: number, shotIndex: number, local?:
 export async function duplicateShot(sceneIndex: number, shotIndex: number) {
   const { plan } = requireEdit()
   const copy = { ...plan.scenes[sceneIndex].shots[shotIndex], id: uid('s_'), transitionIn: 'cut' as const }
+  const copyScene = uid('sc_')
   await commit(
-    mapScenes(plan, (scenes) => [...scenes.slice(0, sceneIndex + 1), { id: uid('sc_'), shots: [copy] }, ...scenes.slice(sceneIndex + 1)]),
+    withUserScene(
+      mapScenes(plan, (scenes) => [...scenes.slice(0, sceneIndex + 1), { id: copyScene, shots: [copy] }, ...scenes.slice(sceneIndex + 1)]),
+      copyScene,
+    ),
     'Duplicated a shot',
   )
 }

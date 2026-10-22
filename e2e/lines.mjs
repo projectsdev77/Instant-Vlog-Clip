@@ -85,6 +85,14 @@ try {
   ok('undo restores the old words of an edited line')
   await page.screenshot({ path: 'test-results/lines.png' })
 
+  // A shot changed by hand is marked "Yours" and survives Tell the AI (checked below)
+  await page.locator('ol[aria-label=Scenes] li button').first().click()
+  await page.getByRole('radiogroup', { name: 'Clip sound' }).first().getByRole('radio', { name: 'Full' }).click()
+  await page.waitForSelector('text=You picked this footage')
+  await page.getByRole('button', { name: 'All scenes' }).click()
+  if (!(await page.locator('ol[aria-label=Scenes] li').first().innerText()).includes('Yours')) throw new Error('scene not marked Yours')
+  ok('a shot changed by hand marks its scene as yours')
+
   // Title: turn it off; it stays off after Tell the AI
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Text', exact: true }).click()
   await page.getByRole('radio', { name: 'Off' }).click()
@@ -96,6 +104,9 @@ try {
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Text', exact: true }).click()
   if ((await page.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) !== 'true') throw new Error('title came back after Tell the AI')
   ok('title turned off, and stays off after Tell the AI')
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Scenes', exact: true }).click()
+  if (!(await page.locator('ol[aria-label=Scenes]').innerText()).includes('Yours')) throw new Error('your scene was lost after Tell the AI')
+  ok('your scene is kept after Tell the AI')
 } catch (e) {
   console.log('✗', e.message)
   await page.screenshot({ path: 'test-results/lines-fail.png' })
