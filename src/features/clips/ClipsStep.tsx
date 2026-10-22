@@ -2,7 +2,7 @@ import { Tour } from '@/features/tutorial/Tour'
 import { loadSampleFiles } from '@/features/tutorial/samples'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Camera, Plus, ShieldCheck, Star, X } from 'lucide-react'
+import { Camera, Plus, RotateCcw, ShieldCheck, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
@@ -16,6 +16,7 @@ import { importFiles } from './importClips'
 import { ACCEPT_ATTR, LIMITS } from './limits'
 import { ChipGroup } from '@/components/ui/Chip'
 import { ExportSupportNotice } from '@/features/export/ExportSupport'
+import { analyzeClipsInBackground, analyzeOne } from '@/pipeline/analysis'
 import { LENGTHS } from '@/features/script/settingsOptions'
 
 export function ClipsStep() {
@@ -23,6 +24,12 @@ export function ClipsStep() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const navigate = useNavigate()
+  // The AI starts looking at clips as soon as they're read, while the user carries on.
+  const waiting = clips.filter((c) => c.status === 'ready' && !c.analysis && !c.analysisFailed).length
+  const missed = clips.filter((c) => c.status === 'ready' && c.analysisFailed).length
+  useEffect(() => {
+    if (waiting) void analyzeClipsInBackground()
+  }, [waiting])
   if (!project) return null
 
   const add = async (files: FileList | File[] | null) => {
@@ -97,6 +104,14 @@ export function ClipsStep() {
               <p className="mb-4 text-[14px] font-medium text-muted">
                 {starred ? `${starred} clip${starred > 1 ? 's' : ''} marked must-include. ` : ''}Tap the star on any clip that has to be in.
               </p>
+              {missed > 1 && (
+                <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-surface p-3.5 text-[14px]">
+                  <p className="min-w-0 flex-1 text-muted">The AI couldn’t look at {missed} clips. They’re still used, picked by sharpness and light.</p>
+                  <Button size="sm" variant="quiet" onClick={() => void analyzeClipsInBackground({ retryFailed: true })}>
+                    <RotateCcw className="size-4" strokeWidth={2.4} /> Try all again
+                  </Button>
+                </div>
+              )}
               <ul data-tour="clips-grid" className={cn('grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3 md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]', dragging && 'opacity-60')}>
                 {clips.map((c) => (
                   <ClipTile key={c.id} clip={c} onStar={() => updateClip(c.id, { mustInclude: !c.mustInclude })} onRemove={() => removeClip(c.id)} />
@@ -157,6 +172,21 @@ function ClipTile({ clip, onStar, onRemove }: { clip: Clip; onStar: () => void; 
             </Button>
           </div>
         )}
+        {clip.status === 'analyzing' && (
+          <span className="absolute top-12 left-1.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold backdrop-blur">
+            <Spinner className="size-3" /> AI is looking
+          </span>
+        )}
+        {clip.status === 'ready' && clip.analysisFailed && (
+          <button
+            type="button"
+            onClick={() => void analyzeOne(clip)}
+            title="The AI couldn’t look at this clip, so it’s picked by sharpness and light. Try again?"
+            className="absolute top-12 left-1.5 flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[11px] font-semibold backdrop-blur hover:bg-black/80"
+          >
+            <RotateCcw className="size-3" strokeWidth={2.6} /> AI missed it · retry
+          </button>
+        )}
         {!busy && !failed && clip.durationSec > 0 && <span className="tabular absolute bottom-2.5 left-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[12px] font-semibold">{formatDuration(clip.durationSec)}</span>}
         {!busy && !failed && clip.signals?.duplicateOf && (
           <span className="absolute right-2.5 bottom-2.5 text-[12px] font-bold text-ember-300" title="Looks like a near-copy of another clip; we'll use it less">
@@ -195,7 +225,7 @@ function LengthPicker() {
     <section data-tour="length" className="mt-8 max-w-[560px] rounded-[var(--radius-panel)] bg-surface p-[22px]" aria-label="Video length">
       <ChipGroup label="How long?" options={LENGTHS} value={target} onChange={(targetSec) => updateProject((p) => ({ settings: { ...p.settings, targetSec } }))} />
       <p className="mt-3 text-[14px] font-medium text-muted">
-        {usable.length > 0 && <span className="tabular">{`${usable.length} clip${usable.length > 1 ? 's' : ''} · ${formatDuration(footage)} of footage. `}</span>}
+        {usable.length > 0 && <span className="tabular">{`${usable.length} clip${usable.length > 1 ? 's' : ''} · ${formatDuration(footage)} of footage · AI has looked at ${usable.filter((c) => c.analysis).length} of ${usable.length}. `}</span>}
         {target === 'auto' ? 'Auto fits your clips and narration.' : 'Your narration plays inside this; the rest is your clips with their own sound and music.'} Starred clips always show up.
       </p>
       <label className="mt-4 flex cursor-pointer items-center gap-3">

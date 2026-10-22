@@ -7,16 +7,17 @@ import { waitForImports } from '@/features/clips/importClips'
 
 const inFlight = new Map<string, Promise<void>>()
 
-const needsAnalysis = (c: Clip) => c.status === 'ready' && !!c.contactSheet && !c.analysis
+/** Clips still to analyze; ones that failed are only retried when asked (Make, Write, Try again). */
+const needsAnalysis = (c: Clip, retryFailed: boolean) => c.status === 'ready' && !!c.contactSheet && !c.analysis && (retryFailed || !c.analysisFailed)
 
 /**
  * Sends each clip's contact sheet (and on-camera speech) to the AI. Runs in the
  * background as soon as clips are ready; generation awaits whatever is left.
  * Failures are non-fatal: the planner falls back to on-device signals.
  */
-export async function analyzeClipsInBackground(opts: { waitForImports?: boolean } = {}): Promise<void> {
+export async function analyzeClipsInBackground(opts: { waitForImports?: boolean; retryFailed?: boolean } = {}): Promise<void> {
   if (opts.waitForImports) await waitForImports()
-  const clips = useProject.getState().clips.filter(needsAnalysis)
+  const clips = useProject.getState().clips.filter((c) => needsAnalysis(c, !!opts.retryFailed))
   await Promise.all([runLimited(clips.map((c) => () => analyzeOne(c)), 3), ...inFlight.values()])
 }
 
@@ -31,7 +32,7 @@ export async function analyzeClipsUpTo(ms: number, onProgress?: (done: number, t
     onProgress(done, total)
   }, 300)
   try {
-    await Promise.race([analyzeClipsInBackground({ waitForImports: true }), new Promise((r) => setTimeout(r, ms))])
+    await Promise.race([analyzeClipsInBackground({ waitForImports: true, retryFailed: true }), new Promise((r) => setTimeout(r, ms))])
   } finally {
     if (tick) clearInterval(tick)
   }
@@ -42,7 +43,7 @@ export function analyzeOne(clip: Clip): Promise<void> {
   if (existing) return existing
   const p = (async () => {
     const { updateClip } = useProject.getState()
-    await updateClip(clip.id, { status: 'analyzing' })
+    await updateClip(clip.id, { status: 'analyzing', analysisFailed: false })
     try {
       let transcript = clip.transcript
       if (!transcript && clip.hasAudio && (clip.signals?.speechRatio ?? 0) > 0.3) transcript = await transcribeClip(clip)
@@ -58,7 +59,7 @@ export function analyzeOne(clip: Clip): Promise<void> {
       await updateClip(clip.id, { analysis, transcript, status: 'analyzed' })
     } catch (e) {
       console.warn('Clip analysis failed; using on-device signals', e)
-      await updateClip(clip.id, { status: 'ready' })
+      await updateClip(clip.id, { status: 'ready', analysisFailed: true })
     } finally {
       inFlight.delete(clip.id)
     }

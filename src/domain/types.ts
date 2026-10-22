@@ -75,6 +75,8 @@ export type Clip = {
   addedAt: number
   mustInclude: boolean
   status: ClipStatus
+  /** the AI couldn't look at this clip (on-device signals are used instead); it can be tried again */
+  analysisFailed?: boolean
   error?: string
   /** small JPEG data URL */
   thumbnail?: string
