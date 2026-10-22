@@ -15,6 +15,7 @@ import { stepIndex, stepPath } from '@/features/project/steps'
 import { importFiles } from './importClips'
 import { ACCEPT_ATTR, LIMITS } from './limits'
 import { ChipGroup } from '@/components/ui/Chip'
+import { ExportSupportNotice } from '@/features/export/ExportSupport'
 import { LENGTHS } from '@/features/script/settingsOptions'
 
 export function ClipsStep() {
@@ -49,6 +50,7 @@ export function ClipsStep() {
   return (
     <>
       <StepPage>
+        <ExportSupportNotice className="mb-6" />
         <div
           onDragOver={(e) => {
             e.preventDefault()

@@ -18,6 +18,7 @@ import { TellAiBar, TellAiSheet } from './TellAi'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import '@/features/voice/followVoice' // own voice: script and footage follow what was said
+import { ExportSupportNotice } from '@/features/export/ExportSupport'
 import { Tour } from '@/features/tutorial/Tour'
 
 const PANELS: { id: PanelId; label: string }[] = [
@@ -72,6 +73,7 @@ export function EditStep() {
   return (
     <main className="relative mx-auto w-full max-w-[1120px] flex-1 px-4 pt-5 pb-32 md:px-10 md:pt-6 md:pb-10">
       <div className="ember-wash -z-10" aria-hidden />
+      <ExportSupportNotice className="mb-4" />
 
       <div className="mb-5 flex items-center gap-2">
         <IconButton onClick={undo} disabled={project.currentEdit <= 0} aria-label="Undo" className="border border-white/14">
