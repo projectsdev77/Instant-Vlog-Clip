@@ -118,7 +118,7 @@ try {
 
   // 4. No script: music montage
   await newVlogWithClips(fixtures)
-  await page.getByRole('button', { name: 'No script, music only' }).click()
+  await page.getByRole('button', { name: /music only/i }).click()
   await page.waitForURL(/\/edit(\?|$)/, { timeout: 90000 })
   const dur2 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`no-script montage generated (${dur2}, ${await page.locator('ol[aria-label=Scenes] li').count()} scenes)`)

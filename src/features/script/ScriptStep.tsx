@@ -318,11 +318,12 @@ export function ScriptStep() {
         actionsGrow
         summary={
           <Button variant="outline" size="sm" onClick={() => go(true)} disabled={!!busy} title="Make a vlog of just your clips and music, no words">
-            <Music2 className="size-4" strokeWidth={2.4} /> No script, music only
+            <Music2 className="size-4" strokeWidth={2.4} /> <span className="hidden sm:inline">No script, music only</span>
+            <span className="sm:hidden">Music only</span>
           </Button>
         }
       >
-        <span className="tabular min-w-0 truncate text-[13px] text-white/55">{summary}</span>
+        <span className="tabular hidden min-w-0 truncate text-[13px] text-white/55 sm:inline">{summary}</span>
         <Button className="h-[52px] shrink-0 px-[26px] text-[16px]" disabled={!filled.length || !!busy} onClick={() => go(false)}>
           Continue
         </Button>
