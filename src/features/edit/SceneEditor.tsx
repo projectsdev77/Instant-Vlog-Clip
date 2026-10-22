@@ -215,12 +215,16 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-border pt-5">
+      <div className="space-y-1 border-t border-border pt-5">
+        <h3 className="text-[15px] font-semibold">Scene order</h3>
+        <p className="text-[13px] text-faint">This plays as scene {index + 1} of {plan.scenes.length}. Swap it with the scene before or after it.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
         <Button variant="quiet" size="sm" disabled={index === 0 || !!busy} onClick={() => act('move', async () => { await moveScene(index, index - 1); onIndex(index - 1) })}>
-          <ArrowUp className="size-4" strokeWidth={2.4} /> Move earlier
+          <ArrowUp className="size-4" strokeWidth={2.4} /> {index === 0 ? 'Already first' : `Play before scene ${index}`}
         </Button>
         <Button variant="quiet" size="sm" disabled={index === plan.scenes.length - 1 || !!busy} onClick={() => act('move', async () => { await moveScene(index, index + 1); onIndex(index + 1) })}>
-          <ArrowDown className="size-4" strokeWidth={2.4} /> Move later
+          <ArrowDown className="size-4" strokeWidth={2.4} /> {index === plan.scenes.length - 1 ? 'Already last' : `Play after scene ${index + 2}`}
         </Button>
         <Button
           variant="text"
