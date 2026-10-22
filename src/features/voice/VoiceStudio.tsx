@@ -202,7 +202,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
             <PreviewPlayer timeline={timeline} project={project} mix={live ? null : mix} silent={live} controlRef={control} onTime={setNow} onPlayingChange={onPlayingChange} />
             {count !== null && (
               <div className="pointer-events-none absolute inset-0 grid place-items-center" aria-live="assertive">
-                <span className="grid size-28 place-items-center rounded-full bg-black/60 text-[64px] font-extrabold text-white tabular">{count}</span>
+                <span className="grid size-28 place-items-center rounded-full bg-black text-[64px] font-extrabold text-white tabular shadow-[0_0_0_6px_rgba(255,90,31,.5)]">{count}</span>
               </div>
             )}
           </div>
@@ -220,7 +220,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
               </Button>
             )}
             {live ? (
-              <div className="flex min-w-0 flex-1 items-center gap-3" role="status">
+              <div className="flex min-w-[220px] flex-1 items-center gap-3" role="status">
                 <span className={cn('size-2.5 rounded-full', recording ? 'animate-pulse bg-danger' : 'bg-white/40')} />
                 <span className="tabular text-[14px] font-semibold">{recording ? `Recording from ${formatDuration(recFrom ?? 0)}` : `Starting in ${count}… say something to check your mic`}</span>
                 <span className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
