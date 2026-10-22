@@ -137,6 +137,7 @@ export function HomePage() {
             <h2 className="title-2">Your vlogs</h2>
             <span className="text-[14px] text-muted">{list.length} made</span>
           </div>
+          <p className="-mt-3 mb-5 text-[13px] text-faint">Saved in this browser only. Clearing your browsing data, or opening the site on another device, won’t bring them back, so export the ones you want to keep.</p>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-[18px]">
             {list.map((p, i) => (
               <li key={p.id} className="min-w-0">
