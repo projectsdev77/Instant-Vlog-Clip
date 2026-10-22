@@ -264,9 +264,15 @@ export type Project = {
   edits: EditPlan[]
   /** index into edits of the version being shown */
   currentEdit: number
+  /** a built-in track id, OWN_MUSIC for the user's own song (ownMusic), or null for no music */
   musicTrackId: string | null
   musicGainDb: number
+  /** a song the user uploaded (they confirmed they have the rights) */
+  ownMusic?: OwnMusic
   styleId: StyleId
 }
+
+export const OWN_MUSIC = 'own'
+export type OwnMusic = { mediaKey: string; name: string; durationSec: number; /** where in the song the vlog starts */ startSec: number }
 
 export const DEFAULT_SETTINGS: ProjectSettings = { aspect: '9:16', targetSec: 'auto', vibe: 'auto', language: 'en' }

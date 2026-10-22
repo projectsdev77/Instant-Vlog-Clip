@@ -1,7 +1,7 @@
 // Per-line voice tools in Edit (AI voice): mute a line, read it again in another delivery, add a new line.
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
-import { readdirSync } from 'node:fs'
+import { readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
@@ -109,6 +109,27 @@ try {
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Scenes', exact: true }).click()
   if (!(await page.locator('ol[aria-label=Scenes]').innerText()).includes('Yours')) throw new Error('your scene was lost after Tell the AI')
   ok('your scene is kept after Tell the AI')
+
+  // Own music: confirm rights, upload a song, pick its start; export without music
+  const rate = 22050, secs = 12, samples = rate * secs
+  const wav = Buffer.alloc(44 + samples * 2)
+  wav.write('RIFF', 0); wav.writeUInt32LE(36 + samples * 2, 4); wav.write('WAVE', 8); wav.write('fmt ', 12); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(rate * 2, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(samples * 2, 40)
+  for (let i = 0; i < samples; i++) wav.writeInt16LE(Math.round(Math.sin((i / rate) * 2 * Math.PI * 330) * 6000), 44 + i * 2)
+  writeFileSync('test-results/my-song.wav', wav)
+  await page.getByLabel('Edit panels').getByRole('button', { name: 'Music', exact: true }).click()
+  if (!(await page.getByRole('button', { name: 'Add a song' }).isDisabled())) throw new Error('Add a song should wait for the rights checkbox')
+  await page.getByLabel(/I made this music/).check()
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Add a song' }).click()])
+  await chooser.setFiles('test-results/my-song.wav')
+  await page.waitForSelector('text=your upload', { timeout: 15000 })
+  await page.waitForSelector('text=Start the song at')
+  ok('own song added after confirming rights, with a start point')
+  await page.getByRole('button', { name: 'Export video', exact: true }).click()
+  await page.getByLabel(/Include the music/).uncheck()
+  await page.getByRole('dialog').getByRole('button', { name: 'Export video' }).click()
+  await page.waitForSelector('text=/Ready ·/', { timeout: 180000 })
+  ok('exported without the music')
 } catch (e) {
   console.log('✗', e.message)
   await page.screenshot({ path: 'test-results/lines-fail.png' })

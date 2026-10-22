@@ -54,7 +54,7 @@ function sinkSize(clip: Clip, W: number, H: number) {
  * Renders the edit to a video file on this device: every frame is decoded at
  * its exact timestamp, composited like the preview, and encoded with WebCodecs.
  */
-export async function exportVideo(tl: Timeline, project: Project, onProgress: (f: number) => void, signal?: AbortSignal): Promise<ExportResult> {
+export async function exportVideo(tl: Timeline, project: Project, onProgress: (f: number) => void, signal?: AbortSignal, opts: { music?: boolean } = {}): Promise<ExportResult> {
   const { width, height } = outputSize(project.settings.aspect, 1920)
   const fmt = await pickFormat(width, height)
   const style = styleById(project.styleId)
@@ -91,7 +91,7 @@ export async function exportVideo(tl: Timeline, project: Project, onProgress: (f
   try {
     await output.start()
     onProgress(0.01)
-    const mix = await renderMix(tl, project)
+    const mix = await renderMix(tl, project, opts)
     check()
     await audioSource.add(mix)
     audioSource.close()

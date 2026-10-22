@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { stepPath } from '@/features/project/steps'
-import { AudioLines, Captions, Check, ChevronRight, Lock, Mic, Music2, VolumeX } from 'lucide-react'
+import { AudioLines, Captions, Check, ChevronRight, Lock, Mic, Music2, Upload, VolumeX } from 'lucide-react'
 import { voices } from '@/ai'
+import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
-import type { Clip, EditPlan, Project, VoiceMode } from '@/domain/types'
+import { OWN_MUSIC, type Clip, type EditPlan, type Project, type VoiceMode } from '@/domain/types'
 import type { Timeline } from '@/domain/timeline'
 import { cn } from '@/lib/cn'
+import { formatDuration } from '@/lib/format'
+import { addOwnMusic, removeOwnMusic, setOwnMusicStart } from '@/pipeline/ownMusic'
 import { TRACKS } from '@/render/musicTracks'
 import { applyCase, STYLES, type TextStyle } from '@/render/styles'
 import { currentEdit, useProject } from '@/store/projectStore'
@@ -228,8 +231,96 @@ export function MusicPanel({ project }: { project: Project }) {
           )
         })}
       </ul>
+      <OwnMusicCard project={project} />
       {project.musicTrackId && <Slider label="Music volume" value={project.musicGainDb} min={-30} max={-4} onChange={(musicGainDb) => updateProject({ musicGainDb })} />}
-      <p className="text-[13px] font-medium text-faint">Music dips under your voice automatically.</p>
+      <p className="text-[13px] font-medium text-faint">Music dips under your voice automatically. To use a trending sound, export without music and add it in TikTok, Instagram or YouTube.</p>
+    </div>
+  )
+}
+
+/** The user's own song: rights first, then upload; choose where the song starts. */
+function OwnMusicCard({ project }: { project: Project }) {
+  const { updateProject } = useProject()
+  const own = project.ownMusic
+  const selected = project.musicTrackId === OWN_MUSIC && !!own
+  const [rights, setRights] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [start, setStart] = useState<number | null>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setBusy(true)
+    try {
+      await addOwnMusic(file)
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const shownStart = start ?? own?.startSec ?? 0
+  const commitStart = () => {
+    if (start !== null) void setOwnMusicStart(start)
+    setStart(null)
+  }
+
+  return (
+    <div className="space-y-3 rounded-[var(--radius-card)] bg-surface p-4">
+      <div className="text-[15px] font-semibold">Your own music</div>
+      <input ref={input} type="file" accept="audio/*" hidden onChange={(e) => void pick(e.target.files?.[0]).then(() => (e.target.value = ''))} />
+      {own ? (
+        <>
+          <button type="button" aria-pressed={selected} onClick={() => updateProject({ musicTrackId: OWN_MUSIC })} className={cn(rowBase, selected ? rowSel : rowIdle)}>
+            <span className={cn('grid size-10 shrink-0 place-items-center rounded-xl', selected ? 'bg-accent text-white' : 'bg-surface-2')}>
+              <Music2 className="size-[18px]" strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-bold">{own.name}</span>
+              <span className="tabular block text-[13px] text-muted">{formatDuration(own.durationSec)} · your upload</span>
+            </span>
+            {selected && <Check className="size-4 text-accent" strokeWidth={3} />}
+          </button>
+          {selected && own.durationSec > 4 && (
+            <label className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px]">
+              <span className="font-semibold">Start the song at</span>
+              <input
+                type="range"
+                min={0}
+                max={Math.floor(own.durationSec - 3)}
+                step={1}
+                value={shownStart}
+                onChange={(e) => setStart(Number(e.target.value))}
+                onPointerUp={commitStart}
+                onKeyUp={commitStart}
+                onBlur={commitStart}
+                className="h-11 min-w-[160px] flex-1"
+              />
+              <span className="tabular w-10 text-muted">{formatDuration(shownStart)}</span>
+            </label>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="quiet" disabled={busy} onClick={() => input.current?.click()}>
+              {busy ? <Spinner /> : <Upload className="size-4" strokeWidth={2.4} />} Use another song
+            </Button>
+            <Button size="sm" variant="text" disabled={busy} onClick={() => void removeOwnMusic()}>
+              Remove
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <label className="flex cursor-pointer items-start gap-3 text-[14px]">
+            <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 size-4 accent-[#ff5a1f]" />
+            <span>
+              I made this music or have the rights to use it in my videos.
+              <span className="block text-[13px] text-muted">Apps like TikTok and Instagram can mute or claim videos with copyrighted songs.</span>
+            </span>
+          </label>
+          <Button size="sm" variant="quiet" disabled={!rights || busy} onClick={() => input.current?.click()}>
+            {busy ? <Spinner /> : <Upload className="size-4" strokeWidth={2.4} />} Add a song
+          </Button>
+        </>
+      )}
     </div>
   )
 }

@@ -21,6 +21,8 @@ function fileName(project: Project, ext: string) {
 export function ExportSheet({ project, timeline, clips, onClose }: { project: Project; timeline: Timeline; clips: Clip[]; onClose: () => void }) {
   const [state, setState] = useState<State>({ kind: 'ready' })
   const [container, setContainer] = useState('MP4')
+  const hasMusic = !!project.musicTrackId
+  const [withMusic, setWithMusic] = useState(true)
   const abort = useRef<AbortController | null>(null)
   const desktop = useMediaQuery('(min-width: 768px)')
   const { width, height } = outputSize(project.settings.aspect, 1920)
@@ -42,7 +44,7 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
     setState({ kind: 'rendering', progress: 0 })
     let last = 0
     try {
-      const result = await exportVideo(timeline, project, (progress) => setState({ kind: 'rendering', progress: (last = progress) }), abort.current.signal)
+      const result = await exportVideo(timeline, project, (progress) => setState({ kind: 'rendering', progress: (last = progress) }), abort.current.signal, { music: withMusic })
       setState({ kind: 'done', result, url: URL.createObjectURL(result.blob) })
     } catch (e) {
       if (e instanceof ExportCancelled) setState({ kind: 'ready' })
@@ -97,6 +99,15 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
               </span>
             </span>
           </div>
+          {hasMusic && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] bg-surface-2 p-3.5">
+              <input type="checkbox" checked={withMusic} onChange={(e) => setWithMusic(e.target.checked)} className="mt-1 size-4 accent-[#ff5a1f]" />
+              <span className="min-w-0">
+                <span className="block text-[15px] font-semibold">Include the music</span>
+                <span className="block text-[13px] text-muted">Turn off to add a trending sound in TikTok, Instagram or YouTube instead. Their music is licensed for use inside their apps.</span>
+              </span>
+            </label>
+          )}
           <PrivacyLine>Made on this device. Nothing is uploaded.</PrivacyLine>
           <Button variant="ember" block className="h-14" onClick={start}>
             Export video

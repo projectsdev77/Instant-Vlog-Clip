@@ -111,12 +111,13 @@ export const useProject = create<State>((set, get) => ({
   },
 }))
 
-/** Every stored file a project still points at: line voices (now and in saved versions) and recorded takes. */
+/** Every stored file a project still points at: line voices (now and in saved versions), recorded takes and the user's own song. */
 export function mediaInUse(p: Project): Set<string> {
   const scripts = [p.script, ...p.edits.map((e) => e.script)]
   return new Set([
     ...scripts.flatMap((s) => s?.lines.map((l) => l.audio?.mediaKey) ?? []).filter((k): k is string => !!k),
     ...(p.voiceTrack?.takes.map((t) => t.mediaKey) ?? []),
+    ...(p.ownMusic ? [p.ownMusic.mediaKey] : []),
   ])
 }
 

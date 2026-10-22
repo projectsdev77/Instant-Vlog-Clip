@@ -1,4 +1,4 @@
-import type { Project } from '@/domain/types'
+import { OWN_MUSIC, type Project } from '@/domain/types'
 import type { Timeline } from '@/domain/timeline'
 import { getMedia } from '@/lib/mediaStore'
 import { decodeAudio, decodeAudioFile } from '@/media/audio'
@@ -30,11 +30,23 @@ function voiceBuffer(mediaKey: string) {
   return p
 }
 
+const ownCache = new Map<string, Promise<AudioBuffer | null>>()
+
+/** The user's uploaded song, decoded once. */
+function loadOwnMusic(mediaKey: string): Promise<AudioBuffer | null> {
+  let p = ownCache.get(mediaKey)
+  if (!p) {
+    p = getMedia(mediaKey).then(async (blob) => (blob ? new OfflineAudioContext(2, 1, SR).decodeAudioData(await blob.arrayBuffer()) : null))
+    ownCache.set(mediaKey, p)
+  }
+  return p
+}
+
 /**
  * Renders the vlog's full soundtrack: narration, clip sound and music, with the
  * music ducked under the voice. Used for both preview playback and export.
  */
-export async function renderMix(tl: Timeline, project: Project): Promise<AudioBuffer> {
+export async function renderMix(tl: Timeline, project: Project, opts: { music?: boolean } = {}): Promise<AudioBuffer> {
   const duration = Math.max(0.5, tl.duration)
   const ctx = new OfflineAudioContext(2, Math.ceil(duration * SR), SR)
   const ramp = 0.12
@@ -91,11 +103,16 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
   }
 
   // Music, ducked under narration and under clips playing their own speech
+  const own = project.musicTrackId === OWN_MUSIC ? project.ownMusic : undefined
   const track = trackById(project.musicTrackId)
-  if (track) {
-    const music = await renderTrack(track, duration, SR)
+  const music = opts.music === false ? null : own ? await loadOwnMusic(own.mediaKey) : track ? await renderTrack(track, duration, SR) : null
+  if (music) {
     const src = ctx.createBufferSource()
     src.buffer = music
+    // Songs shorter than the vlog loop; the user's own song starts where they chose.
+    const offset = own ? Math.min(own.startSec, Math.max(0, music.duration - 1)) : 0
+    src.loop = music.duration - offset < duration
+    if (src.loop) src.loopStart = 0
     const g = ctx.createGain()
     const base = dbToGain(project.musicGainDb)
     const duck = base * 0.3
@@ -113,7 +130,7 @@ export async function renderMix(tl: Timeline, project: Project): Promise<AudioBu
     g.gain.setValueAtTime(quietAtEnd ? duck : base, fadeStart)
     g.gain.linearRampToValueAtTime(0, duration)
     src.connect(g).connect(ctx.destination)
-    src.start(0)
+    src.start(0, offset)
   }
 
   const out = await ctx.startRendering()
