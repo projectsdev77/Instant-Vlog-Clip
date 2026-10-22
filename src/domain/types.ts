@@ -233,6 +233,8 @@ export type EditPlan = {
   /** fade from / to black at the start and end */
   fades?: { in: boolean; out: boolean }
   templateId?: TemplateId
+  /** the script as it was when this version was saved, so undo / redo bring the words back too */
+  script?: Script
 }
 
 export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft'

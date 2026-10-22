@@ -96,7 +96,7 @@ export const useProject = create<State>((set, get) => ({
     await get().updateProject((p) => {
       const kept = p.edits.slice(0, p.currentEdit + 1)
       const version = (kept[kept.length - 1]?.version ?? 0) + 1
-      const edits = [...kept, { ...plan, version }].slice(-20)
+      const edits = [...kept, { ...plan, version, script: p.script }].slice(-20)
       return { edits, currentEdit: edits.length - 1 }
     })
   },
@@ -105,11 +105,27 @@ export const useProject = create<State>((set, get) => ({
     await get().updateProject((p) => {
       if (p.currentEdit < 0) return {}
       const edits = [...p.edits]
-      edits[p.currentEdit] = plan
+      edits[p.currentEdit] = { ...plan, script: p.script }
       return { edits }
     })
   },
 }))
+
+/** Every stored file a project still points at: line voices (now and in saved versions) and recorded takes. */
+export function mediaInUse(p: Project): Set<string> {
+  const scripts = [p.script, ...p.edits.map((e) => e.script)]
+  return new Set([
+    ...scripts.flatMap((s) => s?.lines.map((l) => l.audio?.mediaKey) ?? []).filter((k): k is string => !!k),
+    ...(p.voiceTrack?.takes.map((t) => t.mediaKey) ?? []),
+  ])
+}
+
+/** Deletes the given stored files unless the open project (or one of its versions) still uses them. */
+export function releaseMedia(keys: (string | undefined)[]) {
+  const p = useProject.getState().project
+  const used = p ? mediaInUse(p) : new Set<string>()
+  for (const k of keys) if (k && !used.has(k)) void deleteMedia(k)
+}
 
 export function currentEdit(p: Project | null): EditPlan | undefined {
   return p && p.currentEdit >= 0 ? p.edits[p.currentEdit] : undefined
@@ -124,7 +140,7 @@ export async function createProject(): Promise<Project> {
 export async function deleteProject(id: string): Promise<void> {
   const clips = await db.clips.where('projectId').equals(id).toArray()
   const project = await db.projects.get(id)
-  const audioKeys = project?.script?.lines.map((l) => l.audio?.mediaKey).filter((k): k is string => !!k) ?? []
+  const audioKeys = project ? [...mediaInUse(project)] : []
   await Promise.all([...clips.map((c) => deleteMedia(c.mediaKey)), ...audioKeys.map(deleteMedia)])
   await db.clips.where('projectId').equals(id).delete()
   await db.projects.delete(id)

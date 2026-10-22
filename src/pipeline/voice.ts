@@ -2,7 +2,7 @@ import { ai } from '@/ai'
 import { textHash, uid } from '@/domain/ids'
 import type { LineAudio, Project, ScriptLine } from '@/domain/types'
 import { hasFreshAudio } from '@/domain/timing'
-import { deleteMedia, putMedia } from '@/lib/mediaStore'
+import { putMedia } from '@/lib/mediaStore'
 import { decodeAudioFile } from '@/media/audio'
 import { useProject } from '@/store/projectStore'
 import { runLimited } from './analysis'
@@ -16,7 +16,6 @@ async function setLineAudio(lineId: string, audio: LineAudio) {
         ...p.script,
         lines: p.script.lines.map((l) => {
           if (l.id !== lineId) return l
-          if (l.audio && l.audio.mediaKey !== audio.mediaKey) void deleteMedia(l.audio.mediaKey)
           return { ...l, audio }
         }),
       },

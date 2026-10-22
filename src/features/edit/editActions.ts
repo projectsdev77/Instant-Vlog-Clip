@@ -10,7 +10,6 @@ import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext, planWithAi } from '@/pipeline/generate'
 import { linesNeedingVoice, voiceAllLines, voiceLine } from '@/pipeline/voice'
-import { deleteMedia } from '@/lib/mediaStore'
 
 const state = () => useProject.getState()
 
@@ -53,8 +52,6 @@ export async function deleteScene(index: number) {
   if (plan.scenes.length <= 1) throw new Error('A vlog needs at least one scene.')
   const scene = plan.scenes[index]
   if (scene.lineId && project.script) {
-    const line = project.script.lines.find((l) => l.id === scene.lineId)
-    if (line?.audio) void deleteMedia(line.audio.mediaKey)
     await state().updateProject({ script: { ...project.script, lines: project.script.lines.filter((l) => l.id !== scene.lineId) } })
   }
   await commit(mapScenes(plan, (s) => s.filter((_, i) => i !== index)), 'Removed a scene')
@@ -167,15 +164,10 @@ export async function removeLineKeepTime(lineId: string) {
  * "Say my own thing": the script becomes what was said in each recorded part,
  * and those parts get footage that suits the words. Lengths never change.
  */
-export async function matchScriptToVoice(): Promise<{ changed: number; undo: () => Promise<void> }> {
+export async function matchScriptToVoice(): Promise<number> {
   const { project, plan } = requireEdit()
-  const before = project.script?.lines ?? []
-  const r = scriptFromSpeech(plan, before, project.voiceTrack?.takes ?? [])
-  const revert = async () => {
-    await undo()
-    await setScriptLines(state().project!, before)
-  }
-  if (!r.changed.length) return { changed: 0, undo: revert }
+  const r = scriptFromSpeech(plan, project.script?.lines ?? [], project.voiceTrack?.takes ?? [])
+  if (!r.changed.length) return 0
   const draft = { ...plan, scenes: r.scenes }
   const scenes = r.scenes.map((s, i) => {
     const line = s.lineId && r.changed.includes(i) ? r.lines.find((l) => l.id === s.lineId) : undefined
@@ -183,7 +175,7 @@ export async function matchScriptToVoice(): Promise<{ changed: number; undo: () 
   })
   await setScriptLines(project, r.lines)
   await pushUserEdit(plan, scenes, 'Script and footage follow what you said')
-  return { changed: r.changed.length, undo: revert }
+  return r.changed.length
 }
 
 /** Shortest part a scene can be split into when a line is added. */
@@ -281,13 +273,16 @@ export async function setTitleShow(showUntilSec: number | 'always') {
   await commit({ ...plan, title: { ...plan.title, showUntilSec } }, showUntilSec === 0 ? 'Title hidden' : showUntilSec === 'always' ? 'Title on the whole video' : 'Title at the start')
 }
 
-export async function undo() {
-  await state().updateProject((p) => ({ currentEdit: Math.max(0, p.currentEdit - 1) }))
-}
+/** Steps to another saved version: its scenes and, when it kept one, its script. */
+const goToVersion = (step: -1 | 1) =>
+  state().updateProject((p) => {
+    const i = Math.max(0, Math.min(p.edits.length - 1, p.currentEdit + step))
+    const script = p.edits[i]?.script
+    return script ? { currentEdit: i, script } : { currentEdit: i }
+  })
 
-export async function redo() {
-  await state().updateProject((p) => ({ currentEdit: Math.min(p.edits.length - 1, p.currentEdit + 1) }))
-}
+export const undo = () => goToVersion(-1)
+export const redo = () => goToVersion(1)
 
 const mapShot = (plan: EditPlan, sceneIndex: number, shotIndex: number, fn: (s: Shot) => Shot | Shot[]): EditPlan =>
   mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.flatMap((x, j) => (j === shotIndex ? fn(x) : [x])) })))

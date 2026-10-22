@@ -2,9 +2,8 @@ import { ai, AiError } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
 import { uid } from '@/domain/ids'
 import type { Script } from '@/domain/types'
-import { useProject } from '@/store/projectStore'
+import { releaseMedia, useProject } from '@/store/projectStore'
 import { analyzeClipsUpTo } from '@/pipeline/analysis'
-import { deleteMedia } from '@/lib/mediaStore'
 
 /** Asks the AI to write (or polish) the script and stores it on the project. */
 export type ScriptStage = { stage: 'clips'; done: number; total: number } | { stage: 'writing' }
@@ -36,8 +35,8 @@ export async function generateScript(mode: 'write' | 'polish', onStage?: (s: Scr
     title: res.title,
     lines: res.lines.map((l) => ({ id: uid('l_'), text: l.text, purpose: l.purpose, visualIntent: l.visualIntent, onScreenText: l.onScreenText || undefined })),
   }
-  for (const l of project.script?.lines ?? []) if (l.audio) void deleteMedia(l.audio.mediaKey)
   await updateProject((p) => ({ script, title: p.title || res.title }))
+  releaseMedia(project.script?.lines.map((l) => l.audio?.mediaKey) ?? [])
   return { lines: script.lines.length, changed: script.lines.map((l) => l.id) }
 }
 
@@ -57,6 +56,6 @@ async function polishScript(): Promise<{ lines: number; changed: string[] } | un
   await updateProject((p) => ({
     script: p.script && { ...p.script, lines: p.script.lines.map((l) => (byId.has(l.id) && changed.includes(l.id) ? { ...l, text: byId.get(l.id)!, audio: undefined } : l)) },
   }))
-  for (const l of filled) if (changed.includes(l.id) && l.audio) void deleteMedia(l.audio.mediaKey)
+  releaseMedia(filled.filter((l) => changed.includes(l.id)).map((l) => l.audio?.mediaKey))
   return { lines: filled.length, changed }
 }

@@ -71,6 +71,18 @@ try {
   const after = await scenes()
   if (after !== before + 1) throw new Error(`expected ${before + 1} scenes, got ${after}`)
   ok(`added a new line as a scene (${before} → ${after} scenes)`)
+
+  // Undo brings the words back, not just the scenes
+  await page.waitForTimeout(800)
+  if (await page.getByRole('button', { name: 'All scenes' }).isVisible()) await page.getByRole('button', { name: 'All scenes' }).click()
+  await page.locator('ol[aria-label=Scenes] li button').first().click()
+  await page.getByLabel('Narration').fill('A totally different line.')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await page.waitForSelector('text=Rewrote a line')
+  await page.getByRole('button', { name: 'All scenes' }).click()
+  await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
+  await page.waitForFunction(() => document.querySelector('ol[aria-label=Scenes]')?.textContent?.includes('Morning coffee by the window.'), null, { timeout: 15000 })
+  ok('undo restores the old words of an edited line')
   await page.screenshot({ path: 'test-results/lines.png' })
 
   // Title: turn it off; it stays off after Tell the AI

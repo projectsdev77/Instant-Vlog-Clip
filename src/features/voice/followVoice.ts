@@ -1,6 +1,6 @@
 import type { Project } from '@/domain/types'
 import { toast } from '@/components/ui/Toast'
-import { matchScriptToVoice } from '@/features/edit/editActions'
+import { matchScriptToVoice, undo } from '@/features/edit/editActions'
 import { useProject } from '@/store/projectStore'
 
 /** How the user records their own voice: read the script, or say their own thing. */
@@ -21,7 +21,7 @@ useProject.subscribe((s) => {
   last = key
   queue = queue
     .then(async () => {
-      const { changed: n, undo } = await matchScriptToVoice()
+      const n = await matchScriptToVoice()
       if (n) toast(`Your script now follows what you said (${n} part${n === 1 ? '' : 's'}).`, 'info', { label: 'Undo', run: () => void undo() })
     })
     .catch((e) => console.warn('Matching the script to your voice failed', e))
