@@ -56,14 +56,18 @@ function AddLine({ label, busy, onAdd }: { label: string; busy: boolean; onAdd: 
       <label htmlFor="new-line" className="block text-[15px] font-semibold">
         {label}
       </label>
-      <div className="flex gap-2">
-        <TextInput id="new-line" autoFocus value={text} placeholder="What should it say?" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} />
-        <Button disabled={busy || !text.trim()} onClick={submit}>
-          {busy ? <Spinner /> : 'Add'}
-        </Button>
-        <Button variant="text" onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
+      <div className="flex flex-wrap gap-2">
+        <div className="min-w-[220px] flex-1">
+          <TextInput id="new-line" autoFocus value={text} placeholder="What should it say?" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+        </div>
+        <div className="flex gap-2">
+          <Button className="min-w-[96px]" disabled={busy || !text.trim()} onClick={submit}>
+            {busy ? <Spinner /> : 'Add'}
+          </Button>
+          <Button variant="text" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -118,15 +122,17 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
           <label htmlFor="scene-line" className="block text-[15px] font-semibold">
             Narration
           </label>
-          <div className="flex gap-2">
-            <TextInput
-              id="scene-line"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && text.trim() && text.trim() !== line.text && act('line', () => editLine(line.id, text.trim()))}
-            />
+          <div className="flex flex-wrap gap-2">
+            <div className="min-w-[220px] flex-1">
+              <TextInput
+                id="scene-line"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && text.trim() && text.trim() !== line.text && act('line', () => editLine(line.id, text.trim()))}
+              />
+            </div>
             {text.trim() !== line.text && (
-              <Button disabled={!!busy || !text.trim()} onClick={() => act('line', () => editLine(line.id, text.trim()))}>
+              <Button className="min-w-[96px]" disabled={!!busy || !text.trim()} onClick={() => act('line', () => editLine(line.id, text.trim()))}>
                 {busy === 'line' ? <Spinner /> : 'Save'}
               </Button>
             )}
