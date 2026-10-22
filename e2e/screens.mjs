@@ -28,6 +28,7 @@ async function run(device) {
   await page.waitForURL(/\/clips$/)
   await wait(300)
   await snap('02-clips-empty')
+  await page.waitForURL(/\/clips/)
   await page.locator('input[type=file]').setInputFiles(fixtures)
   await wait(250)
   await snap('03-clips-importing')

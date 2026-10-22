@@ -14,6 +14,7 @@ const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on(
 const step = (s) => console.log('✓', s)
 await page.goto('http://localhost:5173')
 await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
+await page.waitForURL(/\/clips/)
 await page.locator('input[type=file]').setInputFiles(fixtures)
 await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
 await page.getByRole('button', { name: '15s', exact: true }).click()

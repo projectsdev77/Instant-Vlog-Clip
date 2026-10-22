@@ -10,7 +10,7 @@ const fixtures = readdirSync('e2e/fixtures').map((f) => join('e2e/fixtures', f))
 writeFileSync(`${OUT}/not-a-video.mp4`, 'hello')
 
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
-const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['microphone'] })
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['microphone'], acceptDownloads: true })
 await skipTutorial(context)
 const page = await context.newPage()
 const errors = []
@@ -22,6 +22,7 @@ const ok = (s) => console.log(`✓ ${s}`)
 async function newVlogWithClips(files) {
   await page.goto(BASE)
   await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
+  await page.waitForURL(/\/clips/)
   await page.locator('input[type=file]').setInputFiles(files)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, files.length, { timeout: 60000 })
   await page.getByRole('button', { name: 'Continue' }).click()
@@ -32,6 +33,7 @@ try {
   // 1. Bad file is rejected, good ones import
   await page.goto(BASE)
   await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
+  await page.waitForURL(/\/clips/)
   await page.locator('input[type=file]').setInputFiles([`${OUT}/not-a-video.mp4`, fixtures[0]])
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
@@ -140,6 +142,25 @@ try {
   await page.goto(BASE)
   await page.waitForSelector('text=Your vlogs')
   ok(`home lists ${await page.locator('[aria-label^="More options"]').count()} vlogs`)
+
+  // 6. Backup and restore: the copy comes back with its clips, voice and edit
+  const count0 = await page.locator('[aria-label^="More options"]').count()
+  const firstCard = () => page.locator('ul li').filter({ has: page.locator('[aria-label^="More options"]') }).first()
+  const cardLen0 = await firstCard().locator('.tabular').first().innerText()
+  await page.locator('[aria-label^="More options"]').first().click()
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download a backup' }).click()])
+  const backupPath = `${OUT}/${download.suggestedFilename()}`
+  await download.saveAs(backupPath)
+  ok(`backup downloaded (${download.suggestedFilename()})`)
+  await page.locator('input[accept^=".vlogbackup"]').setInputFiles(backupPath)
+  await page.waitForSelector('text=/Restored/', { timeout: 30000 })
+  await page.waitForFunction((n) => document.querySelectorAll('[aria-label^="More options"]').length === n + 1, count0)
+  const cardLen1 = await firstCard().locator('.tabular').first().innerText()
+  if (cardLen1 !== cardLen0) throw new Error(`restored length ${cardLen1} != ${cardLen0}`)
+  await firstCard().locator('button').first().click()
+  await page.waitForURL(/\/(edit|record)(\?|$)/, { timeout: 30000 })
+  await page.waitForFunction(() => !document.body.innerText.includes('Mixing audio'), null, { timeout: 30000 })
+  ok(`restored a copy (${cardLen1}) and it opens`)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.screenshot({ path: `${OUT}/home-desktop.png` })
 } finally {

@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router'
-import { MoreHorizontal, Play, Plus } from 'lucide-react'
+import { Download, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { LogoTile, PrivacyLine, Wordmark } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
+import { Spinner } from '@/components/ui/Spinner'
+import { toast } from '@/components/ui/Toast'
+import { backupProject, restoreProject } from '@/pipeline/backup'
 import { db } from '@/lib/db'
 import { formatDuration, relativeDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -41,6 +44,42 @@ export function HomePage() {
     return map
   }, [projects])
   const [deleting, setDeleting] = useState<Project | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const backupInput = useRef<HTMLInputElement>(null)
+  const closeMenu = () => {
+    setDeleting(null)
+    setConfirmDelete(false)
+  }
+  const downloadBackup = async (p: Project) => {
+    setBackingUp(true)
+    try {
+      const { blob, fileName } = await backupProject(p.id)
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = fileName
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000)
+      closeMenu()
+    } catch (e) {
+      toast((e as Error).message || 'Couldn’t make the backup.', 'error')
+    } finally {
+      setBackingUp(false)
+    }
+  }
+  const openBackup = async (file: File | undefined) => {
+    if (!file) return
+    setRestoring(true)
+    try {
+      const p = await restoreProject(file)
+      toast(`Restored “${p.title || 'Untitled vlog'}”.`, 'success')
+    } catch (e) {
+      toast((e as Error).message || 'Couldn’t open that backup.', 'error')
+    } finally {
+      setRestoring(false)
+    }
+  }
   const desktop = useMediaQuery('(min-width: 768px)')
 
   const start = async () => {
@@ -171,6 +210,13 @@ export function HomePage() {
         </section>
       )}
 
+      <div className="relative mx-auto mt-6 flex max-w-[1120px] justify-end px-4 md:px-10">
+        <input ref={backupInput} type="file" accept=".vlogbackup,application/octet-stream" hidden onChange={(e) => void openBackup(e.target.files?.[0]).then(() => (e.target.value = ''))} />
+        <Button variant="text" size="sm" disabled={restoring} onClick={() => backupInput.current?.click()}>
+          {restoring ? <Spinner /> : <Upload className="size-4" strokeWidth={2.4} />} Open a backup
+        </Button>
+      </div>
+
       <section className="relative mx-auto mt-16 max-w-[1120px] px-4 text-center md:mt-24 md:px-10">
         <h2 className="mx-auto max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.04em] text-balance">Your camera roll is full of vlogs.</h2>
         <p className="mx-auto mt-4 max-w-[44ch] text-[17px] text-muted">Pick a few clips from today and see it come together in about a minute.</p>
@@ -191,23 +237,37 @@ export function HomePage() {
         </div>
       )}
 
-      <Sheet open={!!deleting} title="Delete this vlog?" onClose={() => setDeleting(null)}>
-        <p className="text-muted">“{deleting?.title || 'Untitled vlog'}” will be removed from this device. This can’t be undone.</p>
-        <div className="mt-6 flex flex-col gap-2">
-          <Button
-            variant="danger"
-            block
-            onClick={() => {
-              if (deleting) void deleteProject(deleting.id)
-              setDeleting(null)
-            }}
-          >
-            Delete vlog
-          </Button>
-          <Button variant="outline" block onClick={() => setDeleting(null)}>
-            Keep it
-          </Button>
-        </div>
+      <Sheet open={!!deleting} title={confirmDelete ? 'Delete this vlog?' : deleting?.title || 'Untitled vlog'} onClose={closeMenu}>
+        {confirmDelete ? (
+          <>
+            <p className="text-muted">“{deleting?.title || 'Untitled vlog'}” will be removed from this device. This can’t be undone.</p>
+            <div className="mt-6 flex flex-col gap-2">
+              <Button
+                variant="danger"
+                block
+                onClick={() => {
+                  if (deleting) void deleteProject(deleting.id)
+                  closeMenu()
+                }}
+              >
+                Delete vlog
+              </Button>
+              <Button variant="outline" block onClick={closeMenu}>
+                Keep it
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" block disabled={backingUp} onClick={() => deleting && void downloadBackup(deleting)}>
+              {backingUp ? <Spinner /> : <Download className="size-4" strokeWidth={2.4} />} Download a backup
+            </Button>
+            <p className="mb-2 px-1 text-[13px] text-faint">One file with this vlog’s clips, recordings and edits. Open it later with “Open a backup” on this page, on any device.</p>
+            <Button variant="danger" block onClick={() => setConfirmDelete(true)}>
+              Delete vlog
+            </Button>
+          </div>
+        )}
       </Sheet>
     </div>
   )
