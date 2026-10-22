@@ -5,3 +5,11 @@ project_id = "instant-vlog-clip"
 # The function checks the caller itself (signed-in user or guest), so the
 # platform only needs to see the project's anon key or a user JWT.
 verify_jwt = true
+
+[functions.account]
+# Needs a signed-in user; the function checks the token itself.
+verify_jwt = true
+
+[functions.stripe-webhook]
+# Stripe calls this with no Supabase JWT; the function checks Stripe's signature.
+verify_jwt = false

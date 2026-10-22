@@ -1,4 +1,5 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.117.0'
+import { db, limitsFor, planOf, today } from '../_shared/billing.ts'
+import { GUEST_LIMITS } from '../_shared/plans.ts'
 
 export class AuthError extends Error {}
 /** The server is missing setup (database migration). */
@@ -12,34 +13,18 @@ export type UsageKind = 'generation' | 'revision' | 'call'
 const num = (name: string, fallback: number) => Number(Deno.env.get(name) ?? fallback)
 
 // Limits are environment variables so they can change without a deploy.
+// Signed-in users' daily limits depend on their plan (see _shared/billing.ts).
 const LIMITS = {
-  userGenerationsPerDay: () => num('USER_GENERATIONS_PER_DAY', 10),
-  userRevisionsPerDay: () => num('USER_REVISIONS_PER_DAY', 60),
-  guestGenerationsTotal: () => num('GUEST_GENERATIONS_TOTAL', 1),
-  guestRevisionsTotal: () => num('GUEST_REVISIONS_TOTAL', 5),
+  guestGenerationsTotal: () => num('GUEST_GENERATIONS_TOTAL', GUEST_LIMITS.generationsTotal),
+  guestRevisionsTotal: () => num('GUEST_REVISIONS_TOTAL', GUEST_LIMITS.revisionsTotal),
   ipGuestGenerationsPerDay: () => num('IP_GUEST_GENERATIONS_PER_DAY', 3),
   callsPerDay: () => num('CALLS_PER_DAY', 500),
 }
 
-/** The slice of the database schema this function uses. */
-type Database = {
-  public: {
-    Tables: Record<string, never>
-    Views: Record<string, never>
-    Functions: {
-      bump_ai_usage: { Args: { p_subject: string; p_day: string; p_field: string; p_limit: number }; Returns: boolean }
-    }
-  }
-}
-
-let admin: ReturnType<typeof createClient<Database>> | null = null
-const db = () => (admin ??= createClient<Database>(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } }))
-
-const today = () => new Date().toISOString().slice(0, 10)
 const LIFETIME = '1970-01-01'
 
 async function bump(subject: string, day: string, field: 'generations' | 'revisions' | 'calls', limit: number): Promise<boolean> {
-  const { data, error } = await db().rpc('bump_ai_usage', { p_subject: subject, p_day: day, p_field: field, p_limit: limit })
+  const { data, error } = await db().rpc('bump_ai_usage', { p_subject: subject, p_day: day, p_field: field, p_limit: limit } as never)
   if (error) {
     console.error('bump_ai_usage failed', error)
     throw new SetupError('Usage limits are not set up: run `supabase db push` (or set QUOTAS_DISABLED=true while developing).')
@@ -60,11 +45,14 @@ export async function authorize(req: Request, kind: UsageKind): Promise<void> {
   const user = data?.user
   if (user) {
     const s = `user:${user.id}`
-    if (!(await bump(s, today(), 'calls', LIMITS.callsPerDay()))) throw new QuotaError("You've reached today's limit. Try again tomorrow.")
-    if (kind === 'generation' && !(await bump(s, today(), 'generations', LIMITS.userGenerationsPerDay())))
-      throw new QuotaError(`You've made ${LIMITS.userGenerationsPerDay()} vlogs today, the daily limit. Try again tomorrow.`)
-    if (kind === 'revision' && !(await bump(s, today(), 'revisions', LIMITS.userRevisionsPerDay())))
-      throw new QuotaError("You've used today's AI edits. Try again tomorrow.")
+    const plan = await planOf(user.id)
+    const limits = limitsFor(plan)
+    // Free users who hit a limit are offered Pro (the app shows "See Pro" for these messages).
+    const more = plan === 'free' ? ' Go Pro for more, or try again tomorrow.' : ' Try again tomorrow.'
+    if (!(await bump(s, today(), 'calls', LIMITS.callsPerDay()))) throw new QuotaError(`You've reached today's limit.${more}`)
+    if (kind === 'generation' && !(await bump(s, today(), 'generations', limits.generationsPerDay)))
+      throw new QuotaError(`You've made ${limits.generationsPerDay} vlogs today, the daily limit.${more}`)
+    if (kind === 'revision' && !(await bump(s, today(), 'revisions', limits.revisionsPerDay))) throw new QuotaError(`You've used today's AI edits.${more}`)
     return
   }
 
