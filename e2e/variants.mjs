@@ -23,7 +23,7 @@ async function newVlogWithClips(files) {
   await page.goto(BASE)
   await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
   await page.waitForURL(/\/clips/)
-  await page.locator('input[type=file]').setInputFiles(files)
+  await page.locator('input[type=file][multiple]').setInputFiles(files)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, files.length, { timeout: 60000 })
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.waitForURL(/\/script$/)
@@ -34,7 +34,7 @@ try {
   await page.goto(BASE)
   await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
   await page.waitForURL(/\/clips/)
-  await page.locator('input[type=file]').setInputFiles([`${OUT}/not-a-video.mp4`, fixtures[0]])
+  await page.locator('input[type=file][multiple]').setInputFiles([`${OUT}/not-a-video.mp4`, fixtures[0]])
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
 

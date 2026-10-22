@@ -29,7 +29,7 @@ async function run(device) {
   await wait(300)
   await snap('02-clips-empty')
   await page.waitForURL(/\/clips/)
-  await page.locator('input[type=file]').setInputFiles(fixtures)
+  await page.locator('input[type=file][multiple]').setInputFiles(fixtures)
   await wait(250)
   await snap('03-clips-importing')
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length, { timeout: 60000 })

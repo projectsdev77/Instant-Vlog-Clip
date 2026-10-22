@@ -24,7 +24,7 @@ async function main() {
   await page.goto(BASE)
   await page.getByRole('button', { name: 'New vlog' }).filter({ visible: true }).first().click()
   await page.waitForURL(/\/clips/)
-  await page.locator('input[type=file]').setInputFiles(fixtures)
+  await page.locator('input[type=file][multiple]').setInputFiles(fixtures)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
   await shot('1-clips')
   step('clips imported')

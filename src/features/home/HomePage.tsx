@@ -48,6 +48,11 @@ export function HomePage() {
   const [backingUp, setBackingUp] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const backupInput = useRef<HTMLInputElement>(null)
+  const openBackupButton = (
+    <Button variant="text" size="sm" className="-my-2" disabled={restoring} onClick={() => backupInput.current?.click()}>
+      {restoring ? <Spinner /> : <Upload className="size-4" strokeWidth={2.4} />} Open a backup
+    </Button>
+  )
   const closeMenu = () => {
     setDeleting(null)
     setConfirmDelete(false)
@@ -174,9 +179,11 @@ export function HomePage() {
         <section className="relative mx-auto mt-10 max-w-[1120px] px-4 md:px-10">
           <div className="mb-5 flex items-baseline justify-between">
             <h2 className="title-2">Your vlogs</h2>
-            <span className="text-[14px] text-muted">{list.length} made</span>
+            <span className="flex items-center gap-2 text-[14px] text-muted">
+              {list.length} made · {openBackupButton}
+            </span>
           </div>
-          <p className="-mt-3 mb-5 text-[13px] text-faint">Saved in this browser only. Clearing your browsing data, or opening the site on another device, won’t bring them back, so export the ones you want to keep.</p>
+          <p className="-mt-3 mb-5 text-[13px] text-faint">Saved in this browser only. Clearing your browsing data, or opening the site on another device, won’t bring them back, so download a backup (the ••• menu) of the ones you want to keep.</p>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-[18px]">
             {list.map((p, i) => (
               <li key={p.id} className="min-w-0">
@@ -210,12 +217,12 @@ export function HomePage() {
         </section>
       )}
 
-      <div className="relative mx-auto mt-6 flex max-w-[1120px] justify-end px-4 md:px-10">
-        <input ref={backupInput} type="file" accept=".vlogbackup,application/octet-stream" hidden onChange={(e) => void openBackup(e.target.files?.[0]).then(() => (e.target.value = ''))} />
-        <Button variant="text" size="sm" disabled={restoring} onClick={() => backupInput.current?.click()}>
-          {restoring ? <Spinner /> : <Upload className="size-4" strokeWidth={2.4} />} Open a backup
-        </Button>
-      </div>
+      <input ref={backupInput} type="file" accept=".vlogbackup,application/octet-stream" hidden onChange={(e) => void openBackup(e.target.files?.[0]).then(() => (e.target.value = ''))} />
+      {list.length === 0 && projects !== undefined && (
+        <div className="relative mx-auto mt-6 flex max-w-[1120px] justify-center px-4 md:px-10">
+          {openBackupButton}
+        </div>
+      )}
 
       <section className="relative mx-auto mt-16 max-w-[1120px] px-4 text-center md:mt-24 md:px-10">
         <h2 className="mx-auto max-w-[16ch] text-[clamp(34px,5vw,56px)] leading-[1] font-extrabold tracking-[-0.04em] text-balance">Your camera roll is full of vlogs.</h2>
