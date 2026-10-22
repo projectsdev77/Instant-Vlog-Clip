@@ -70,6 +70,7 @@ try {
   await page.locator('ol[aria-label="Your lines"] li button').first().click() // back to 0:00
   for (const pause of [2500, 1500]) {
     await page.getByRole('main').getByRole('button', { name: 'Record', exact: true }).click()
+    await page.waitForSelector('text=/Recording from/', { timeout: 10000 })
     await page.waitForTimeout(pause)
     await page.getByRole('button', { name: 'Stop', exact: true }).click()
     await page.waitForTimeout(1200)
@@ -102,6 +103,7 @@ try {
   if ((await page.getByRole('radio', { name: 'Say my own thing' }).getAttribute('aria-checked')) !== 'true') throw new Error('Say my own thing should be picked when there is no script')
   await page.waitForTimeout(800)
   await page.getByRole('main').getByRole('button', { name: 'Record', exact: true }).click()
+  await page.waitForSelector('text=/Recording from/', { timeout: 10000 })
   await page.waitForTimeout(3000)
   await page.getByRole('button', { name: 'Stop', exact: true }).click()
   await page.waitForFunction(() => /so this is my day/i.test(document.querySelector('ol[aria-label="Your lines"]')?.textContent ?? ''), null, { timeout: 30000 })

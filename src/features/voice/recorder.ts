@@ -1,7 +1,10 @@
-export type Recording = { stop: () => Promise<Blob>; cancel: () => void; level: () => number }
+export type Recording = { begin: () => void; stop: () => Promise<Blob>; cancel: () => void; level: () => number }
 
-/** Starts recording from the microphone. Resolves once recording has started. */
-export async function startRecording(): Promise<Recording> {
+/**
+ * Opens the microphone (asking for permission) and its level meter. Nothing is
+ * recorded until `begin()`, so a countdown can show the level first.
+ */
+export async function openMic(): Promise<Recording> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
   const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((m) => MediaRecorder.isTypeSupported(m))
   const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
@@ -18,8 +21,8 @@ export async function startRecording(): Promise<Recording> {
     stream.getTracks().forEach((t) => t.stop())
     void ctx.close()
   }
-  rec.start()
   return {
+    begin: () => rec.state === 'inactive' && rec.start(),
     level: () => {
       analyser.getFloatTimeDomainData(buf)
       let s = 0

@@ -14,7 +14,7 @@ import { addTake, deleteTake, setFollow, transcribeTake, updateTakes } from '@/p
 import { followOf } from './followVoice'
 import { renderVoiceOnly } from '@/render/mix'
 import { PreviewPlayer, type PlayerControl } from '@/render/PreviewPlayer'
-import { startRecording, type Recording } from './recorder'
+import { openMic, type Recording } from './recorder'
 
 /**
  * "Record my own": a voiceover studio. The made vlog plays with the script
@@ -29,6 +29,10 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
   /** timeline time the current take started at; null when not recording */
   const [recFrom, setRecFrom] = useState<number | null>(null)
   const recording = recFrom !== null
+  /** seconds left in the countdown before a take starts (the mic is already open) */
+  const [count, setCount] = useState<number | null>(null)
+  const timers = useRef<number[]>([])
+  const live = recording || count !== null
   const [saving, setSaving] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [level, setLevel] = useState(0)
@@ -58,6 +62,14 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
     const r = recRef.current
     if (!r) return
     recRef.current = null
+    if (timers.current.length) {
+      // Still counting down: nothing was recorded yet.
+      timers.current.forEach(clearTimeout)
+      timers.current = []
+      r.rec.cancel()
+      setCount(null)
+      return
+    }
     control.current?.pause()
     setRecFrom(null)
     setSaving(true)
@@ -79,14 +91,26 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
     const start = from ?? (t >= duration - 0.3 ? 0 : t)
     let rec: Recording
     try {
-      rec = await startRecording()
+      rec = await openMic()
     } catch {
       toast('Couldn’t use the microphone. Allow microphone access and try again.', 'error')
       return
     }
     recRef.current = { from: start, rec }
-    setRecFrom(start)
-    control.current?.play(start)
+    control.current?.seek(start)
+    // 3-2-1 with the mic level showing, then the video plays and the take starts.
+    setCount(3)
+    timers.current = [
+      window.setTimeout(() => setCount(2), 1000),
+      window.setTimeout(() => setCount(1), 2000),
+      window.setTimeout(() => {
+        timers.current = []
+        setCount(null)
+        rec.begin()
+        setRecFrom(start)
+        control.current?.play(start)
+      }, 3000),
+    ]
   }
 
   // Playback stopping (end of the video, or the player's pause button) ends the take.
@@ -98,7 +122,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
   )
 
   useEffect(() => {
-    if (!recording) return
+    if (!live) return
     let raf = 0
     const tick = () => {
       setLevel(recRef.current?.rec.level() ?? 0)
@@ -106,9 +130,15 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [recording])
+  }, [live])
 
-  useEffect(() => () => recRef.current?.rec.cancel(), [])
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout)
+      recRef.current?.rec.cancel()
+    },
+    [],
+  )
 
   const importFile = async (file: File | undefined) => {
     if (!file) return
@@ -142,7 +172,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
                 type="button"
                 role="radio"
                 aria-checked={on}
-                disabled={recording || saving || off}
+                disabled={live || saving || off}
                 title={off ? 'There’s no script to read' : undefined}
                 onClick={() => !on && void setFollow(f.id)}
                 className={cn('flex items-center gap-2.5 rounded-[var(--radius-card)] p-3 text-left text-[15px] font-bold transition disabled:opacity-40', on ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface hover:bg-[#1a1918]')}
@@ -168,24 +198,31 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
               <div className="mt-1 min-h-[1.5em] text-[17px] leading-snug font-semibold">{lines.find((l) => l.id === lineAt)?.text ?? <span className="text-white/35">No line here, just talk or stay quiet</span>}</div>
             </div>
           )}
-          <PreviewPlayer timeline={timeline} project={project} mix={recording ? null : mix} silent={recording} controlRef={control} onTime={setNow} onPlayingChange={onPlayingChange} />
+          <div className="relative w-full">
+            <PreviewPlayer timeline={timeline} project={project} mix={live ? null : mix} silent={live} controlRef={control} onTime={setNow} onPlayingChange={onPlayingChange} />
+            {count !== null && (
+              <div className="pointer-events-none absolute inset-0 grid place-items-center" aria-live="assertive">
+                <span className="grid size-28 place-items-center rounded-full bg-black/60 text-[64px] font-extrabold text-white tabular">{count}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-panel)] bg-surface p-4">
-            {recording ? (
+            {live ? (
               <Button variant="ember" onClick={() => void stop()} className="min-w-[150px]">
-                <Square className="size-4" fill="currentColor" /> Stop
+                <Square className="size-4" fill="currentColor" /> {recording ? 'Stop' : 'Cancel'}
               </Button>
             ) : (
               <Button onClick={() => void record()} disabled={saving} className="min-w-[150px]" data-tour="record">
                 {saving ? <Spinner /> : <span className="size-2.5 rounded-full bg-danger" />} {saving ? 'Saving…' : 'Record'}
               </Button>
             )}
-            {recording ? (
+            {live ? (
               <div className="flex min-w-0 flex-1 items-center gap-3" role="status">
-                <span className="size-2.5 animate-pulse rounded-full bg-danger" />
-                <span className="tabular text-[14px] font-semibold">Recording from {formatDuration(recFrom ?? 0)}</span>
+                <span className={cn('size-2.5 rounded-full', recording ? 'animate-pulse bg-danger' : 'bg-white/40')} />
+                <span className="tabular text-[14px] font-semibold">{recording ? `Recording from ${formatDuration(recFrom ?? 0)}` : `Starting in ${count}… say something to check your mic`}</span>
                 <span className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
                   <span className="block h-full rounded-full bg-success transition-[width] duration-75" style={{ width: `${Math.round(level * 100)}%` }} />
                 </span>
@@ -196,7 +233,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
               </p>
             )}
             <input ref={fileRef} type="file" accept="audio/*" hidden onChange={(e) => void importFile(e.target.files?.[0]).then(() => (e.target.value = ''))} />
-            {!recording && (
+            {!live && (
               <Button size="sm" variant="quiet" disabled={saving} onClick={() => fileRef.current?.click()}>
                 <Upload className="size-4" strokeWidth={2.4} /> Import audio
               </Button>
@@ -219,7 +256,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
             {track.takes.length ? `${track.takes.length} take${track.takes.length === 1 ? '' : 's'} · ${formatDuration(recordedSec)} of voice. Drag a take to move it, drag its edges to trim. Newer takes play over older ones.` : 'Your takes show up on this track.'}
           </p>
 
-          {sel && !recording && (
+          {sel && !live && (
             <TakeTools
               take={sel}
               now={now}
@@ -245,7 +282,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
             lines={lines}
             activeLineId={lineAt}
             now={now}
-            disabled={recording || saving}
+            disabled={live || saving}
             onSeek={(t) => control.current?.seek(t)}
           />
         </div>
