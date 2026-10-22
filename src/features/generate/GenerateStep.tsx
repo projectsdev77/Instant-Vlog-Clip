@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Progress } from '@/components/ui/Progress'
 import { cn } from '@/lib/cn'
 import { useProject } from '@/store/projectStore'
-import { afterMake, generateVlog, STAGES, type Progress as P } from '@/pipeline/generate'
+import { afterMake, cancelMake, generateVlog, MakeCancelled, STAGES, type Progress as P } from '@/pipeline/generate'
 import { stepPath } from '@/features/project/steps'
 import { authEnabled, useAuthSheet } from '@/features/auth/auth'
 import { COVER_BG } from '@/features/home/covers'
@@ -26,19 +26,34 @@ export function GenerateStep() {
   }, [])
   const [error, setError] = useState<string | null>(null)
   const started = useRef(false)
+  // If the user leaves while it's making, it still finishes and saves; it just doesn't pull them back.
+  const here = useRef(true)
+  useEffect(() => {
+    here.current = true
+    return () => {
+      here.current = false
+    }
+  }, [])
 
   const start = useCallback(async () => {
     if (!project) return
     setError(null)
     try {
       await generateVlog(onProgress)
+      if (!here.current) return
       const next = afterMake(useProject.getState().project!)
       navigate(stepPath(project.id, next) + (next === 'edit' ? '?play=1' : ''), { replace: true })
     } catch (e) {
+      if (e instanceof MakeCancelled || !here.current) return
       setError((e as Error).message || 'Something went wrong.')
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
     }
   }, [project, navigate, onProgress])
+
+  const cancel = () => {
+    cancelMake()
+    navigate(stepPath(project!.id, project!.script?.lines.length ? 'voice' : 'clips'))
+  }
 
   useEffect(() => {
     if (started.current) return
@@ -123,7 +138,12 @@ export function GenerateStep() {
             </div>
           )}
         </div>
-        <p className="mt-6 text-[14px] font-medium text-muted">Usually under a minute. Everything happens on this device.</p>
+        <p className="mt-6 text-[14px] font-medium text-muted">Usually under a minute. You can leave this page; it keeps going and saves the vlog.</p>
+        {!error && (
+          <Button variant="text" className="mt-2" onClick={cancel}>
+            Cancel
+          </Button>
+        )}
       </div>
     </main>
   )

@@ -110,16 +110,32 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
 }
 
 let running: Promise<void> | null = null
+/** Bumped by cancelMake: a run that sees a newer number stops and saves nothing. */
+let generation = 0
+
+/** Thrown inside a run the user cancelled. */
+export class MakeCancelled extends Error {}
 
 /** The whole Generate step. Safe to call twice; the second call joins the first. */
 export function generateVlog(onProgress: (p: Progress) => void): Promise<void> {
-  running ??= run(onProgress).finally(() => {
-    running = null
+  if (running) return running
+  const mine = generation
+  const p: Promise<void> = run(onProgress, () => {
+    if (mine !== generation) throw new MakeCancelled('Cancelled')
+  }).finally(() => {
+    if (running === p) running = null
   })
-  return running
+  running = p
+  return p
 }
 
-async function run(onProgress: (p: Progress) => void) {
+/** Stops the current Make: whatever it is waiting for is thrown away. */
+export function cancelMake() {
+  generation++
+  running = null
+}
+
+async function run(onProgress: (p: Progress) => void, check: () => void) {
   const store = useProject.getState()
   if (!store.project) return
 
@@ -127,6 +143,7 @@ async function run(onProgress: (p: Progress) => void) {
   // At most 60 s: clips the AI hasn't finished are edited from on-device signals.
   await analyzeClipsUpTo(60_000, (done, total) => onProgress({ stage: 'watching', detail: `${done} of ${total} clips`, fraction: total ? done / total : 1 }))
 
+  check()
   let project = useProject.getState().project!
   const usable = useProject.getState().clips.filter((c) => c.status !== 'error' && c.durationSec > 0)
   if (!usable.length) throw new Error('None of your clips could be read. Add a few more clips and try again.')
@@ -140,10 +157,12 @@ async function run(onProgress: (p: Progress) => void) {
     await transcribeAll()
   }
 
+  check()
   project = useProject.getState().project!
   onProgress({ stage: 'picking' })
   const ctx = planContext(project, undefined, { fixedLayout: true })
   const { plan } = await planWithAi(ctx)
+  check()
 
   onProgress({ stage: 'cutting' })
   onProgress({ stage: 'finishing' })

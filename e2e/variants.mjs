@@ -36,6 +36,25 @@ try {
   await page.waitForSelector('text=/Couldn.t read|can.t decode/', { timeout: 30000 })
   ok('unreadable file shows an error on its tile')
 
+  // 1b. Cancel Make: the slow AI answer that arrives afterwards is thrown away
+  await newVlogWithClips(fixtures)
+  await page.locator('ol textarea').first().fill('A quick test line.')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.waitForURL(/\/voice$/)
+  const slow = async (route) => {
+    if (route.request().postData()?.includes('"action":"plan-edit"')) await new Promise((r) => setTimeout(r, 6000))
+    await route.continue()
+  }
+  await page.route('**/functions/v1/ai', slow)
+  await page.getByRole('button', { name: 'Make my vlog' }).click()
+  await page.waitForSelector('text=Picking the best moments', { timeout: 60000 })
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.waitForURL(/\/voice$/)
+  await page.waitForTimeout(8000)
+  if (!page.url().endsWith('/voice')) throw new Error('a cancelled Make still moved on: ' + page.url())
+  await page.unroute('**/functions/v1/ai', slow)
+  ok('Make can be cancelled; nothing is saved afterwards')
+
   // 2. Own voice: type lines, choose "Record my own", Make, then record over the made vlog (two takes)
   await newVlogWithClips(fixtures)
   const box = page.locator('ol textarea').first()
