@@ -71,6 +71,19 @@ const VOICE_MODES: { id: VoiceMode; label: string; icon: typeof Mic }[] = [
   { id: 'none', label: 'No voiceover', icon: Captions },
 ]
 
+/** What changes when the narration switches, in plain words. */
+function switchEffects(from: VoiceMode, to: VoiceMode, takes: number): string[] {
+  const kept = from === 'recorded' && takes ? [`Your ${takes} recorded take${takes === 1 ? ' is' : 's are'} kept. Switch back to My own voice to use ${takes === 1 ? 'it' : 'them'} again.`] : []
+  if (to === 'ai') return ['An AI voice reads your lines; captions follow its voice.', 'Each scene re-fits to how long its line takes to say, so the timing can change.', ...kept]
+  if (to === 'none') return ['No voice: your lines show as captions, timed to reading speed.', 'Scenes re-fit to that, so the timing can change.', ...kept]
+  return [
+    'You record over the video on the Record page, in one take or many.',
+    'Captions come from what you say, so there are none until you record.',
+    'The scene timing stays as it is now.',
+    ...(takes ? [`Your ${takes} earlier take${takes === 1 ? ' is' : 's are'} still there.`] : []),
+  ]
+}
+
 export function VoicePanel({ project }: { project: Project }) {
   const { updateProject } = useProject()
   const navigate = useNavigate()
@@ -89,11 +102,18 @@ export function VoicePanel({ project }: { project: Project }) {
       setBusy(null)
     }
   }
+  // A switch is explained first, then confirmed.
+  const [asking, setAsking] = useState<VoiceMode | null>(null)
   const pickMode = (m: VoiceMode) => {
     if (m === mode) {
+      setAsking(null)
       if (m === 'recorded') navigate(stepPath(project.id, 'record'))
       return
     }
+    setAsking(m)
+  }
+  const confirmSwitch = (m: VoiceMode) => {
+    setAsking(null)
     void run(m, async () => {
       await setVoiceMode(m)
       if (m === 'recorded') navigate(stepPath(project.id, 'record'))
@@ -123,6 +143,25 @@ export function VoicePanel({ project }: { project: Project }) {
           )
         })}
       </div>
+
+      {asking && (
+        <div className="space-y-3 rounded-[var(--radius-card)] bg-surface p-4 shadow-[inset_0_0_0_1.5px_rgb(255_255_255/.14)]" role="alertdialog" aria-label={`Switch to ${VOICE_MODES.find((v) => v.id === asking)?.label}`}>
+          <p className="text-[15px] font-semibold">Switch to {VOICE_MODES.find((v) => v.id === asking)?.label.toLowerCase()}?</p>
+          <ul className="list-disc space-y-1 pl-5 text-[14px] text-muted">
+            {switchEffects(mode, asking, takes).map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => confirmSwitch(asking)} className="h-10 rounded-full bg-white px-4 text-[14px] font-bold text-ink">
+              Switch
+            </button>
+            <button type="button" onClick={() => setAsking(null)} className="h-10 rounded-full px-4 text-[14px] font-semibold text-muted hover:text-fg">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {mode === 'none' && <p className="rounded-[var(--radius-card)] bg-surface p-4 text-[14px] text-muted">No voiceover: your lines show as captions. Pick AI voice or My own voice above to add one.</p>}
 

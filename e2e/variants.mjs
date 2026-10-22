@@ -97,6 +97,7 @@ try {
   await page.screenshot({ path: `${OUT}/montage.png` })
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
   await page.getByRole('radio', { name: 'My own voice' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Switch' }).click()
   await page.waitForURL(/\/record$/, { timeout: 30000 })
   await page.waitForSelector('text=No script, so just talk', { timeout: 15000 })
   ok('no-script vlog: My own voice in Edit opens the Record page')

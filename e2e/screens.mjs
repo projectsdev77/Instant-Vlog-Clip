@@ -86,6 +86,9 @@ async function run(device) {
   // Own voice: switch in the Voice panel, record over the made vlog on the Record page
   await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
   await page.getByRole('radio', { name: 'My own voice' }).click()
+  await wait(250)
+  await snap('20b-edit-voice-switch')
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Switch' }).click()
   await page.waitForURL(/\/record$/)
   await wait(1200)
   await snap('11-record')
