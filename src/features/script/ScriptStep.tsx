@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, Sparkles, X } from 'lucide-react'
+import { Music2, Plus, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ChipGroup } from '@/components/ui/Chip'
 import { Sheet } from '@/components/ui/Sheet'
@@ -317,9 +317,9 @@ export function ScriptStep() {
       <StepFooter
         actionsGrow
         summary={
-          <button type="button" onClick={() => go(true)} disabled={!!busy} className="-ml-3 h-11 rounded-full px-3 text-[15px] font-semibold text-white/80 transition hover:text-white disabled:opacity-50">
-            Skip, music only
-          </button>
+          <Button variant="outline" size="sm" onClick={() => go(true)} disabled={!!busy} title="Make a vlog of just your clips and music, no words">
+            <Music2 className="size-4" strokeWidth={2.4} /> No script, music only
+          </Button>
         }
       >
         <span className="tabular min-w-0 truncate text-[13px] text-white/55">{summary}</span>
