@@ -77,6 +77,13 @@ try {
   }
   await page.waitForSelector('text=2 takes recorded', { timeout: 15000 })
   ok('recorded two takes over the made vlog')
+  const firstTake = page.locator('[aria-label^="Take at 0:00"]').first()
+  await firstTake.focus()
+  await page.keyboard.press('Shift+ArrowRight')
+  await page.waitForSelector('[aria-label^="Take at 0:01"]', { timeout: 5000 })
+  await page.keyboard.press('Shift+ArrowLeft')
+  await page.waitForSelector('[aria-label^="Take at 0:00"]', { timeout: 5000 })
+  ok('a take moves with the arrow keys')
   await page.getByRole('button', { name: 'Continue to edit' }).click()
   await page.waitForURL(/\/edit(\?|$)/, { timeout: 30000 })
   const dur1 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()

@@ -253,7 +253,7 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
           />
 
           <p className="tabular -mt-2 px-1 text-[13px] text-white/45">
-            {track.takes.length ? `${track.takes.length} take${track.takes.length === 1 ? '' : 's'} · ${formatDuration(recordedSec)} of voice. Drag a take to move it, drag its edges to trim. Newer takes play over older ones.` : 'Your takes show up on this track.'}
+            {track.takes.length ? `${track.takes.length} take${track.takes.length === 1 ? '' : 's'} · ${formatDuration(recordedSec)} of voice. Drag a take to move it, drag its edges to trim (or select it and use the arrow keys). Newer takes play over older ones.` : 'Your takes show up on this track.'}
           </p>
 
           {sel && !live && (
@@ -470,8 +470,25 @@ function TrackEditor(props: {
                 onPointerDown={(e) => begin(e, t, 'move')}
                 onPointerMove={move}
                 onPointerUp={end}
+                aria-keyshortcuts="ArrowLeft ArrowRight Alt+ArrowLeft Alt+ArrowRight Control+ArrowLeft Control+ArrowRight Delete"
+                aria-description="Arrow keys move the take (Shift: 1 second). Alt + arrows trim its end, Ctrl + arrows its start. Delete removes it."
+                onFocus={() => props.onSelect(t.id)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Delete' || e.key === 'Backspace') void deleteTake(t.id)
+                  if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault()
+                    void deleteTake(t.id)
+                    return
+                  }
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                  e.preventDefault()
+                  const d = (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1)
+                  // Alt trims the end, Ctrl / Cmd the start, plain arrows move the take.
+                  const next = e.altKey
+                    ? trimTake(t, 'out', takeEnd(t) + d)
+                    : e.ctrlKey || e.metaKey
+                      ? trimTake(t, 'in', t.start + d)
+                      : moveTake(t, Math.min(t.start + d, Math.max(0, duration - takeLength(t))))
+                  props.onCommit(next)
                 }}
                 className={cn(
                   'absolute inset-y-1 flex cursor-grab touch-none items-center overflow-hidden rounded-[8px] active:cursor-grabbing',
