@@ -73,6 +73,7 @@ export async function planWithAi(ctx: PlanContext, opts: { feedback?: string; cu
     narrated: ctx.voiceMode !== 'none' && lines.length > 0,
     lines,
     targetSec: Math.round(videoTargetSec(ctx)),
+    useEveryClip: !!ctx.settings.useEveryClip,
     catalog,
     feedback: opts.feedback,
     currentPlan: opts.current ? planToWire(opts.current) : undefined,

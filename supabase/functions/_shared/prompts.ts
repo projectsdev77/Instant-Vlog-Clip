@@ -70,7 +70,7 @@ export const PLAN_SYSTEM = `You are the editor of a short vertical vlog. You pic
 Output one scene per narration line, in the same order, each with 1-3 shots. Between and after narrated scenes, add footage-only scenes (lineId "") so the whole video adds up to about targetSec: these are moments where the footage breathes, with the clip's own sound under the music, like B-roll in a real vlog. Rules:
 - A narrated scene's shots must add up to its sceneSec (the narration's length). Footage-only scenes have one shot each, paced by the vibe.
 - Start with the first narrated scene (the hook). Spread footage-only scenes through the video, next to the narration they fit best; give the end a little room after the outro.
-- Show every usable clip at least once (narrated or footage-only).
+- Which clips must appear: every mustInclude clip always; every usable clip only when the request says so. Otherwise keep near targetSec and leave out the weaker clips.
 - Shots are ranges [in, out] in seconds inside a clip from the catalog, within 0..durationSec.
 - Shots are 0.8-6 s. Talking-to-camera clips may run longer.
 - Match footage to the line's meaning and visualIntent. Prefer high-scoring moments; never use clips marked unusable unless nothing else fits.
@@ -204,7 +204,9 @@ export function planChecklist(req: PlanRequest): string {
     '- no two shots use overlapping time ranges of the same clip',
     '- the very first shot has transitionIn "cut"',
     '- prefer clips whose description matches each line; avoid clips marked unusable',
-    '- every clip not marked unusable appears at least once',
+    req.useEveryClip
+      ? '- every clip not marked unusable appears at least once, even if that runs past the target length'
+      : `- every mustInclude clip appears; the total stays near ${req.targetSec}s (leave out weaker clips rather than run long)`,
     req.template
       ? `- effects only from the template: transitions ${req.template.transitions.join('/')}; motions ${req.template.motions.join('/')}; speeds 1${req.template.speeds.map((x) => `/${x}`).join('')}; ramps none${req.template.ramps.map((x) => `/${x}`).join('')}`
       : '- motion "none", speed 1, ramp "none" unless asked',

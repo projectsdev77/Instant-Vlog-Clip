@@ -93,6 +93,20 @@ describe('filling to length', () => {
     expect([...used].sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
   })
 
+  it('respects a chosen length over showing every clip, but always shows starred clips', () => {
+    const many = Array.from({ length: 14 }, (_, i) => makeClip(`k${i}`, 8, { addedAt: i, mustInclude: i === 11 }))
+    const { plan } = repairPlan(raw, makeCtx(many, short, { settings: { ...DEFAULT_SETTINGS, targetSec: 15 } }))
+    const total = plan.scenes.reduce((a, s) => a + sumShots(s.shots), 0)
+    expect(total).toBeLessThan(17)
+    expect(plan.scenes.some((sc) => sc.shots.some((x) => x.clipId === 'k11'))).toBe(true)
+  })
+
+  it('"Use every clip" shows them all, even past the chosen length', () => {
+    const many = Array.from({ length: 14 }, (_, i) => makeClip(`k${i}`, 8, { addedAt: i }))
+    const { plan } = repairPlan(raw, makeCtx(many, short, { settings: { ...DEFAULT_SETTINGS, targetSec: 15, useEveryClip: true } }))
+    expect(new Set(plan.scenes.flatMap((sc) => sc.shots.map((x) => x.clipId))).size).toBe(14)
+  })
+
   it('skips accidental clips', () => {
     const withPocket = [...five, makeClip('pocket', 5, { addedAt: 5, analysis: { description: '', tags: [], shotType: 'other', quality: { shaky: false, blurry: false, dark: true, accidental: true }, moments: [] } })]
     const { plan } = repairPlan(raw, makeCtx(withPocket, short))

@@ -34,14 +34,18 @@ export function narrationSec(ctx: Pick<PlanContext, 'script' | 'voiceMode' | 'sc
 
 /**
  * How long the vlog should be. A chosen length is kept unless the narration is
- * longer (speech is never cut). "Auto" is the narration plus room to show
- * every clip, or, with no narration, a length that fits the footage.
- * Showing every usable clip can still push the result past this (see repair).
+ * longer (speech is never cut). "Auto" is the narration plus about one shot for
+ * each clip the narration doesn't cover, or, with no narration, a length that
+ * fits the footage. "Use every clip" can still push the result past a chosen
+ * length (see repair).
  */
 export function videoTargetSec(ctx: PlanContext): number {
   const speech = narrationSec(ctx)
   if (ctx.settings.targetSec !== 'auto') return Math.max(ctx.settings.targetSec, speech)
-  if (speech > 0) return speech
+  if (speech > 0) {
+    const extra = Math.max(0, usableClips(ctx.clips).length - (ctx.script?.lines.length ?? 0))
+    return Math.round(Math.min(90, speech + extra * vibeShotLength(ctx.settings)))
+  }
   const footage = usableClips(ctx.clips).length * vibeShotLength(ctx.settings) * 1.5
   return Math.round(Math.min(60, Math.max(10, footage)))
 }

@@ -289,10 +289,11 @@ function filmingOrder(clips: PlanContext['clips']): Map<string, number> {
 }
 
 /**
- * Adds footage-only scenes so that every usable clip appears at least once and
- * the video reaches its target length, then trims footage-only scenes if the
- * plan runs long. Narrated scenes are never changed. New footage goes next to
- * footage filmed around the same time; the first narrated line stays first.
+ * Adds footage-only scenes so that the clips that must appear do (starred
+ * ones, or every usable clip when the user asked for that) and the video
+ * reaches its target length, then trims footage-only scenes if the plan runs
+ * long. Narrated scenes are never changed. New footage goes next to footage
+ * filmed around the same time; the first narrated line stays first.
  */
 function fillScenes(
   input: Scene[],
@@ -317,9 +318,12 @@ function fillScenes(
     scenes.splice(pos, 0, { id: uid('sc_'), shots: [{ ...shot, transitionIn: transition }] })
   }
 
-  // 1. Every usable clip appears at least once.
+  // 1. Starred clips (or, when asked, every usable clip) appear at least once.
+  const required = (c: PlanContext['clips'][number]) => !!ctx.settings.useEveryClip || c.mustInclude
   const used = new Set(scenes.flatMap((s) => s.shots.map((x) => x.clipId)))
-  for (const clip of usableClips(ctx.clips).sort((a, b) => order.get(a.id)! - order.get(b.id)!)) {
+  for (const clip of usableClips(ctx.clips)
+    .filter(required)
+    .sort((a, b) => order.get(a.id)! - order.get(b.id)!)) {
     if (used.has(clip.id)) continue
     const m = rankedMoments(clip)[0]
     if (!m) continue
@@ -361,14 +365,17 @@ function fillScenes(
         }
       }
     }
-    for (let i = scenes.length - 1; i >= 0 && excess > 0.5; i--) {
-      const s = scenes[i]
-      if (s.lineId) continue
-      const elsewhere = s.shots.every((x) => scenes.some((o) => o !== s && o.shots.some((y) => y.clipId === x.clipId)))
-      if (!elsewhere) continue
-      excess -= sumShots(s.shots)
-      scenes.splice(i, 1)
-    }
+    // Drop footage-only scenes from the end: first ones whose clips show elsewhere,
+    // then (unless every clip must show) any whose clips aren't required.
+    const droppable = (s: Scene, strict: boolean) =>
+      s.shots.every((x) => scenes.some((o) => o !== s && o.shots.some((y) => y.clipId === x.clipId)) || (!strict && !required(clipsById.get(x.clipId)!)))
+    for (const strict of [true, false])
+      for (let i = scenes.length - 1; i >= 0 && excess > 0.5; i--) {
+        const s = scenes[i]
+        if (s.lineId || !droppable(s, strict)) continue
+        excess -= sumShots(s.shots)
+        scenes.splice(i, 1)
+      }
   }
   return scenes
 }

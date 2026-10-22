@@ -15,6 +15,8 @@ export type ProjectSettings = {
   language: Language
   /** edit template; 'auto' lets the app pick from the vibe */
   template?: TemplateId | 'auto'
+  /** show every usable clip, even past the chosen length (off: the length wins; starred clips always appear) */
+  useEveryClip?: boolean
 }
 
 export type Word = { word: string; start: number; end: number }

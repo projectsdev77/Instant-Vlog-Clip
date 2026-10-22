@@ -68,6 +68,8 @@ export type PlanRequest = {
   lines: PlanLine[]
   /** total length to aim for, seconds (narrated scenes plus footage-only scenes) */
   targetSec: number
+  /** true: show every usable clip even past targetSec; false: keep near targetSec (mustInclude clips still appear) */
+  useEveryClip?: boolean
   catalog: CatalogEntry[]
   /** plain-language change request from the user ("make it punchier") */
   feedback?: string
@@ -138,7 +140,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-21.8'
+export const AI_FUNCTION_VERSION = '2026-10-22.9'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }

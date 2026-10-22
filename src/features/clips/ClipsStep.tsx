@@ -190,8 +190,24 @@ function LengthPicker() {
       <ChipGroup label="How long?" options={LENGTHS} value={target} onChange={(targetSec) => updateProject((p) => ({ settings: { ...p.settings, targetSec } }))} />
       <p className="mt-3 text-[14px] font-medium text-muted">
         {usable.length > 0 && <span className="tabular">{`${usable.length} clip${usable.length > 1 ? 's' : ''} · ${formatDuration(footage)} of footage. `}</span>}
-        {target === 'auto' ? 'Auto fits your clips and narration.' : 'Your narration plays inside this; the rest is your clips with their own sound and music.'} Every good clip shows up at least once.
+        {target === 'auto' ? 'Auto fits your clips and narration.' : 'Your narration plays inside this; the rest is your clips with their own sound and music.'} Starred clips always show up.
       </p>
+      <label className="mt-4 flex cursor-pointer items-center gap-3">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!project.settings.useEveryClip}
+          aria-label="Use every clip"
+          onClick={() => updateProject((p) => ({ settings: { ...p.settings, useEveryClip: !p.settings.useEveryClip } }))}
+          className={cn('relative h-7 w-12 shrink-0 rounded-full transition', project.settings.useEveryClip ? 'bg-accent' : 'bg-surface-2 shadow-[inset_0_0_0_1px_rgb(255_255_255/.14)]')}
+        >
+          <span className={cn('absolute top-1 size-5 rounded-full bg-white transition-[left]', project.settings.useEveryClip ? 'left-6' : 'left-1')} />
+        </button>
+        <span className="min-w-0">
+          <span className="block text-[15px] font-semibold">Use every clip</span>
+          <span className="block text-[13px] text-muted">{target === 'auto' ? 'Every good clip shows up at least once.' : `Every good clip shows up, even if the vlog runs past ${target}s.`}</span>
+        </span>
+      </label>
       {target !== 'auto' && usable.length > 0 && footage < target * 0.9 && (
         <p className="mt-2 text-[14px] font-medium text-ember-300">That’s more than your footage, so the vlog may come out shorter. Add a few more clips for the full {target}s.</p>
       )}
