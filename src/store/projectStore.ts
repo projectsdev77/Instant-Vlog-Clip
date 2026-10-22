@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS } from '@/domain/types'
 import { db } from '@/lib/db'
 import { deleteMedia } from '@/lib/mediaStore'
 
-export const DEFAULT_VOICE_ID = 'ava'
+export const DEFAULT_VOICE_ID = 'mia'
 
 export function newProject(): Project {
   const now = Date.now()

@@ -40,9 +40,10 @@ async function failure(what: string, res: Response): Promise<VoiceServiceError> 
   return new VoiceServiceError(`Voice service: ${msg}`)
 }
 
-/** Voice settings per delivery (ElevenLabs voice_settings; `natural` keeps the voice's defaults). */
+/** Voice settings per delivery (ElevenLabs voice_settings). */
 const DELIVERY: Record<Delivery, Record<string, number> | undefined> = {
-  natural: undefined,
+  // A touch looser and more expressive than the voices' defaults, so lines sound spoken, not read.
+  natural: { stability: 0.38, similarity_boost: 0.75, style: 0.3, speed: 1.02 },
   calm: { stability: 0.75, similarity_boost: 0.75, style: 0, speed: 0.92 },
   energetic: { stability: 0.3, similarity_boost: 0.75, style: 0.45, speed: 1.06 },
   slow: { stability: 0.55, similarity_boost: 0.75, style: 0, speed: 0.85 },

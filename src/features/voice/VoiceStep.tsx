@@ -13,7 +13,7 @@ import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLay
 import { stepIndex, stepPath } from '@/features/project/steps'
 
 const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] = [
-  { id: 'ai', title: 'AI voice', body: 'Six natural voices read your lines.', icon: AudioLines },
+  { id: 'ai', title: 'AI voice', body: 'Eight casual, natural voices read your lines.', icon: AudioLines },
   { id: 'recorded', title: 'Record my own', body: 'Talk over your vlog once it’s made.', icon: Mic },
   { id: 'none', title: 'No voiceover', body: 'Your lines appear as captions only.', icon: Captions },
 ]

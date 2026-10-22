@@ -66,7 +66,7 @@ const SLIDES: Slide[] = [
     art: (
       <div className="mx-auto w-full max-w-[320px] space-y-3">
         <div className="flex flex-wrap justify-center gap-2">
-          {['Ava', 'Leo', 'Mia', 'Sam'].map((v, i) => (
+          {['Mia', 'Sam', 'Zoe', 'Will'].map((v, i) => (
             <span key={v} className={cn('flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold', i === 0 ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface-2')}>
               <Mic className="size-3.5" strokeWidth={2.4} /> {v}
             </span>

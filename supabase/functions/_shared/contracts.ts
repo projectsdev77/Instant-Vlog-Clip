@@ -140,7 +140,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-22.9'
+export const AI_FUNCTION_VERSION = '2026-10-22.10'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }
@@ -155,27 +155,36 @@ export type AiAction =
 
 export type AiErrorBody = { error: string; code: 'quota' | 'auth' | 'bad_request' | 'upstream' | 'refusal' }
 
-export type VoiceOption = { id: string; name: string; description: string; gender: 'female' | 'male'; accent: 'American' | 'British' }
+export type VoiceOption = { id: string; name: string; description: string; gender: 'female' | 'male' | 'neutral'; accent: 'American' | 'British' | 'Australian' }
 
 /**
- * Stock English voices, mapped to ElevenLabs' current default voices, which
- * every account (free included) can use through the API. Swap freely.
+ * Stock English voices, picked for a casual, conversational vlog sound from
+ * ElevenLabs' default voices, which every account (free included) can use
+ * through the API. Swap freely.
  */
 export const VOICES: VoiceOption[] = [
+  { id: 'mia', name: 'Mia', description: 'Playful and bubbly', gender: 'female', accent: 'American' },
+  { id: 'sam', name: 'Sam', description: 'Laid-back, like a friend talking', gender: 'male', accent: 'American' },
+  { id: 'zoe', name: 'Zoe', description: 'Upbeat and a little quirky', gender: 'female', accent: 'American' },
+  { id: 'will', name: 'Will', description: 'Chill and friendly', gender: 'male', accent: 'American' },
+  { id: 'charlie', name: 'Charlie', description: 'Easygoing Aussie', gender: 'male', accent: 'Australian' },
   { id: 'ava', name: 'Ava', description: 'Warm and upbeat', gender: 'female', accent: 'American' },
-  { id: 'leo', name: 'Leo', description: 'Calm, low and easy', gender: 'male', accent: 'American' },
-  { id: 'mia', name: 'Mia', description: 'Bright and friendly', gender: 'female', accent: 'American' },
-  { id: 'sam', name: 'Sam', description: 'Relaxed, like a friend talking', gender: 'male', accent: 'American' },
-  { id: 'grace', name: 'Grace', description: 'Soft and clear', gender: 'female', accent: 'British' },
-  { id: 'oliver', name: 'Oliver', description: 'Dry, a little witty', gender: 'male', accent: 'British' },
+  { id: 'liam', name: 'Liam', description: 'Young and energetic', gender: 'male', accent: 'American' },
+  { id: 'river', name: 'River', description: 'Relaxed and easy', gender: 'neutral', accent: 'American' },
 ]
 
-/** App voice id → ElevenLabs voice id. */
+/** App voice id → ElevenLabs voice id. Retired voices stay so older vlogs still play. */
 export const ELEVENLABS_VOICE_IDS: Record<string, string> = {
-  ava: 'EXAVITQu4vr4xnSDxMaL', // Sarah
-  leo: 'nPczCjzI2devNBz1zQrb', // Brian
   mia: 'cgSgspJ2msm6clMCkdW9', // Jessica
   sam: 'iP95p4xoKVk53GoZ742B', // Chris
+  zoe: 'FGY2WhTYpPnrIDTdsKH5', // Laura
+  will: 'bIHbv24MWmeRgasZH58o', // Will
+  charlie: 'IKne3meq5aSn9XLyUdCD', // Charlie
+  ava: 'EXAVITQu4vr4xnSDxMaL', // Sarah
+  liam: 'TX3LPaxmHKxFdv7VOQHJ', // Liam
+  river: 'SAz9YHcvj6GT2YYXdXww', // River
+  // retired (too formal for vlogs)
+  leo: 'nPczCjzI2devNBz1zQrb', // Brian
   grace: 'Xb7hH8MSUJpSbSDYk0k2', // Alice
   oliver: 'JBFqnCBsd6RMkjVDRZzb', // George
 }

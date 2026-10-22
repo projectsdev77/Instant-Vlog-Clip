@@ -42,9 +42,9 @@ async function main() {
   await page.getByRole('button', { name: 'Continue' }).click()
 
   await page.waitForURL(/\/voice$/)
-  await page.getByRole('button', { name: 'Preview Leo' }).click()
+  await page.getByRole('button', { name: 'Preview Sam' }).click()
   await page.waitForTimeout(800)
-  await page.getByRole('radio', { name: /Leo/ }).click()
+  await page.getByRole('radio', { name: /Sam/ }).click()
   await shot('3-voice')
   step('voice picked')
   if (UNTIL === 'voice') return

@@ -43,7 +43,6 @@ export function VoiceStudio({ project, clips, plan: edit }: { project: Project; 
   const byId = useMemo(() => new Map(clips.map((c) => [c.id, c])), [clips])
   const plan = useMemo(() => ({ ...edit, title: { ...edit.title, text: project.title } }), [edit, project.title])
   const script = useMemo(() => (lines.length ? { title: project.title, lines } : undefined), [lines, project.title])
-  // Script lines show on the video as a teleprompter; the voice comes from the takes.
   // The video shows the real result: captions are what was said, never the script.
   const timeline = useMemo(() => buildTimeline(plan, byId, script, 'recorded', track), [plan, byId, script, track])
   const duration = timeline.duration
