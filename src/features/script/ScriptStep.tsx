@@ -20,7 +20,7 @@ import { analyzeClipsInBackground } from '@/pipeline/analysis'
 import { StepFooter, StepPage } from '@/features/project/ProjectLayout'
 import { stepIndex, stepPath, stepsFor } from '@/features/project/steps'
 import { AiError } from '@/ai'
-import { authEnabled, useAuthSheet } from '@/features/auth/auth'
+import { authEnabled, promptForAccess } from '@/features/auth/auth'
 import { generateScript, ScriptCancelled, type ScriptStage } from './scriptActions'
 import { ASPECTS, TEMPLATE_OPTIONS, templateHint } from './settingsOptions'
 import { resolveTemplate } from '@/domain/templates'
@@ -124,7 +124,7 @@ export function ScriptStep() {
       }
     } catch (e) {
       if (e instanceof ScriptCancelled) return
-      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) void promptForAccess(e.code, e.message)
       else if (e instanceof AiError && e.code === 'quota') toast(e.message, 'error')
       else {
         console.warn(`Script ${mode} failed`, e)

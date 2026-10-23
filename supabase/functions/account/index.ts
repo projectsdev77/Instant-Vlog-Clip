@@ -1,6 +1,6 @@
 // The signed-in user's account: plan and usage, Stripe checkout and billing
 // portal, and deleting the account. Every action needs a signed-in user.
-import { db, limitsFor, planOf, stripe, subscriptionOf, today } from '../_shared/billing.ts'
+import { db, limitsFor, planOf, stripe, subscriptionOf, today } from '../_server/billing.ts'
 import { PRICING, type AccountRequest, type AccountStatus } from '../_shared/plans.ts'
 
 const origin = Deno.env.get('ALLOWED_ORIGIN') ?? '*'

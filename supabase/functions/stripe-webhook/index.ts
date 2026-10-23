@@ -1,7 +1,7 @@
 // Keeps public.subscriptions in step with Stripe. Stripe calls this with
 // signed events; deploy with --no-verify-jwt (Stripe sends no Supabase JWT).
 import Stripe from 'npm:stripe@17.7.0'
-import { db, stripe } from '../_shared/billing.ts'
+import { db, stripe } from '../_server/billing.ts'
 import { PRO_STATUSES } from '../_shared/plans.ts'
 
 const crypto = Stripe.createSubtleCryptoProvider()

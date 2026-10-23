@@ -25,6 +25,23 @@ export const useAuthSheet = create<SheetState>((set) => ({
   hide: () => set({ open: false, reason: undefined }),
 }))
 
+/** "Go Pro" sheet, for signed-in users who hit a daily limit. */
+export const useUpgradeSheet = create<SheetState>((set) => ({
+  open: false,
+  show: (reason) => set({ open: true, reason }),
+  hide: () => set({ open: false, reason: undefined }),
+}))
+
+/**
+ * An AI request was refused for credentials or limits: guests are asked to
+ * sign in; signed-in users who hit a limit are offered Pro.
+ */
+export async function promptForAccess(code: string, message: string) {
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } }
+  if (code === 'quota' && data.session) useUpgradeSheet.getState().show(message)
+  else useAuthSheet.getState().show(message)
+}
+
 export async function signInWithEmail(email: string) {
   const { error } = await supabase!.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } })
   if (error) throw error

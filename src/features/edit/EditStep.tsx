@@ -9,7 +9,7 @@ import { PreviewPlayer } from '@/render/PreviewPlayer'
 import { stepPath } from '@/features/project/steps'
 import { ExportSheet } from '@/features/export/ExportSheet'
 import { AiError } from '@/ai'
-import { authEnabled, useAuthSheet } from '@/features/auth/auth'
+import { authEnabled, promptForAccess } from '@/features/auth/auth'
 import { tellAi, undo, redo } from './editActions'
 import { MusicPanel, ScenesPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
 import { SceneEditor } from './SceneEditor'
@@ -55,7 +55,7 @@ export function EditStep() {
       toast(`Done: ${text}`, 'success', { label: 'Undo', run: () => void undo() })
       return true
     } catch (e) {
-      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) void promptForAccess(e.code, e.message)
       else toast((e as Error).message, 'error')
       return false
     } finally {

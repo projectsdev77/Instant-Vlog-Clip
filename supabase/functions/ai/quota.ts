@@ -1,4 +1,4 @@
-import { db, limitsFor, planOf, today } from '../_shared/billing.ts'
+import { db, limitsFor, planOf, today } from '../_server/billing.ts'
 import { GUEST_LIMITS } from '../_shared/plans.ts'
 
 export class AuthError extends Error {}

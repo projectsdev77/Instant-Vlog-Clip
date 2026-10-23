@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn'
 import { useProject } from '@/store/projectStore'
 import { afterMake, cancelMake, generateVlog, MakeCancelled, STAGES, type Progress as P } from '@/pipeline/generate'
 import { stepPath } from '@/features/project/steps'
-import { authEnabled, useAuthSheet } from '@/features/auth/auth'
+import { authEnabled, promptForAccess } from '@/features/auth/auth'
 import { COVER_BG } from '@/features/home/covers'
 
 const TILT = ['-9deg', '4deg', '-3deg', '8deg']
@@ -46,7 +46,7 @@ export function GenerateStep() {
     } catch (e) {
       if (e instanceof MakeCancelled || !here.current) return
       setError((e as Error).message || 'Something went wrong.')
-      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) useAuthSheet.getState().show(e.message)
+      if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) void promptForAccess(e.code, e.message)
     }
   }, [project, navigate, onProgress])
 

@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.0'
 import Stripe from 'npm:stripe@17.7.0'
-import { DEFAULT_LIMITS, PRO_STATUSES, type PlanId } from './plans.ts'
+import { DEFAULT_LIMITS, PRO_STATUSES, type PlanId } from '../_shared/plans.ts'
 
 /** Service-role database client (bypasses RLS; server only). */
 let admin: ReturnType<typeof createClient> | null = null

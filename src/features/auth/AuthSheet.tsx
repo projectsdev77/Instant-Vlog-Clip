@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Mail } from 'lucide-react'
 import { PrivacyLine } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
@@ -11,7 +12,7 @@ const googleEnabled = import.meta.env.VITE_AUTH_GOOGLE === 'true'
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 export function AuthSheet() {
-  const { open, hide } = useAuthSheet()
+  const { open, hide, reason } = useAuthSheet()
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'enter' | 'sending' | 'sent' | 'error'>('enter')
   const [error, setError] = useState('')
@@ -49,7 +50,7 @@ export function AuthSheet() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-[16px] text-muted">Guests get one free vlog. Sign in with your email to keep making them. Your videos still stay on this device.</p>
+          <p className="text-[16px] text-muted">{reason ?? 'Guests get one free vlog. Sign in with your email to keep making them.'} Your videos still stay on this device.</p>
           <form
             className="space-y-3"
             noValidate
@@ -89,6 +90,17 @@ export function AuthSheet() {
             </Button>
           )}
           <PrivacyLine className="justify-center text-[13px]" />
+          <p className="text-center text-[12px] text-faint">
+            By continuing you agree to the{' '}
+            <Link to="/terms" onClick={hide} className="underline hover:text-fg">
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" onClick={hide} className="underline hover:text-fg">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       )}
     </Sheet>

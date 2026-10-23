@@ -19,6 +19,7 @@ import { AccountButton } from '@/features/auth/AccountButton'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
 import { WhatYouGet } from './WhatYouGet'
+import { SiteFooter } from '@/features/account/SiteLayout'
 import { sumShots } from '@/domain/shots'
 import { CirclePlay } from 'lucide-react'
 import { TutorialIntro } from '@/features/tutorial/TutorialIntro'
@@ -233,6 +234,8 @@ export function HomePage() {
           </div>
         )}
       </section>
+
+      <SiteFooter className="mt-16 pb-28 md:pb-8" />
 
       <TutorialIntro onTrySample={() => void trySample()} onOwnClips={() => void start()} />
 
