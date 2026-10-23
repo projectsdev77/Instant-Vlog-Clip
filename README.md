@@ -3,6 +3,7 @@
 Turn raw phone footage into a short, narrated vlog. Add clips, write a few lines (or let AI write them), pick a voice or record your own, and get a vertical video with captions, a title and music, ready to post.
 
 - Product & technical spec: [docs/SPEC.md](docs/SPEC.md)
+- Going live (Stripe, paid AI plans, domain, legal): [docs/GO_LIVE.md](docs/GO_LIVE.md)
 - Visual design ("Ember"): [docs/design/ember/](docs/design/ember/) — the designer's handoff. Open `Instant Vlog Clip.dc.html` through a local web server (for example `npx serve docs/design/ember`) to click through the prototype.
 - Current screens: [docs/screens/](docs/screens/) (phone and desktop, every state; regenerate with `node e2e/screens.mjs`)
 - Original design brief: https://claude.ai/artifact/CKXX2gxRcFGYCesEh495UG (source in [docs/design-handoff/](docs/design-handoff/))
@@ -35,7 +36,7 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
 ```
 
 1. Create a Supabase project and install the [Supabase CLI](https://supabase.com/docs/guides/cli).
-2. Apply the database migration (usage limits):
+2. Apply the database migrations (usage limits and subscriptions):
    ```bash
    supabase link --project-ref <your-ref>
    supabase db push
@@ -47,8 +48,10 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
    # or Claude
    supabase secrets set AI_PROVIDER=claude ANTHROPIC_API_KEY=... ELEVENLABS_API_KEY=...
    supabase functions deploy ai
+   supabase functions deploy account
+   supabase functions deploy stripe-webhook --no-verify-jwt
    ```
-   Optional secrets: `GEMINI_MODEL` (script and edit plan) and `GEMINI_FAST_MODEL` (polish and clip analysis), both defaulting to `gemini-flash-lite-latest`, Google's fastest model (regular Flash took 1–2 minutes per request on a free-tier key); try `gemini-flash-latest` for the script and plan once billing is on. Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `USER_GENERATIONS_PER_DAY` (10), `USER_REVISIONS_PER_DAY` (60), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
+   Optional secrets: `GEMINI_MODEL` (script and edit plan) and `GEMINI_FAST_MODEL` (polish and clip analysis), both defaulting to `gemini-flash-lite-latest`, Google's fastest model (regular Flash took 1–2 minutes per request on a free-tier key); try `gemini-flash-latest` for the script and plan once billing is on. Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `FREE_GENERATIONS_PER_DAY`, `FREE_REVISIONS_PER_DAY`, `PRO_GENERATIONS_PER_DAY`, `PRO_REVISIONS_PER_DAY` (defaults in [plans.ts](supabase/functions/_shared/plans.ts)), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
 4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
 5. Create `.env.local` from `.env.example`:
    ```
@@ -57,7 +60,7 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
    VITE_AUTH_GOOGLE=false
    ```
 
-Signed-out visitors get one free vlog (tracked per device and IP), then are asked to sign in.
+Signed-out visitors get one free vlog (tracked per device and IP), then are asked to sign in. Signed-in users get the Free plan's daily limits; Pro (Stripe subscription) raises them. Prices, trial and limits are placeholders in [plans.ts](supabase/functions/_shared/plans.ts). Payments stay off until the Stripe secrets are set (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`); see [docs/GO_LIVE.md](docs/GO_LIVE.md).
 
 ## Deploying (Vercel + Supabase)
 
@@ -68,7 +71,7 @@ The website is static and goes on Vercel; the AI keys stay on the server side in
 | Where | Variables |
 |---|---|
 | Vercel → Project → Settings → Environment Variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (public values) |
-| Supabase → Edge Functions → Secrets (or `supabase secrets set`) | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, optional `AI_PROVIDER`, `GEMINI_MODEL`, `ALLOWED_ORIGIN`, limits |
+| Supabase → Edge Functions → Secrets (or `supabase secrets set`) | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, optional `AI_PROVIDER`, `GEMINI_MODEL`, `ALLOWED_ORIGIN`, limits, and the four `STRIPE_*` secrets |
 
 `vercel.json` sends every route to `index.html`, so links like `/p/<id>/edit` work on refresh. Set `ALLOWED_ORIGIN` to your Vercel URL so only your site can call the AI function.
 
@@ -92,6 +95,7 @@ Both `.env` files are git-ignored.
 | `node e2e/lines.mjs` | Edit's per-line voice tools: mute, read again, add a line |
 | `node e2e/tutorial.mjs` | First-visit tutorial end to end (`DESKTOP=1` for the desktop layout) |
 | `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
+| `node e2e/account.mjs` | Pricing, Account (signed in with a faked session), Terms and Privacy |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
 
 Playwright's Chromium has no H.264 decoder, so test clips are VP9/WebM and exports in tests come out as WebM. Real Chrome and Safari export MP4 (H.264/AAC).
@@ -165,6 +169,8 @@ The full flow (import → script → AI voice → generate → edit → export),
 
 Not yet verified:
 - **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the eight voice IDs (ElevenLabs default voices: Jessica, Chris, Laura, Will, Charlie, Sarah, Liam, River) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.
+- **Payments have not been run against Stripe.** The checkout, portal and webhook functions type-check and the pages were tested against a stand-in; run the Stripe test-mode steps in [docs/GO_LIVE.md](docs/GO_LIVE.md) first.
+- **Terms and Privacy are drafts** with [bracketed] placeholders and need a lawyer's review.
 - **Real devices.** Not yet tested on a physical iPhone or Android phone, or with large 4K/HEVC phone clips.
 
 Not built yet (see spec):
