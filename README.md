@@ -3,7 +3,8 @@
 Turn raw phone footage into a short, narrated vlog. Add clips, write a few lines (or let AI write them), pick a voice or record your own, and get a vertical video with captions, a title and music, ready to post.
 
 - Product & technical spec: [docs/SPEC.md](docs/SPEC.md)
-- Going live (Stripe, paid AI plans, domain, legal): [docs/GO_LIVE.md](docs/GO_LIVE.md)
+- Going live (Stripe, paid AI plans, domain, legal): [docs/GO_LIVE.md](docs/GO_LIVE.md); step by step in [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
+- Testing (automated and manual): [docs/TESTING.md](docs/TESTING.md)
 - Visual design ("Ember"): [docs/design/ember/](docs/design/ember/) — the designer's handoff. Open `Instant Vlog Clip.dc.html` through a local web server (for example `npx serve docs/design/ember`) to click through the prototype.
 - Current screens: [docs/screens/](docs/screens/) (phone and desktop, every state; regenerate with `node e2e/screens.mjs`)
 - Original design brief: https://claude.ai/artifact/CKXX2gxRcFGYCesEh495UG (source in [docs/design-handoff/](docs/design-handoff/))
@@ -90,12 +91,9 @@ Both `.env` files are git-ignored.
 | `npm run build` | Typecheck + production build into `dist/` |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
 | `npm test` | Unit tests (Vitest) |
-| `npm run test-clips` | Generates test videos into `e2e/fixtures` (needs ffmpeg) |
-| `npm run e2e` | Browser tests against a running dev server (Playwright Chromium). They use the real AI: they need a configured `.env.local`, send real requests and count toward your limits (set `QUOTAS_DISABLED=true` on the function while testing) |
-| `node e2e/lines.mjs` | Edit's per-line voice tools: mute, read again, add a line |
-| `node e2e/tutorial.mjs` | First-visit tutorial end to end (`DESKTOP=1` for the desktop layout) |
-| `node e2e/effects.mjs` | Templates, shot tools and export (`FIX=public/examples` to use the real stock footage) |
-| `node e2e/account.mjs` | Pricing, Account (signed in with a faked session), Terms and Privacy |
+| `npm run e2e` | Browser tests (Playwright Chromium). Starts a stand-in AI and its own dev server on port 5179; no keys needed. `npm run e2e -- flow lines` runs some suites. See [docs/TESTING.md](docs/TESTING.md) |
+| `npm run test:all` | Lint, typecheck, unit tests and browser tests |
+| `npm run test-clips` | Regenerates the test videos in `e2e/fixtures` (needs ffmpeg) |
 | `node e2e/screens.mjs` | Re-captures the designer handoff screenshots |
 
 Playwright's Chromium has no H.264 decoder, so test clips are VP9/WebM and exports in tests come out as WebM. Real Chrome and Safari export MP4 (H.264/AAC).
@@ -165,7 +163,7 @@ The UI follows the Ember handoff: tokens live in [src/index.css](src/index.css),
 
 ## Status and known gaps
 
-The full flow (import → script → AI voice → generate → edit → export), own voice recorded on the Record page with a fake microphone, the per-line voice tools, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium. The app always uses the real AI, so the browser tests (`e2e/*.mjs`) need live keys or a local stand-in for the AI function at `VITE_SUPABASE_URL`. Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
+The full flow (import → script → AI voice → generate → edit → export), own voice recorded on the Record page with a fake microphone, the per-line voice tools, the no-script montage, reload persistence and unreadable-file handling were verified in Chromium. The browser tests run against a stand-in for the AI ([e2e/stub-ai.mjs](e2e/stub-ai.mjs)) on every push (GitHub Actions). Unit tests cover the edit-plan logic (fitting, repair, fallback edit, templates).
 
 Not yet verified:
 - **Live AI has not been run against real APIs.** This build environment couldn't reach Google, Anthropic or ElevenLabs. The Gemini and Claude calls follow their official SDKs (the Gemini request shape was checked against the SDK with a stubbed network); the ElevenLabs endpoints (`/v1/text-to-speech/{voice}/with-timestamps`, `/v1/speech-to-text` with `scribe_v1`) and the eight voice IDs (ElevenLabs default voices: Jessica, Chris, Laura, Will, Charlie, Sarah, Liam, River) in [contracts.ts](supabase/functions/_shared/contracts.ts) should be checked against ElevenLabs' docs on first deploy. Prompts will need tuning with real footage.

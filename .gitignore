@@ -10,4 +10,3 @@ playwright-report
 supabase/.temp
 supabase/.branches
 .DS_Store
-e2e/fixtures

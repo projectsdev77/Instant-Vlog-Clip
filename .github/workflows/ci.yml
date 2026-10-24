@@ -16,3 +16,22 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx vite build
+  e2e:
+    # Browser tests against the stand-in AI (e2e/stub-ai.mjs): no keys needed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: test-results/*.png
+          if-no-files-found: ignore
