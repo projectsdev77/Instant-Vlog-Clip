@@ -52,6 +52,7 @@ export async function voiceAllLines(onProgress?: (done: number, total: number) =
       await voiceLine(l, p.voice.voiceId, p.settings.language)
       onProgress?.(++done, todo.length)
     }),
-    3,
+    // ElevenLabs limits requests at once per plan (2 on the free plan); more get turned away as busy.
+    2,
   )
 }

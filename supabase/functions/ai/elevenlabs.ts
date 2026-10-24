@@ -56,13 +56,25 @@ const DELIVERY: Record<Delivery, Record<string, number> | undefined> = {
   slow: { stability: 0.55, similarity_boost: 0.75, style: 0, speed: 0.85 },
 }
 
+/** Calls ElevenLabs, waiting and retrying a couple of times when it says it's busy (too many requests at once). */
+async function withRetry(send: () => Promise<Response>): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await send()
+    if (res.status !== 429 || attempt === 2) return res
+    await res.body?.cancel()
+    await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)))
+  }
+}
+
 export async function synthesize(text: string, voiceId: string, delivery: Delivery = 'natural', seed?: number): Promise<{ audioBase64: string; mime: string; words: WordWire[] }> {
   const voice = ELEVENLABS_VOICE_IDS[voiceId] ?? voiceId
-  const res = await fetch(`${BASE}/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {
-    method: 'POST',
-    headers: { 'xi-api-key': key(), 'content-type': 'application/json' },
-    body: JSON.stringify({ text, model_id: TTS_MODEL, voice_settings: DELIVERY[delivery] ?? DELIVERY.natural, seed }),
-  })
+  const res = await withRetry(() =>
+    fetch(`${BASE}/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key(), 'content-type': 'application/json' },
+      body: JSON.stringify({ text, model_id: TTS_MODEL, voice_settings: DELIVERY[delivery] ?? DELIVERY.natural, seed }),
+    }),
+  )
   if (!res.ok) throw await failure('text to speech', res)
   const body = (await res.json()) as { audio_base64: string; alignment?: Alignment; normalized_alignment?: Alignment }
   const a = body.alignment ?? body.normalized_alignment
@@ -76,7 +88,7 @@ export async function transcribe(audio: Uint8Array<ArrayBuffer>, mime: string, l
   form.append('language_code', language)
   form.append('timestamps_granularity', 'word')
   form.append('tag_audio_events', 'false')
-  const res = await fetch(`${BASE}/speech-to-text`, { method: 'POST', headers: { 'xi-api-key': key() }, body: form })
+  const res = await withRetry(() => fetch(`${BASE}/speech-to-text`, { method: 'POST', headers: { 'xi-api-key': key() }, body: form }))
   if (!res.ok) throw await failure('speech to text', res)
   const body = (await res.json()) as { text: string; words?: { text: string; start: number; end: number; type: string }[] }
   return {
