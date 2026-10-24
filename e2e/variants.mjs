@@ -124,7 +124,7 @@ try {
   const dur2 = await page.locator('text=/\\d:\\d\\d \\/ \\d:\\d\\d/').innerText()
   ok(`no-script montage generated (${dur2}, ${await page.locator('ol[aria-label=Scenes] li').count()} scenes)`)
   await page.screenshot({ path: `${OUT}/montage.png` })
-  await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
+  await page.getByRole('tab', { name: 'Voice', exact: true }).click()
   await page.getByRole('radio', { name: 'My own voice' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Switch' }).click()
   await page.waitForURL(/\/record$/, { timeout: 30000 })

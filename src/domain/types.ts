@@ -5,7 +5,7 @@
 
 export type Aspect = '9:16' | '1:1' | '16:9'
 export type Vibe = 'auto' | 'chill' | 'upbeat' | 'cinematic' | 'funny' | 'aesthetic'
-export type TargetLength = 'auto' | 15 | 30 | 60
+export type TargetLength = 'auto' | 15 | 20 | 30 | 60
 export type Language = 'en'
 
 export type ProjectSettings = {
@@ -243,7 +243,7 @@ export type EditPlan = {
   script?: Script
 }
 
-export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft'
+export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft' | 'none'
 
 export type ProjectStep = 'clips' | 'script' | 'voice' | 'generate' | 'record' | 'edit'
 

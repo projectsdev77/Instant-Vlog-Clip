@@ -77,15 +77,14 @@ async function run(device) {
   await page.mouse.wheel(0, 700)
   await wait(300)
   await snap('19-edit-scene-editor-trim')
-  await click('All scenes')
   await page.evaluate(() => window.scrollTo(0, 0))
   for (const [i, tab] of [['20', 'Voice'], ['21', 'Music'], ['22', 'Text'], ['22b', 'Look']]) {
-    await page.getByLabel('Edit panels').getByRole('button', { name: tab, exact: true }).click()
+    await page.getByRole('tab', { name: tab, exact: true }).click()
     await wait(250)
     await snap(`${i}-edit-${tab.toLowerCase()}`)
   }
   // Own voice: switch in the Voice panel, record over the made vlog on the Record page
-  await page.getByLabel('Edit panels').getByRole('button', { name: 'Voice', exact: true }).click()
+  await page.getByRole('tab', { name: 'Voice', exact: true }).click()
   await page.getByRole('radio', { name: 'My own voice' }).click()
   await wait(250)
   await snap('20b-edit-voice-switch')
@@ -115,9 +114,9 @@ async function run(device) {
   await page.waitForURL(/\/edit(\?|$)/)
   await page.waitForFunction(() => !document.body.innerText.includes('Mixing audio'), null, { timeout: 30000 })
   await wait(600)
-  await page.getByLabel('Edit panels').getByRole('button', { name: 'Scenes', exact: true }).click()
+  await page.getByRole('tab', { name: 'Scene', exact: true }).click()
   if (phone) {
-    await click('Tell the AI')
+    await click('Ask AI')
     await wait(300)
     await snap('23-edit-tell-ai')
     await page.getByRole('button', { name: 'Close' }).click()

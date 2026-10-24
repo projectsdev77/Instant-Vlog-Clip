@@ -28,6 +28,9 @@ type Props = {
   onPlayingChange?: (playing: boolean) => void
   /** no soundtrack on purpose (e.g. while recording): don't show "Mixing audio" */
   silent?: boolean
+  /** Edit page: larger preview, thin scrubber with no play button, a label chip bottom-left */
+  edit?: boolean
+  badge?: React.ReactNode
 }
 
 /**
@@ -35,7 +38,7 @@ type Props = {
  * drawn onto a canvas by the same compositor the exporter uses, and the
  * pre-mixed soundtrack is the master clock.
  */
-export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact, controlRef, onPlayingChange, silent }: Props) {
+export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact, controlRef, onPlayingChange, silent, edit, badge }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const holderRef = useRef<HTMLDivElement>(null)
   const videos = useRef(new Map<string, HTMLVideoElement>())
@@ -247,28 +250,31 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
       <div
         className={cn(
           'relative shrink-0 overflow-hidden bg-black shadow-[0_0_0_1.5px_rgb(255_255_255/.14),0_30px_60px_rgb(0_0_0/.55)]',
-          compact ? 'w-[68px] rounded-[12px]' : 'w-[230px] rounded-[24px] md:w-[320px]',
+          compact ? 'w-[68px] rounded-[12px]' : edit ? 'w-[214px] rounded-[22px] lg:w-[360px] lg:rounded-[26px]' : 'w-[230px] rounded-[24px] md:w-[320px]',
         )}
         style={{ aspectRatio: `${width} / ${height}` }}
       >
         <canvas ref={canvasRef} width={width} height={height} className="size-full" />
         <button type="button" onClick={playing ? pause : play} className="absolute inset-0 grid place-items-center" aria-label={playing ? 'Pause' : 'Play'}>
           {!playing && !compact && (
-            <span className="grid size-[58px] place-items-center rounded-full bg-white text-ink shadow-lift">
+            <span className={cn('grid place-items-center rounded-full bg-white text-ink shadow-lift', edit ? 'size-[52px] lg:size-[68px]' : 'size-[58px]')}>
               {ended ? <RotateCcw className="size-6" strokeWidth={2.4} /> : <Play className="ml-1 size-6" fill="currentColor" />}
             </span>
           )}
         </button>
+        {badge && <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold lg:bottom-4 lg:left-4 lg:text-[12px]">{badge}</span>}
         {!mix && !compact && !silent && (
           <span className="absolute top-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold">
             <Spinner className="size-3" /> Mixing audio
           </span>
         )}
       </div>
-      <div className={cn('flex w-full items-center gap-3', compact ? 'min-w-0 flex-1' : 'max-w-[320px] md:max-w-[320px]')}>
-        <button type="button" onClick={playing ? pause : play} className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-ink" aria-label={playing ? 'Pause' : 'Play'}>
-          {playing ? <Pause className="size-4" fill="currentColor" /> : <Play className="ml-0.5 size-4" fill="currentColor" />}
-        </button>
+      <div className={cn('flex w-full items-center gap-3', compact ? 'min-w-0 flex-1' : edit ? 'w-[214px] lg:w-[360px]' : 'max-w-[320px] md:max-w-[320px]')}>
+        {!edit && (
+          <button type="button" onClick={playing ? pause : play} className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-ink" aria-label={playing ? 'Pause' : 'Play'}>
+            {playing ? <Pause className="size-4" fill="currentColor" /> : <Play className="ml-0.5 size-4" fill="currentColor" />}
+          </button>
+        )}
         <div
           role="slider"
           tabIndex={0}
@@ -288,7 +294,7 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
             if (e.key === 'ArrowLeft') seekTo(time - 1)
           }}
         >
-          <div className="h-1 w-full overflow-hidden rounded-full bg-white/14">
+          <div className={cn('w-full overflow-hidden rounded-full bg-white/14', edit ? 'h-[3px] lg:h-1' : 'h-1')}>
             <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
           </div>
           <div className="absolute size-3 -translate-x-1/2 rounded-full bg-white opacity-0 transition group-hover:opacity-100" style={{ left: `${pct}%` }} />

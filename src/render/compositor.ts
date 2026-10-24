@@ -357,6 +357,20 @@ function wrap(ctx: Ctx2D, text: string, maxW: number): string[] {
   return lines
 }
 
+/** Wraps into as few lines as fit, then evens them out ("Saturday / at the lake", not "Saturday at the / lake"). */
+function balancedWrap(ctx: Ctx2D, text: string, maxW: number): string[] {
+  const lines = wrap(ctx, text, maxW)
+  if (lines.length < 2) return lines
+  let lo = 0
+  let hi = maxW
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2
+    if (wrap(ctx, text, mid).length > lines.length) lo = mid
+    else hi = mid
+  }
+  return wrap(ctx, text, hi)
+}
+
 /** Text with the preset's legibility treatment (outline glow) but no box. */
 function legibleText(ctx: Ctx2D, text: string, x: number, y: number, style: TextStyle, color: string, px: number) {
   const o = style.outline
@@ -400,15 +414,20 @@ export function drawOverlays(ctx: Ctx2D, W: number, H: number, t: number, tl: Ti
     setFont(ctx, style, px)
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    const lines = wrap(ctx, applyCase(tl.title.text, style.titleCase), W * 0.84).slice(0, 3)
+    const lines = balancedWrap(ctx, applyCase(tl.title.text, style.titleCase), W * 0.84).slice(0, 3)
     const lineH = px * 1.08
     const top = H * 0.15 - ((lines.length - 1) * lineH) / 2
+    // One box behind the whole title, never one per line.
+    if (style.box) {
+      const widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
+      const padX = px * 0.42
+      const padY = px * 0.2
+      ctx.fillStyle = style.box
+      roundRect(ctx, (W - widest) / 2 - padX, top - px * 0.62 - padY, widest + padX * 2, (lines.length - 1) * lineH + px * 1.24 + padY * 2, px * 0.35)
+    }
     lines.forEach((line, i) => {
       const w = ctx.measureText(line).width
-      const x = (W - w) / 2
-      const y = top + i * lineH
-      boxBehind(ctx, style, x, y, w, px)
-      legibleText(ctx, line, x, y, style, textOnBox, px)
+      legibleText(ctx, line, (W - w) / 2, top + i * lineH, style, textOnBox, px)
     })
     ctx.globalAlpha = 1
   }
@@ -426,7 +445,7 @@ export function drawOverlays(ctx: Ctx2D, W: number, H: number, t: number, tl: Ti
   }
 
   // Captions: centred at 70%, current word highlighted, inside 84% of the width.
-  const chunk = captionAt(tl, t)
+  const chunk = style.captions === false ? null : captionAt(tl, t)
   if (chunk) {
     const px = W * (vertical ? 0.072 : 0.045)
     setFont(ctx, style, px)

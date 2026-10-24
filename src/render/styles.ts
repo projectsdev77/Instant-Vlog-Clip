@@ -17,6 +17,8 @@ export type TextStyle = {
   outline: { color: string; blur: number; strength: 'soft' | 'normal' | 'heavy' } | null
   /** box behind each caption line; null for none */
   box: string | null
+  /** false: no captions at all (the title still shows) */
+  captions?: boolean
 }
 
 export const VIDEO_FONT = "'Plus Jakarta Sans', system-ui, sans-serif"
@@ -29,6 +31,7 @@ export const STYLES: TextStyle[] = [
   { id: 'minimal', name: 'Minimal', description: 'Sentence case, soft shadow', font: VIDEO_FONT, weight: 600, titleCase: 'sentence', captionCase: 'sentence', captionColor: '#ffffff', highlightColor: '#ffffff', outline: { color: 'rgba(0,0,0,0.45)', blur: 8, strength: 'soft' }, box: null },
   { id: 'soft', name: 'Soft', description: 'Lowercase, quiet and minimal', font: VIDEO_FONT, weight: 600, titleCase: 'lower', captionCase: 'lower', captionColor: '#ffffff', highlightColor: '#ffe3cf', outline: { color: 'rgba(0,0,0,0.4)', blur: 10, strength: 'soft' }, box: null },
   { id: 'neon', name: 'Box', description: 'Dark text on white', font: VIDEO_FONT, weight: 800, titleCase: 'title', captionCase: 'title', captionColor: '#111111', highlightColor: '#e0218a', outline: null, box: '#ffffff' },
+  { id: 'none', name: 'No captions', description: 'Voice only', font: VIDEO_FONT, weight: 800, titleCase: 'sentence', captionCase: 'sentence', captionColor: '#ffffff', highlightColor: '#ffa25a', outline: null, box: 'rgba(0,0,0,0.6)', captions: false },
 ]
 
 export const styleById = (id: StyleId) => STYLES.find((s) => s.id === id) ?? STYLES[0]

@@ -5,7 +5,7 @@ There are three kinds of tests. The first two run on their own; the third is you
 | | What it checks | Command | Time |
 | --- | --- | --- | --- |
 | Unit tests | The logic underneath: fitting scenes to a length, repairing bad AI answers, the backup edit, templates, caption timing | `npm test` | seconds |
-| Browser tests | The app clicked through in Chromium like a person would: 7 suites, from importing clips to exporting, plus plans and account | `npm run e2e` | 5–10 min |
+| Browser tests | The app clicked through in Chromium like a person would: 8 suites, from importing clips to exporting, the Edit page tools, plans and account | `npm run e2e` | 5–10 min |
 | Manual | AI quality, voices, real microphones and phones, Safari, real Stripe payments, how it looks | the test plan | an afternoon |
 
 `npm run test:all` runs lint, the type check, the unit tests and the browser tests one after another.
@@ -29,7 +29,7 @@ Each time:
 npm run test:all
 ```
 
-or just the browser tests with `npm run e2e`, or some of them: `npm run e2e -- flow lines`. The suites are `flow`, `variants`, `lines`, `tutorial`, `tutorial-desktop`, `effects` and `account`.
+or just the browser tests with `npm run e2e`, or some of them: `npm run e2e -- flow lines`. The suites are `flow`, `variants`, `lines`, `tutorial`, `tutorial-desktop`, `edit`, `effects` and `account`.
 
 You don't need API keys and nothing reaches your Supabase project: the runner starts a stand-in for the AI ([`e2e/stub-ai.mjs`](../e2e/stub-ai.mjs)) and its own copy of the app on port 5179, so it doesn't clash with `npm run dev`. No browser window opens; the tests run in the background.
 

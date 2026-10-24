@@ -20,9 +20,9 @@ export const TIPS: Tip[] = [
   { id: 'record-mode', page: 'record', target: 'record-mode', title: 'Script or your own words?', body: 'Read my script shows each line as a guide. Say my own thing turns what you say into the script.' },
   { id: 'record-go', page: 'record', target: 'record', title: 'Talk over your vlog', body: 'Press Record: after 3-2-1 the video plays while you talk. Do it in one go or a bit at a time, then move or trim the takes.' },
   { id: 'edit-preview', page: 'edit', target: 'preview', title: 'Your vlog', body: 'Tap to play. What you see here is exactly what you’ll export.' },
-  { id: 'edit-scenes', page: 'edit', target: 'scenes', title: 'Change any scene', body: 'Tap a scene to swap shots, change its line, split, freeze, change speed, or add a zoom or transition.' },
+  { id: 'edit-scenes', page: 'edit', target: 'scenes', title: 'Change any scene', body: 'Tap a scene to change what’s said, trim or swap its clip, or set its speed, camera move and transition. Drag scenes to reorder them.' },
   { id: 'edit-look', page: 'edit', target: 'tab-look', title: 'Change the whole look', body: 'Switch templates, add a filter, or tweak color and fades. Your footage stays.' },
-  { id: 'edit-ai', page: 'edit', target: 'tell-ai', title: 'Or just ask', body: 'Tell the AI what to change in plain words, like “make it punchier” or “open with the sunset”.' },
+  { id: 'edit-ai', page: 'edit', target: 'tell-ai', title: 'Or just ask', body: 'Ask the AI to change anything in plain words, like “make it punchier” or “open with the sunset”.' },
   { id: 'edit-export', page: 'edit', target: 'export', title: 'Export', body: 'Made right on your device, sized for TikTok, Reels and Shorts. That’s it!' },
 ]
 

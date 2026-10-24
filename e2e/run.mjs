@@ -18,6 +18,7 @@ const SUITES = [
   { name: 'lines', file: 'e2e/lines.mjs', what: 'Line tools, scene lock, title off, own music, export without music' },
   { name: 'tutorial', file: 'e2e/tutorial.mjs', what: 'First-visit tutorial on a phone' },
   { name: 'tutorial-desktop', file: 'e2e/tutorial.mjs', env: { DESKTOP: '1' }, what: 'First-visit tutorial on a computer' },
+  { name: 'edit', file: 'e2e/edit.mjs', what: 'Edit page: strip, scene tools, More options, versions, length, sliders, captions, previews' },
   { name: 'effects', file: 'e2e/effects.mjs', what: 'Templates, shot tools (split, freeze, speed, camera) and export' },
   { name: 'account', file: 'e2e/account.mjs', what: 'Plans, Account, checkout return, delete account, legal pages' },
 ]

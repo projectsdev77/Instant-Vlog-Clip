@@ -12,6 +12,7 @@ const fixtures = readdirSync('e2e/fixtures').map((f) => join('e2e/fixtures', f))
 
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] })
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['microphone'], acceptDownloads: true })
+const desktop = false // phone layout: Ask AI opens a sheet, versions aren't in the header
 await skipTutorial(context)
 const page = await context.newPage()
 const errors = []
@@ -66,7 +67,6 @@ async function main() {
   if (UNTIL === 'seekprobe') {
     for (const i of [1, 3]) {
       await page.locator('ol[aria-label=Scenes] li button').nth(i).click()
-      await page.getByRole('button', { name: 'Close' }).click()
       await page.waitForTimeout(1500)
       const info = await page.evaluate(() => [...document.querySelectorAll('video')].map((v) => ({ rs: v.readyState, t: v.currentTime.toFixed(2), seeking: v.seeking, paused: v.paused })))
       console.log(i, JSON.stringify(info))
@@ -76,24 +76,25 @@ async function main() {
   }
 
   await page.locator('ol[aria-label=Scenes] li button').nth(1).click()
-  await page.waitForSelector('text=All scenes')
+  await page.getByRole('heading', { name: /Scene 2/ }).waitFor()
   await shot('6-scene-editor')
+  const note = page.getByTestId('version-note').filter({ visible: true })
+  const v0 = desktop ? await note.innerText() : ''
   await page.locator('button[aria-label^="Use "]').first().click()
   await page.waitForTimeout(500)
-  await page.getByRole('button', { name: 'All scenes' }).click()
   step('shot swapped')
-  const note = page.getByTestId('version-note')
-  const before = await note.innerText()
-  await page.getByRole('button', { name: 'Tell the AI' }).click()
+  const before = desktop ? await note.innerText() : ''
+  if (desktop && before === v0) throw new Error('swapping a shot should save a new version')
+  if (!desktop) await page.getByRole('button', { name: 'Ask AI' }).click()
   await page.getByLabel('Tell the AI what to change').fill('open with the sunset')
   await page.getByRole('button', { name: 'Send' }).click()
-  await page.waitForFunction((b) => document.querySelector('[data-testid=version-note]')?.textContent !== b, before, { timeout: 30000 })
-  console.log('  note:', await note.innerText())
+  await page.waitForSelector('text=/Done: open with the sunset/', { timeout: 30000 })
+  if (desktop) console.log('  note:', await note.innerText())
   step('tell the AI')
   await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
   step('undo')
   for (const tab of ['Look', 'Voice', 'Music', 'Text']) {
-    await page.getByLabel('Edit panels').getByRole('button', { name: tab, exact: true }).click()
+    await page.getByRole('tab', { name: tab, exact: true }).click()
     await shot(`7-panel-${tab.toLowerCase()}`)
   }
   step('panels')

@@ -1,58 +1,116 @@
-import { useCallback, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router'
-import { Redo2, Sparkles, Undo2 } from 'lucide-react'
-import { Button, IconButton } from '@/components/ui/Button'
+import { useCallback, useEffect, useState } from 'react'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
+import { ChevronLeft, Redo2, Sparkles, Undo2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
+import { sumShots } from '@/domain/shots'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { PreviewPlayer } from '@/render/PreviewPlayer'
 import { stepPath } from '@/features/project/steps'
+import { useHeaderSlots } from '@/features/project/headerSlots'
 import { ExportSheet } from '@/features/export/ExportSheet'
 import { AiError } from '@/ai'
 import { authEnabled, promptForAccess } from '@/features/auth/auth'
-import { tellAi, undo, redo } from './editActions'
-import { MusicPanel, ScenesPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
-import { SceneEditor } from './SceneEditor'
+import { addScene, moveScene, setTargetLength, tellAi, undo, redo } from './editActions'
+import { MusicPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
+import { SceneTab } from './SceneTab'
+import { SceneStrip } from './SceneStrip'
 import { LookPanel } from './LookPanel'
-import { TellAiBar, TellAiSheet } from './TellAi'
+import { AiCard, TellAiSheet } from './TellAi'
+import { VersionMenu } from './VersionMenu'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import '@/features/voice/followVoice' // own voice: script and footage follow what was said
 import { ExportSupportNotice } from '@/features/export/ExportSupport'
 import { Tour } from '@/features/tutorial/Tour'
 
-const PANELS: { id: PanelId; label: string }[] = [
-  { id: 'scenes', label: 'Scenes' },
+const TABS: { id: PanelId; label: string }[] = [
+  { id: 'scene', label: 'Scene' },
   { id: 'look', label: 'Look' },
   { id: 'voice', label: 'Voice' },
   { id: 'music', label: 'Music' },
   { id: 'style', label: 'Text' },
 ]
 
+/**
+ * Step 5. Desktop: scene strip on top, the preview with the AI card on the
+ * left, one tabbed panel on the right. Phone: preview, strip, sticky tabs,
+ * and an Ask AI · Export bar at the bottom.
+ */
 export function EditStep() {
   const { project, clips } = useProject()
   const plan = currentEdit(project)
   const { timeline, mix, staleMix } = useEditorData(project, plan, clips)
   const [params] = useSearchParams()
-  const [panel, setPanel] = useState<PanelId>('scenes')
-  const [sceneOpen, setSceneOpen] = useState<number | null>(null)
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<PanelId>('scene')
+  const [selected, setSelected] = useState(0)
   const [seek, setSeek] = useState<{ t: number; n: number }>()
   const [now, setNow] = useState(0)
   const [thinking, setThinking] = useState(false)
+  const [stripBusy, setStripBusy] = useState(false)
   const [aiSheet, setAiSheet] = useState(false)
   const [exporting, setExporting] = useState(false)
   const onTime = useCallback((t: number) => setNow(t), [])
-  const desktop = useMediaQuery('(min-width: 768px)')
+  const desktop = useMediaQuery('(min-width: 1024px)')
+
+  // Undo, versions and Export live in the header (Back and Undo on phones).
+  const canUndo = !!project && project.currentEdit > 0
+  const canRedo = !!project && project.currentEdit < project.edits.length - 1
+  useEffect(() => {
+    if (!project) return
+    const back = project.voice.mode === 'recorded' ? 'record' : 'voice'
+    useHeaderSlots.setState({
+      start: (
+        <RoundIcon label="Back" onClick={() => navigate(stepPath(project.id, back))}>
+          <ChevronLeft className="size-5" strokeWidth={2.4} />
+        </RoundIcon>
+      ),
+      end: desktop ? (
+        <>
+          <RoundIcon label="Undo" disabled={!canUndo} onClick={() => void undo()}>
+            <Undo2 className="size-[18px]" strokeWidth={2.4} />
+          </RoundIcon>
+          <RoundIcon label="Redo" disabled={!canRedo} onClick={() => void redo()}>
+            <Redo2 className="size-[18px]" strokeWidth={2.4} />
+          </RoundIcon>
+          <VersionMenu project={project} />
+          <Button variant="ember" className="ml-1 h-11" onClick={() => setExporting(true)} data-tour="export">
+            Export video
+          </Button>
+        </>
+      ) : (
+        <RoundIcon label="Undo" disabled={!canUndo} onClick={() => void undo()}>
+          <Undo2 className="size-[18px]" strokeWidth={2.4} />
+        </RoundIcon>
+      ),
+    })
+  }, [project, desktop, canUndo, canRedo, navigate])
+  useEffect(() => () => useHeaderSlots.setState({ start: null, end: null }), [])
 
   if (!project) return null
   if (!plan || !timeline) return <Navigate to={stepPath(project.id, 'generate')} replace />
 
+  const index = Math.min(selected, plan.scenes.length - 1)
+  const select = (i: number) => {
+    setSelected(i)
+    setTab('scene')
+    if (timeline.scenes[i]) setSeek({ t: timeline.scenes[i].start + 0.01, n: Date.now() })
+  }
+
   const ask = async (text: string): Promise<boolean> => {
     setThinking(true)
     try {
-      await tellAi(text)
+      if (text === 'Shorter, 20s') {
+        await setTargetLength(20)
+        const sec = Math.round(timelineSeconds())
+        toast(sec > 23 ? `Now ${sec}s: the spoken lines need that long. Remove a line to go shorter.` : `Now about 20s.`, 'success', { label: 'Undo', run: () => void undo() })
+      } else {
+        await tellAi(text)
+        toast(`Done: ${text}`, 'success', { label: 'Undo', run: () => void undo() })
+      }
       setAiSheet(false)
-      toast(`Done: ${text}`, 'success', { label: 'Undo', run: () => void undo() })
       return true
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) void promptForAccess(e.code, e.message)
@@ -62,95 +120,128 @@ export function EditStep() {
       setThinking(false)
     }
   }
-
-  const activeScene = timeline.scenes.findIndex((s) => now >= s.start && now < s.end)
-  const openScene = (i: number) => {
-    setSeek({ t: timeline.scenes[i].start + 0.01, n: Date.now() })
-    setSceneOpen(i)
+  // The new length, read after the change has been saved and re-fitted.
+  const timelineSeconds = () => {
+    const p = useProject.getState().project
+    const e = p && currentEdit(p)
+    return e ? e.scenes.reduce((a, s) => a + sumShots(s.shots), 0) : 0
   }
-  const editing = sceneOpen !== null
+
+  const strip = async (fn: () => Promise<void>) => {
+    setStripBusy(true)
+    try {
+      await fn()
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setStripBusy(false)
+    }
+  }
+
+  const playing = Math.max(0, timeline.scenes.findIndex((s) => now >= s.start && now < s.end))
+  const playingLine = project.script?.lines.find((l) => l.id === plan.scenes[playing]?.lineId)
+  const music = project.musicTrackId ? ' + music' : ''
+  const badge = `Scene ${playing + 1} of ${plan.scenes.length} · ${playingLine ? (project.voice.mode === 'none' ? `captions${music}` : `voice${music}`) : music ? 'music only' : 'clip sound only'}`
+  const sceneClip = clips.find((c) => c.id === plan.scenes[index]?.shots[0]?.clipId)
+
+  const stripEl = (
+    <SceneStrip
+      project={project}
+      plan={plan}
+      clips={clips}
+      timeline={timeline}
+      selected={tab === 'scene' ? index : -1}
+      compact={!desktop}
+      busy={stripBusy}
+      onSelect={select}
+      onMove={(from, to) =>
+        void strip(async () => {
+          await moveScene(from, to)
+          if (index === from) setSelected(to)
+        })
+      }
+      onAdd={() => void strip(async () => select(await addScene(index)))}
+    />
+  )
+
+  const tabs = (
+    <div role="tablist" aria-label="Edit panels" className={cn('flex rounded-full p-1', desktop ? 'h-[42px] bg-[#0e0d0d]' : 'h-[46px] bg-surface')}>
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={tab === t.id}
+          data-tour={`tab-${t.id}`}
+          onClick={() => setTab(t.id)}
+          className={cn('min-w-0 flex-1 rounded-full text-[14px] transition duration-150 ease-ember', tab === t.id ? 'bg-white font-bold text-ink' : 'font-medium text-white/72 hover:text-fg')}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  const panel = (
+    <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
+      {tab === 'scene' && <SceneTab key={plan.scenes[index]?.id} project={project} plan={plan} clips={clips} index={index} onIndex={select} timeline={timeline} now={now} />}
+      {tab === 'look' && <LookPanel project={project} plan={plan} clips={clips} sceneClip={sceneClip} />}
+      {tab === 'voice' && <VoicePanel project={project} />}
+      {tab === 'music' && <MusicPanel project={project} />}
+      {tab === 'style' && <StylePanel project={project} clips={clips} sceneClip={sceneClip} />}
+    </div>
+  )
 
   return (
-    <main className="relative mx-auto w-full max-w-[1120px] flex-1 px-4 pt-5 pb-32 md:px-10 md:pt-6 md:pb-10">
+    <main className="relative mx-auto w-full max-w-[1280px] flex-1 px-4 pt-4 pb-36 lg:px-10 lg:pt-[22px] lg:pb-11">
       <div className="ember-wash -z-10" aria-hidden />
       <ExportSupportNotice className="mb-4" />
+      {desktop && stripEl}
 
-      <div className="mb-5 flex items-center gap-2">
-        <IconButton onClick={undo} disabled={project.currentEdit <= 0} aria-label="Undo" className="border border-white/14">
-          <Undo2 className="size-[18px]" strokeWidth={2.4} />
-        </IconButton>
-        <IconButton onClick={redo} disabled={project.currentEdit >= project.edits.length - 1} aria-label="Redo" className="border border-white/14">
-          <Redo2 className="size-[18px]" strokeWidth={2.4} />
-        </IconButton>
-        <p className="tabular min-w-0 flex-1 truncate pl-1 text-[13px] font-medium text-muted" title={plan.note} data-testid="version-note">
-          Version {plan.version}
-          {plan.note ? ` · ${plan.note}` : ''}
-        </p>
-        {desktop && (
-          <Button variant="ember" onClick={() => setExporting(true)} data-tour="export">
-            Export video
-          </Button>
+      <div className={cn(desktop && 'grid grid-cols-[360px_minmax(0,1fr)] gap-10 pt-7')}>
+        <div className={cn('space-y-4', desktop && 'sticky top-[92px] self-start')}>
+          <div data-tour="preview" className="flex justify-center">
+            <PreviewPlayer edit badge={badge} timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} />
+          </div>
+          {desktop && <AiCard thinking={thinking} onAsk={ask} />}
+        </div>
+
+        {desktop ? (
+          <div className="rounded-[28px] bg-surface px-6 pt-[22px] pb-[26px]">
+            {tabs}
+            <div className="pt-6">{panel}</div>
+          </div>
+        ) : (
+          <div className="pt-4">
+            {stripEl}
+            <div className="sticky top-[calc(68px+env(safe-area-inset-top))] z-20 -mx-4 mt-3 bg-[rgb(9_9_10/.92)] px-4 py-2 backdrop-blur-[14px]">{tabs}</div>
+            <div className="pt-4">{panel}</div>
+          </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-start gap-6 md:gap-8">
-        {/* Preview: sticky beside the panel on desktop; pinned small on phone while editing a scene */}
-        <div
-          className={cn(
-            'w-full md:sticky md:top-[90px] md:w-[340px] md:shrink-0',
-            editing && 'sticky top-[68px] z-10 -mx-4 w-[calc(100%+2rem)] border-b border-border bg-[rgb(9_9_10/.92)] px-4 py-3 backdrop-blur-[14px] md:mx-0 md:w-[340px] md:border-0 md:bg-transparent md:p-0',
-          )}
-        >
-          <div data-tour="preview" className="mx-auto w-fit md:w-auto">
-          <PreviewPlayer timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} compact={editing && !desktop} />
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-[1_1_420px]">
-          {editing ? (
-            <SceneEditor key={`${sceneOpen}-${plan.version}`} project={project} plan={plan} clips={clips} index={sceneOpen} onClose={() => setSceneOpen(null)} onIndex={(i) => setSceneOpen(i)} timeline={timeline} now={now} />
-          ) : (
-            <>
-              <nav className="mb-4 flex rounded-full bg-surface p-1" aria-label="Edit panels">
-                {PANELS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    aria-pressed={panel === p.id}
-                    data-tour={`tab-${p.id}`}
-                    onClick={() => setPanel(p.id)}
-                    className={cn('h-11 min-w-0 flex-1 rounded-full text-[14px] font-semibold md:text-[15px] transition duration-150 ease-ember', panel === p.id ? 'bg-white text-ink' : 'text-muted hover:text-fg')}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </nav>
-              {panel === 'scenes' && <div data-tour="scenes"><ScenesPanel plan={plan} timeline={timeline} project={project} clips={clips} activeScene={activeScene} onOpen={openScene} /></div>}
-              {panel === 'look' && <LookPanel project={project} plan={plan} clips={clips} />}
-              {panel === 'voice' && <VoicePanel project={project} />}
-              {panel === 'music' && <MusicPanel project={project} />}
-              {panel === 'style' && <StylePanel project={project} clips={clips} />}
-            </>
-          )}
-          {desktop && <TellAiBar thinking={thinking} onAsk={ask} />}
-        </div>
-      </div>
-
-      {/* Phone bottom bar */}
       {!desktop && (
-      <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 bg-gradient-to-b from-transparent to-bg to-32% px-4 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
-        <Button variant="quiet" className="min-w-0 flex-1 justify-start" onClick={() => setAiSheet(true)} data-tour="tell-ai">
-          <Sparkles className="size-[18px] text-ember-300" strokeWidth={2.2} /> Tell the AI
-        </Button>
-        <Button variant="ember" onClick={() => setExporting(true)} data-tour="export">
-          Export
-        </Button>
-      </div>
+        <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2.5 bg-gradient-to-b from-transparent to-bg to-32% px-4 pt-[14px] pb-[max(30px,env(safe-area-inset-bottom))]">
+          <Button variant="quiet" className="min-w-0 flex-1 justify-start" onClick={() => setAiSheet(true)} data-tour="tell-ai">
+            <Sparkles className="size-[18px] text-ember-300" strokeWidth={2.2} /> Ask AI
+          </Button>
+          <Button variant="ember" onClick={() => setExporting(true)} data-tour="export">
+            Export
+          </Button>
+        </div>
       )}
 
-      {!editing && !exporting && !aiSheet && <Tour page="edit" />}
+      {!exporting && !aiSheet && <Tour page="edit" />}
       <TellAiSheet open={aiSheet} onClose={() => setAiSheet(false)} thinking={thinking} onAsk={ask} />
       {exporting && <ExportSheet project={project} timeline={timeline} clips={clips} onClose={() => setExporting(false)} />}
     </main>
+  )
+}
+
+function RoundIcon({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick} className="grid size-10 shrink-0 place-items-center rounded-full bg-white/6 transition hover:bg-white/10 disabled:text-white/35 disabled:hover:bg-white/6">
+      {children}
+    </button>
   )
 }

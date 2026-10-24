@@ -9,6 +9,7 @@ import { resumePending } from '@/features/clips/importClips'
 import { useProject } from '@/store/projectStore'
 import type { ProjectStep } from '@/domain/types'
 import { stepIndex, stepPath, stepsFor } from './steps'
+import { useHeaderSlots } from './headerSlots'
 
 export function ProjectLayout() {
   const { projectId = '' } = useParams()
@@ -43,13 +44,15 @@ export function ProjectLayout() {
 
 function FlowHeader({ projectId, current, reached, steps }: { projectId: string; current: ProjectStep; reached: number; steps: ReturnType<typeof stepsFor> }) {
   const navigate = useNavigate()
+  const { start, end } = useHeaderSlots()
   const currentIdx = Math.max(0, steps.findIndex((s) => s.id === current))
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-[rgb(9_9_10/.84)] pt-[env(safe-area-inset-top)] backdrop-blur-[14px]">
-      <div className="mx-auto flex h-[68px] max-w-[1120px] items-center gap-3 px-4 md:px-10">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label="Instant Vlog Clip home">
+      <div className={cn('mx-auto flex h-[68px] items-center gap-3 px-4 md:px-10', end ? 'max-w-[1280px]' : 'max-w-[1120px]')}>
+        {start && <div className="shrink-0 md:hidden">{start}</div>}
+        <Link to="/" className={cn('flex shrink-0 items-center gap-2.5 rounded-xl', !!start && 'max-md:hidden')} aria-label="Instant Vlog Clip home">
           <LogoTile size={34} />
-          <Wordmark className="hidden lg:inline" />
+          <Wordmark className={end ? 'hidden xl:inline' : 'hidden lg:inline'} />
         </Link>
 
         {/* Desktop: pill step bar */}
@@ -92,7 +95,7 @@ function FlowHeader({ projectId, current, reached, steps }: { projectId: string;
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-end md:w-[160px]" aria-hidden />
+        <div className="flex shrink-0 items-center justify-end gap-2 md:min-w-[160px]">{end}</div>
       </div>
     </header>
   )

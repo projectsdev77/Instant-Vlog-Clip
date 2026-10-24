@@ -1,5 +1,6 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { refitPlan } from '@/domain/repair'
+import { MIN_SHOT } from '@/domain/timing'
 import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
 import { pickFootage } from '@/domain/pickFootage'
 import { keepUserScenes, withUserScene } from '@/domain/userScenes'
@@ -7,7 +8,7 @@ import { scriptFromSpeech } from '@/domain/voiceTrack'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
-import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type ScriptLine } from '@/domain/types'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type ScriptLine, type TargetLength } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext, planWithAi } from '@/pipeline/generate'
 import { linesNeedingVoice, voiceAllLines, voiceLine } from '@/pipeline/voice'
@@ -289,6 +290,40 @@ const goToVersion = (step: -1 | 1) =>
 export const undo = () => goToVersion(-1)
 export const redo = () => goToVersion(1)
 
+/** Opens any saved version (the version menu). */
+export const openVersion = (index: number) =>
+  state().updateProject((p) => {
+    const i = Math.max(0, Math.min(p.edits.length - 1, index))
+    const script = p.edits[i]?.script
+    return script ? { currentEdit: i, script } : { currentEdit: i }
+  })
+
+/** A copy of a scene's footage right after it, as its own scene (no line, so nothing is said twice). */
+export async function duplicateScene(index: number) {
+  const { plan } = requireEdit()
+  const copy: Scene = { id: uid('sc_'), shots: plan.scenes[index].shots.map((s, i) => ({ ...s, id: uid('s_'), transitionIn: i === 0 ? 'cut' : s.transitionIn })) }
+  await commit(withUserScene({ ...plan, scenes: [...plan.scenes.slice(0, index + 1), copy, ...plan.scenes.slice(index + 1)] }, copy.id), 'Duplicated a scene')
+}
+
+/** A new footage-only scene after `index`, with a good moment nobody uses yet. Returns its index. */
+export async function addScene(index: number): Promise<number> {
+  const { plan } = requireEdit()
+  const at = index + 1
+  const draft: EditPlan = { ...plan, scenes: [...plan.scenes.slice(0, at), { id: uid('sc_'), shots: [] }, ...plan.scenes.slice(at)] }
+  const shots = pickFootage('', state().clips, draft, at, 2.5)
+  if (!shots.length) throw new Error('There’s no footage left to add. Add more clips first.')
+  const scene: Scene = { ...draft.scenes[at], shots }
+  await commit(withUserScene({ ...plan, scenes: [...plan.scenes.slice(0, at), scene, ...plan.scenes.slice(at)] }, scene.id), 'Added a scene')
+  return at
+}
+
+/** Sets the vlog's length and re-fits: footage-only scenes shrink or grow; spoken lines keep their time. */
+export async function setTargetLength(sec: Exclude<TargetLength, 'auto'>) {
+  const { plan } = requireEdit()
+  await state().updateProject((p) => ({ settings: { ...p.settings, targetSec: sec } }))
+  await commit(plan, `Length about ${sec}s`)
+}
+
 /** Lets AI re-plans change a scene the user had locked (or changed by hand). */
 export async function releaseScene(sceneId: string) {
   const { plan } = requireEdit()
@@ -316,10 +351,10 @@ export async function updateShot(sceneIndex: number, shotIndex: number, patch: P
   await commit(mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, ...patch })), note)
 }
 
-/** Volume changes while dragging edit the current version in place. */
+/** Volume changes while dragging are merged into one version per pause. */
 export async function setShotVolume(sceneIndex: number, shotIndex: number, volume: number) {
-  const { plan } = requireEdit()
-  await state().replaceCurrentEdit(mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, volume })))
+  const id = requireEdit().plan.scenes[sceneIndex].shots[shotIndex].id
+  await commitMerged(`volume:${id}`, (plan) => mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, volume })), 'Clip volume')
 }
 
 /** Speed or speed curve; the shot keeps its length in the vlog and uses more or less footage. */
@@ -380,6 +415,30 @@ export async function freezeFrame(sceneIndex: number, shotIndex: number, local?:
   )
 }
 
+/**
+ * Freezes the end of a shot: its last stretch (up to 1 s) becomes a still of
+ * the frame where it stops, so the scene keeps its length.
+ */
+export async function holdLastFrame(sceneIndex: number, shotIndex: number) {
+  const { plan } = requireEdit()
+  const shot = plan.scenes[sceneIndex].shots[shotIndex]
+  if (!shot.hold && shotLength(shot) - MIN_SHOT < 0.3) throw new Error('This shot is too short to freeze its end. Trim it longer first.')
+  await commit(
+    mapShot(plan, sceneIndex, shotIndex, (s) => {
+      if (s.hold) return s
+      const len = shotLength(s)
+      // the moving part keeps at least the shortest shot length, or re-fitting would drop the freeze
+      const holdLen = round(Math.min(1, len - MIN_SHOT))
+      const stop = round(sourceTime(s, len - holdLen))
+      return [
+        { ...s, out: stop, ramp: undefined },
+        { ...s, id: uid('s_'), in: stop, out: stop, hold: holdLen, speed: undefined, ramp: undefined, motion: undefined, clipAudio: 'mute', transitionIn: 'cut' },
+      ]
+    }),
+    'Held the last frame',
+  )
+}
+
 /** Copies a shot into a new footage-only scene right after this scene. */
 export async function duplicateShot(sceneIndex: number, shotIndex: number) {
   const { plan } = requireEdit()
@@ -400,12 +459,33 @@ export async function deleteShot(sceneIndex: number, shotIndex: number) {
   await commit(mapShot(plan, sceneIndex, shotIndex, () => []), 'Removed a shot')
 }
 
-/** Look changes: `live` edits in place (while dragging), otherwise saves a new version. */
+/**
+ * Saves a change as a new version, except that changes with the same `key`
+ * less than 600 ms apart (dragging a slider) share one version.
+ */
+let lastMerge: { key: string; at: number; version: number } | null = null
+let mergeQueue: Promise<unknown> = Promise.resolve()
+function commitMerged(key: string, change: (plan: EditPlan) => EditPlan, note: string): Promise<void> {
+  // Queued: slider events arrive faster than saves, and each must see the last one's result.
+  const run = mergeQueue.then(async () => {
+    const { plan } = requireEdit()
+    const now = Date.now()
+    if (lastMerge && lastMerge.key === key && now - lastMerge.at < 600 && lastMerge.version === plan.version) {
+      await state().replaceCurrentEdit(change(plan))
+    } else {
+      await commit(change(plan), note)
+    }
+    lastMerge = { key, at: now, version: currentEdit(state().project)!.version }
+  })
+  mergeQueue = run.catch(() => {})
+  return run
+}
+
+/** Look changes: `live` (slider drags) are merged into one version per pause. */
 export async function setLook(patch: Partial<Look>, live = false) {
-  const { plan } = requireEdit()
-  const tl = { ...plan, look: { ...(plan.look ?? DEFAULT_LOOK), ...patch } }
-  if (live) await state().replaceCurrentEdit(tl)
-  else await commit(tl, 'Changed the look')
+  const withPatch = (plan: EditPlan) => ({ ...plan, look: { ...(plan.look ?? DEFAULT_LOOK), ...patch } })
+  if (live) await commitMerged(`look:${Object.keys(patch).join(',')}`, withPatch, 'Adjusted the look')
+  else await commit(withPatch(requireEdit().plan), 'Changed the look')
 }
 
 export async function setFades(fades: { in: boolean; out: boolean }) {
