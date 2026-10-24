@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, Lock, Plus, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, Lock, LockOpen, Plus, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
@@ -19,6 +19,7 @@ import {
   editLine,
   freezeFrame,
   moveScene,
+  lockScene,
   releaseScene,
   rereadLine,
   setLineMuted,
@@ -82,6 +83,7 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
   const line = project.script?.lines.find((l) => l.id === scene?.lineId)
   const [text, setText] = useState(line?.text ?? '')
   const [busy, setBusy] = useState<string | null>(null)
+  const locked = !!scene && !!plan.userScenes?.includes(scene.id)
   const byId = new Map(clips.map((c) => [c.id, c]))
   if (!scene) return null
 
@@ -102,20 +104,28 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
         <Button variant="text" size="sm" className="-ml-3" onClick={onClose}>
           <ChevronLeft className="size-5" strokeWidth={2.4} /> All scenes
         </Button>
-        <span className="tabular text-[14px] font-semibold text-muted">
-          Scene {index + 1} of {plan.scenes.length}
-        </span>
-      </div>
-
-      {plan.userScenes?.includes(scene.id) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-surface p-3.5">
-          <Lock className="size-4 shrink-0 text-ember-300" strokeWidth={2.6} />
-          <p className="min-w-0 flex-1 text-[14px] text-muted">You picked this footage, so Tell the AI keeps it.</p>
-          <Button size="sm" variant="quiet" disabled={!!busy} onClick={() => act('release', () => releaseScene(scene.id))}>
-            Let the AI change it
-          </Button>
+        <div className="flex items-center gap-3">
+          <span className="tabular text-[14px] font-semibold whitespace-nowrap text-muted">
+            <span className="max-sm:hidden">Scene </span>
+            {index + 1} of {plan.scenes.length}
+          </span>
+          {/* Locked scenes stay as they are when the AI edits; changing a shot by hand locks the scene. */}
+          <button
+            type="button"
+            aria-pressed={locked}
+            disabled={!!busy}
+            title={locked ? 'The AI won’t change this scene. Tap to unlock.' : 'Keep this scene as it is when you ask the AI for changes.'}
+            onClick={() => act(locked ? 'release' : 'lock', () => (locked ? releaseScene(scene.id) : lockScene(scene.id)))}
+            className={cn(
+              'flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold whitespace-nowrap transition',
+              locked ? 'bg-accent-soft text-ember-300 shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface text-muted hover:text-fg',
+            )}
+          >
+            {locked ? <Lock className="size-3.5" strokeWidth={2.6} /> : <LockOpen className="size-3.5" strokeWidth={2.6} />}
+            {locked ? 'Locked from AI' : 'Lock from AI'}
+          </button>
         </div>
-      )}
+      </div>
 
       {line && (
         <div className="space-y-2">

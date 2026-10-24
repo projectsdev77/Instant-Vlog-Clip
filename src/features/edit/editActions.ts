@@ -289,10 +289,16 @@ const goToVersion = (step: -1 | 1) =>
 export const undo = () => goToVersion(-1)
 export const redo = () => goToVersion(1)
 
-/** Lets AI re-plans change a scene the user had picked footage for. */
+/** Lets AI re-plans change a scene the user had locked (or changed by hand). */
 export async function releaseScene(sceneId: string) {
   const { plan } = requireEdit()
   await state().replaceCurrentEdit({ ...plan, userScenes: plan.userScenes?.filter((id) => id !== sceneId) })
+}
+
+/** Keeps a scene as it is when the AI re-plans the vlog. */
+export async function lockScene(sceneId: string) {
+  const { plan } = requireEdit()
+  await state().replaceCurrentEdit(withUserScene(plan, sceneId))
 }
 
 /** Changes one shot by hand; its scene becomes one the user picked footage for (AI re-plans keep it). */

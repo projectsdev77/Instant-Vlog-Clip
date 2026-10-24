@@ -48,8 +48,8 @@ export function ScenesPanel({ plan, timeline, project, clips, activeScene, onOpe
                     {ts ? (ts.end - ts.start).toFixed(1) : '0.0'}s · {scene.shots.length} shot{scene.shots.length > 1 ? 's' : ''}
                   </span>
                   {plan.userScenes?.includes(scene.id) && (
-                    <span className="flex items-center gap-1 text-ember-300" title="You picked this footage. Tell the AI keeps it.">
-                      <Lock className="size-3.5" strokeWidth={2.6} /> Yours
+                    <span className="flex items-center gap-1 text-ember-300" title="Locked: the AI won’t change this scene.">
+                      <Lock className="size-3.5" strokeWidth={2.6} /> Locked
                     </span>
                   )}
                 </span>
