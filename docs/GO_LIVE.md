@@ -33,7 +33,7 @@ The app only *shows* these prices; Stripe charges whatever its prices say, so ch
 
 - **Gemini**: turn on billing for the API key's Google Cloud project. The free tier is slow (1 to 2 minutes per request in our tests) and Google's terms let it use free-tier content to improve its products; the paid tier doesn't. Check the current [Gemini API terms](https://ai.google.dev/gemini-api/terms) and [pricing](https://ai.google.dev/pricing). With billing on, try `GEMINI_MODEL=gemini-flash-latest` for better scripts and plans.
 - **ElevenLabs**: a paid plan (Starter or above). The free tier is for non-commercial use and ElevenLabs blocks free-tier calls from servers ("unusual activity"). Check [pricing](https://elevenlabs.io/pricing).
-- Listen to the eight voices in the app; swap any in [`contracts.ts`](../supabase/functions/_shared/contracts.ts) (`ELEVENLABS_VOICE_IDS`).
+- Add the app's AI voices to the ElevenLabs account ([SETUP_GUIDE.md, L](SETUP_GUIDE.md#l-ai-voices)). The app lists whatever voices the account has. Until then it uses ElevenLabs' default voices, which stop working on December 31, 2026.
 
 **What one vlog uses**, to estimate cost with current prices:
 

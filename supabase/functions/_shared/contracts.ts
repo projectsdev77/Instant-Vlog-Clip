@@ -140,7 +140,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-22.10'
+export const AI_FUNCTION_VERSION = '2026-10-24.11'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }
@@ -152,15 +152,20 @@ export type AiAction =
   | { action: 'plan-edit'; payload: PlanRequest }
   | { action: 'synthesize'; payload: SynthesizeRequest }
   | { action: 'transcribe'; payload: TranscribeRequest }
+  | { action: 'list-voices'; payload?: undefined }
 
 export type AiErrorBody = { error: string; code: 'quota' | 'auth' | 'bad_request' | 'upstream' | 'refusal' }
 
-export type VoiceOption = { id: string; name: string; description: string; gender: 'female' | 'male' | 'neutral'; accent: 'American' | 'British' | 'Australian' }
+export type VoiceOption = { id: string; name: string; description: string; gender: 'female' | 'male' | 'neutral'; accent: string }
+
+/** The voices to offer: the ones added to the app's ElevenLabs account, or the built-in list if none are. */
+export type VoicesResponse = { voices: VoiceOption[]; source: 'account' | 'builtin' }
 
 /**
- * Stock English voices, picked for a casual, conversational vlog sound from
- * ElevenLabs' default voices, which every account (free included) can use
- * through the API. Swap freely.
+ * The built-in voices, used until voices are added to the app's ElevenLabs
+ * account (the app then lists those instead; see docs/SETUP_GUIDE.md). These
+ * are ElevenLabs "default" voices, which stop working on December 31, 2026
+ * and aren't available to accounts created after March 2026.
  */
 export const VOICES: VoiceOption[] = [
   { id: 'mia', name: 'Mia', description: 'Playful and bubbly', gender: 'female', accent: 'American' },

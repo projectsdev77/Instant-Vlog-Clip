@@ -26,7 +26,7 @@ import {
 } from '../_shared/prompts.ts'
 import { analyzeClipSchema, planSchema, polishSchema, scriptSchema } from '../_shared/schemas.ts'
 import { generateJson, RateLimitError, RefusalError } from './llm.ts'
-import { synthesize, transcribe, VoiceServiceError } from './elevenlabs.ts'
+import { listVoices, synthesize, transcribe, VoiceServiceError } from './elevenlabs.ts'
 import { authorize, QuotaError, AuthError, SetupError, type UsageKind } from './quota.ts'
 
 const CORS = {
@@ -98,6 +98,8 @@ async function handle(req: AiAction) {
       return await synthesize(req.payload.text, req.payload.voiceId, req.payload.delivery, req.payload.seed)
     case 'transcribe':
       return await transcribe(b64ToBytes(req.payload.audioBase64), req.payload.mime, req.payload.language)
+    case 'list-voices':
+      return await listVoices()
   }
 }
 
@@ -121,6 +123,8 @@ Deno.serve(async (request) => {
     return fail('bad_request', 'Invalid JSON', 400)
   }
   try {
+    // The voice list is free to fetch and holds nothing private, so it skips sign-in and limits.
+    if (body.action === 'list-voices') return json(await listVoices())
     await authorize(request, usageKind(body))
     return json(await handle(body))
   } catch (e) {

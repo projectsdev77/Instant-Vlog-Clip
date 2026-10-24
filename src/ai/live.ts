@@ -1,5 +1,5 @@
 import { AI_FUNCTION_VERSION } from '@shared/contracts.ts'
-import type { AiAction, AiErrorBody, PolishResponse, PlanResponse, ScriptResponse, SynthesizeResponse, TranscribeResponse, AnalyzeClipResponse } from '@shared/contracts.ts'
+import type { AiAction, AiErrorBody, PolishResponse, PlanResponse, ScriptResponse, SynthesizeResponse, TranscribeResponse, AnalyzeClipResponse, VoicesResponse } from '@shared/contracts.ts'
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabase'
 import { analysisFromWire } from './catalog'
 import { AiError, type AiService } from './service'
@@ -13,6 +13,7 @@ const TIMEOUT_MS: Record<AiAction['action'], number> = {
   'plan-edit': 140_000,
   synthesize: 45_000,
   transcribe: 60_000,
+  'list-voices': 15_000,
 }
 
 async function call<T>(body: AiAction, attempt = 0): Promise<T> {
@@ -96,5 +97,9 @@ export const liveAi: AiService = {
   },
   async transcribe(audio, language) {
     return await call<TranscribeResponse>({ action: 'transcribe', payload: { audioBase64: await blobToBase64(audio), mime: audio.type || 'audio/wav', language } })
+  },
+  async listVoices() {
+    const r = await call<VoicesResponse>({ action: 'list-voices' })
+    return r.source === 'account' ? r.voices : []
   },
 }

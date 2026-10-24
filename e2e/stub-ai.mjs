@@ -94,6 +94,11 @@ function ai(action, payload) {
           ],
         },
       ]
+    // STUB_VOICES=1: the account has voices of its own, as after adding some from the Voice Library.
+    case 'list-voices':
+      return process.env.STUB_VOICES === '1'
+        ? [200, { source: 'account', voices: [{ id: 'g7LVvkPWALzPxOQbF6OE', name: 'Jade', description: 'Upbeat and Natural', gender: 'female', accent: 'American' }, { id: 'BHr135B5EUBtaWheVj8S', name: 'Dan', description: 'Warm and engaging', gender: 'male', accent: 'British' }] }]
+        : [200, { voices: [], source: 'builtin' }]
     default:
       return [500, { error: `stub: unknown action ${action}` }]
   }

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { stepPath } from '@/features/project/steps'
 import { AudioLines, Captions, Check, ChevronRight, Lock, Mic, Music2, Upload, VolumeX } from 'lucide-react'
-import { voices } from '@/ai'
+import { useVoiceList } from '@/ai/voices'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
@@ -91,6 +91,7 @@ export function VoicePanel({ project }: { project: Project }) {
   const { updateProject } = useProject()
   const navigate = useNavigate()
   const [busy, setBusy] = useState<string | null>(null)
+  const voices = useVoiceList()
   const mode = project.voice.mode
   const hasLines = !!project.script?.lines.some((l) => l.text.trim())
   const takes = project.voiceTrack?.takes.length ?? 0

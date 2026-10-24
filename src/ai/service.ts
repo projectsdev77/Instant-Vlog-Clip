@@ -1,5 +1,6 @@
 import type {
   AnalyzeClipRequest,
+  VoiceOption,
   PlanRequest,
   ScriptRequest,
   ScriptResponse,
@@ -19,6 +20,8 @@ export interface AiService {
   planEdit(req: PlanRequest): Promise<unknown>
   synthesize(text: string, voiceId: string, language: string, opts?: { delivery?: Delivery; seed?: number }): Promise<SynthesizedLine>
   transcribe(audio: Blob, language: string, knownText?: string): Promise<TranscribeResponse>
+  /** The voices on the app's ElevenLabs account (empty means: use the built-in ones). */
+  listVoices(): Promise<VoiceOption[]>
 }
 
 export class AiError extends Error {

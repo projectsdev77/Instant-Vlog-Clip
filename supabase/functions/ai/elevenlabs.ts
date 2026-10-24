@@ -1,5 +1,6 @@
 import { type Alignment, wordsFromAlignment } from '../_shared/alignment.ts'
-import { ELEVENLABS_VOICE_IDS, type Delivery, type WordWire } from '../_shared/contracts.ts'
+import { ELEVENLABS_VOICE_IDS, VOICES, type Delivery, type VoicesResponse, type WordWire } from '../_shared/contracts.ts'
+import { toVoiceOption, type AccountVoice } from '../_shared/voices.ts'
 
 // Endpoints per the ElevenLabs API reference (text-to-speech "with timestamps"
 // and speech-to-text "Scribe"). Verify model ids against current docs.
@@ -76,4 +77,31 @@ export async function transcribe(audio: Uint8Array<ArrayBuffer>, mime: string, l
     text: body.text,
     words: (body.words ?? []).filter((w) => w.type === 'word').map((w) => ({ word: w.text, start: w.start, end: w.end })),
   }
+}
+
+const MAX_VOICES = 30
+const LIST_TTL_MS = 10 * 60_000
+let listed: { at: number; value: VoicesResponse } | undefined
+
+/**
+ * The voices added to the app's ElevenLabs account (from the Voice Library,
+ * clones or Voice Design), so the lineup is changed in ElevenLabs, not in code.
+ * ElevenLabs' retiring default voices are left out. Falls back to the built-in
+ * list when the account has none or can't be reached.
+ */
+export async function listVoices(): Promise<VoicesResponse> {
+  if (listed && Date.now() - listed.at < LIST_TTL_MS) return listed.value
+  let value: VoicesResponse = { voices: VOICES, source: 'builtin' }
+  try {
+    const res = await fetch(`${BASE}/voices`, { headers: { 'xi-api-key': key() } })
+    if (!res.ok) throw await failure('listing voices', res)
+    const body = (await res.json()) as { voices?: AccountVoice[] }
+    const own = (body.voices ?? []).filter((v) => v.category !== 'premade').map(toVoiceOption)
+    own.sort((a, b) => a.name.localeCompare(b.name))
+    if (own.length) value = { voices: own.slice(0, MAX_VOICES), source: 'account' }
+  } catch (e) {
+    console.error('list-voices: using the built-in voices', e)
+  }
+  listed = { at: Date.now(), value }
+  return value
 }

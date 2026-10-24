@@ -2,7 +2,8 @@ import { Tour } from '@/features/tutorial/Tour'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AudioLines, Captions, Check, Mic, Play } from 'lucide-react'
-import { voices, AiError, ai } from '@/ai'
+import { AiError, ai } from '@/ai'
+import { useVoiceList, useVoices } from '@/ai/voices'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
@@ -13,7 +14,7 @@ import { StepFooter, StepHeading, StepPage } from '@/features/project/ProjectLay
 import { stepIndex, stepPath } from '@/features/project/steps'
 
 const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] = [
-  { id: 'ai', title: 'AI voice', body: 'Eight casual, natural voices read your lines.', icon: AudioLines },
+  { id: 'ai', title: 'AI voice', body: 'Casual, natural voices read your lines.', icon: AudioLines },
   { id: 'recorded', title: 'Record my own', body: 'Talk over your vlog once it’s made.', icon: Mic },
   { id: 'none', title: 'No voiceover', body: 'Your lines appear as captions only.', icon: Captions },
 ]
@@ -21,6 +22,13 @@ const MODES: { id: VoiceMode; title: string; body: string; icon: typeof Mic }[] 
 export function VoiceStep() {
   const { project, updateProject } = useProject()
   const navigate = useNavigate()
+  const voices = useVoiceList()
+  const voicesLoaded = useVoices((s) => s.loaded)
+  // A new vlog starts on the built-in default voice; once the account's voices are known, start on one of those instead.
+  const voiceId = project?.voice.voiceId
+  useEffect(() => {
+    if (voicesLoaded && voiceId && !voices.some((v) => v.id === voiceId)) void updateProject((p) => ({ voice: { ...p.voice, voiceId: voices[0].id } }))
+  }, [voicesLoaded, voiceId, voices, updateProject])
   if (!project) return null
   const lines = project.script?.lines ?? []
   const mode = project.voice.mode
@@ -115,6 +123,7 @@ function VoicePicker({ sample }: { sample: string }) {
   const [loading, setLoading] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const voices = useVoiceList()
   useEffect(() => () => audioRef.current?.pause(), [])
   if (!project) return null
 

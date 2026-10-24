@@ -20,7 +20,7 @@ export function WhatYouGet() {
       </div>
 
       <div className="grid auto-rows-auto grid-cols-2 gap-3.5 md:auto-rows-[minmax(300px,auto)] md:grid-cols-4">
-        <Card light label="Voice" title="Narrated by AI or by you" body="Eight casual, natural voices, or record your own over the finished video.">
+        <Card light label="Voice" title="Narrated by AI or by you" body="Casual, natural AI voices, or record your own over the finished video.">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="flex">
               {[
