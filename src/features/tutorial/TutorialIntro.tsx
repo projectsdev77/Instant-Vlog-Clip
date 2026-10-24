@@ -15,7 +15,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: 'Welcome',
     title: 'Your clips, made into a vlog',
-    body: 'Here’s how it works in four quick steps. It takes about a minute to make one.',
+    body: 'Here’s how it goes, from your clips to a finished vlog you can post.',
     art: (
       <Phone>
         <CoverVideo item={EXAMPLES[0]} overlay />
@@ -23,7 +23,7 @@ const SLIDES: Slide[] = [
     ),
   },
   {
-    eyebrow: 'Step 1',
+    eyebrow: 'Clips',
     title: 'Add your clips',
     body: 'Pick a few videos from today. Messy is fine: shaky and accidental bits get skipped. Star any clip that has to be in.',
     art: (
@@ -40,7 +40,7 @@ const SLIDES: Slide[] = [
     ),
   },
   {
-    eyebrow: 'Step 2',
+    eyebrow: 'Script',
     title: 'Say what happened',
     body: 'Type a few short lines, or let the AI write them from what’s in your clips. Each line becomes a scene.',
     art: (
@@ -60,7 +60,7 @@ const SLIDES: Slide[] = [
     ),
   },
   {
-    eyebrow: 'Step 3',
+    eyebrow: 'Voice',
     title: 'Pick a voice and a style',
     body: 'An AI voice reads your lines, or record your own over the finished video. The template sets the transitions, effects and color, from cozy to TikTok fast cuts.',
     art: (
@@ -83,7 +83,7 @@ const SLIDES: Slide[] = [
     ),
   },
   {
-    eyebrow: 'Step 4',
+    eyebrow: 'Make and edit',
     title: 'Tweak it, then export',
     body: 'The AI cuts it together with captions and music. Tap any scene to swap shots or add effects, or just tell the AI what to change. Your videos stay on your device.',
     art: (
