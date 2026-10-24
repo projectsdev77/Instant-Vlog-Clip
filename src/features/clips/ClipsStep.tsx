@@ -2,7 +2,8 @@ import { Tour } from '@/features/tutorial/Tour'
 import { loadSampleFiles } from '@/features/tutorial/samples'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Camera, Plus, RotateCcw, ShieldCheck, Star, X } from 'lucide-react'
+import { Camera, Plus, RotateCcw, Star, X } from 'lucide-react'
+import { PrivacyLine } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
@@ -130,10 +131,7 @@ export function ClipsStep() {
                 </li>
               </ul>
               <LengthPicker />
-              <p className="mt-4 flex max-w-[560px] items-start gap-2 text-[13px] text-faint">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0" strokeWidth={2.2} />
-                Your videos stay on this device. To make the vlog, the AI services (Google Gemini, ElevenLabs) get a few still frames from each clip, your script’s words and, if you record your voice, that audio for the captions.
-              </p>
+              <PrivacyLine className="mt-4 text-[13px] font-normal text-faint" />
             </>
           )}
         </div>
