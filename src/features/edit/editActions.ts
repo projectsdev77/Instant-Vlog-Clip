@@ -422,13 +422,13 @@ export async function freezeFrame(sceneIndex: number, shotIndex: number, local?:
 export async function holdLastFrame(sceneIndex: number, shotIndex: number) {
   const { plan } = requireEdit()
   const shot = plan.scenes[sceneIndex].shots[shotIndex]
-  if (!shot.hold && shotLength(shot) - MIN_SHOT < 0.3) throw new Error('This shot is too short to freeze its end. Trim it longer first.')
+  if (!shot.hold && shotLength(shot) - MIN_SHOT - 0.05 < 0.2) throw new Error('This shot is too short to freeze its end. Trim it longer first.')
   await commit(
     mapShot(plan, sceneIndex, shotIndex, (s) => {
       if (s.hold) return s
       const len = shotLength(s)
       // the moving part keeps at least the shortest shot length, or re-fitting would drop the freeze
-      const holdLen = round(Math.min(1, len - MIN_SHOT))
+      const holdLen = round(Math.min(1, len - MIN_SHOT - 0.05))
       const stop = round(sourceTime(s, len - holdLen))
       return [
         { ...s, out: stop, ramp: undefined },
