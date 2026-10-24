@@ -20,7 +20,6 @@ const tiles = page.locator('ol[aria-label=Scenes] li button')
 const heading = () => page.getByRole('heading', { level: 2 }).first().innerText()
 const version = () => page.getByTestId('version-note').innerText()
 const versionNo = async () => Number((await version()).match(/Version (\d+)/)[1])
-const changed = async (before) => page.waitForFunction((b) => document.querySelector('[data-testid=version-note]')?.textContent !== b, before, { timeout: 15000 })
 
 try {
   await page.goto(BASE)
@@ -88,13 +87,12 @@ try {
 
   // Clip: trim with the keyboard, split, hold the last frame
   await tiles.nth(0).click()
-  const before = await version()
   const start = page.getByRole('slider', { name: 'Trim start' })
   const was = Number(await start.getAttribute('aria-valuenow'))
   await start.focus()
   await page.keyboard.down('ArrowRight')
   await page.keyboard.up('ArrowRight')
-  await changed(before)
+  await page.waitForFunction((w) => Number(document.querySelector('[aria-label="Trim start"]')?.getAttribute('aria-valuenow')) > w + 0.05, was, { timeout: 15000 })
   ok(`trim handle moves by 0.1 s (${was} → ${Number(await page.getByRole('slider', { name: 'Trim start' }).getAttribute('aria-valuenow'))})`)
   await page.getByRole('button', { name: /^Split/ }).click()
   await page.getByRole('tab', { name: /^Shot 2/ }).waitFor()

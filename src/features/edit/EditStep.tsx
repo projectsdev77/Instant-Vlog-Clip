@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router'
-import { ChevronLeft, Redo2, Sparkles, Undo2 } from 'lucide-react'
+import { Navigate, useSearchParams } from 'react-router'
+import { Redo2, Sparkles, Undo2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 import { sumShots } from '@/domain/shots'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { PreviewPlayer } from '@/render/PreviewPlayer'
-import { stepPath } from '@/features/project/steps'
+import { stepPath, stepsFor } from '@/features/project/steps'
 import { useHeaderSlots } from '@/features/project/headerSlots'
 import { ExportSheet } from '@/features/export/ExportSheet'
 import { AiError } from '@/ai'
@@ -43,7 +43,6 @@ export function EditStep() {
   const plan = currentEdit(project)
   const { timeline, mix, staleMix } = useEditorData(project, plan, clips)
   const [params] = useSearchParams()
-  const navigate = useNavigate()
   const [tab, setTab] = useState<PanelId>('scene')
   const [selected, setSelected] = useState(0)
   const [seek, setSeek] = useState<{ t: number; n: number }>()
@@ -55,39 +54,21 @@ export function EditStep() {
   const onTime = useCallback((t: number) => setNow(t), [])
   const desktop = useMediaQuery('(min-width: 1024px)')
 
-  // Undo, versions and Export live in the header (Back and Undo on phones).
+  // The header is the same as on every step; Edit only adds Export on the right (desktop).
   const canUndo = !!project && project.currentEdit > 0
   const canRedo = !!project && project.currentEdit < project.edits.length - 1
   useEffect(() => {
-    if (!project) return
-    const back = project.voice.mode === 'recorded' ? 'record' : 'voice'
     useHeaderSlots.setState({
-      start: (
-        <RoundIcon label="Back" onClick={() => navigate(stepPath(project.id, back))}>
-          <ChevronLeft className="size-5" strokeWidth={2.4} />
-        </RoundIcon>
-      ),
+      start: null,
       end: desktop ? (
-        <>
-          <RoundIcon label="Undo" disabled={!canUndo} onClick={() => void undo()}>
-            <Undo2 className="size-[18px]" strokeWidth={2.4} />
-          </RoundIcon>
-          <RoundIcon label="Redo" disabled={!canRedo} onClick={() => void redo()}>
-            <Redo2 className="size-[18px]" strokeWidth={2.4} />
-          </RoundIcon>
-          <VersionMenu project={project} />
-          <Button variant="ember" className="ml-1 h-11" onClick={() => setExporting(true)} data-tour="export">
-            Export video
-          </Button>
-        </>
-      ) : (
-        <RoundIcon label="Undo" disabled={!canUndo} onClick={() => void undo()}>
-          <Undo2 className="size-[18px]" strokeWidth={2.4} />
-        </RoundIcon>
-      ),
+        <Button variant="ember" className="h-11" onClick={() => setExporting(true)} data-tour="export">
+          <Upload className="size-[18px]" strokeWidth={2.4} /> Export
+        </Button>
+      ) : null,
     })
-  }, [project, desktop, canUndo, canRedo, navigate])
+  }, [desktop])
   useEffect(() => () => useHeaderSlots.setState({ start: null, end: null }), [])
+  const steps = stepsFor(project?.voice.mode).length
 
   if (!project) return null
   if (!plan || !timeline) return <Navigate to={stepPath(project.id, 'generate')} replace />
@@ -197,6 +178,29 @@ export function EditStep() {
     <main className="relative mx-auto w-full max-w-[1280px] flex-1 px-4 pt-4 pb-36 lg:px-10 lg:pt-[22px] lg:pb-11">
       <div className="ember-wash -z-10" aria-hidden />
       <ExportSupportNotice className="mb-4" />
+      {/* Step heading, as on the other steps; undo, redo and versions on the right */}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 lg:mb-6">
+        <div className="min-w-0 space-y-1.5">
+          <div className="eyebrow">
+            Step {steps} of {steps}
+          </div>
+          <div className="flex min-w-0 items-baseline gap-3">
+            <h1 className="truncate text-[24px] leading-tight font-extrabold tracking-[-0.03em] lg:text-[30px]">{project.title || 'Untitled vlog'}</h1>
+            <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted" title="Every change is saved on this device as you go">
+              <span className="size-1.5 rounded-full bg-success" aria-hidden /> Saved
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <RoundIcon label="Undo" disabled={!canUndo} onClick={() => void undo()}>
+            <Undo2 className="size-[18px]" strokeWidth={2.4} />
+          </RoundIcon>
+          <RoundIcon label="Redo" disabled={!canRedo} onClick={() => void redo()}>
+            <Redo2 className="size-[18px]" strokeWidth={2.4} />
+          </RoundIcon>
+          <VersionMenu project={project} />
+        </div>
+      </div>
       {desktop && stripEl}
 
       <div className={cn(desktop && 'grid grid-cols-[360px_minmax(0,1fr)] gap-10 pt-7')}>

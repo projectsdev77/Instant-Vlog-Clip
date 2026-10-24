@@ -42,7 +42,7 @@ const plan = await page.evaluate(async () => {
 })
 console.log(JSON.stringify(plan))
 // export
-await page.getByRole('button', { name: 'Export video' }).click()
+await page.getByRole('button', { name: 'Export', exact: true }).filter({ visible: true }).first().click()
 await page.getByRole('dialog').getByRole('button', { name: 'Export video' }).click()
 await page.waitForSelector('text=/Ready ·/', { timeout: 240000 })
 step('exported: ' + (await page.locator('text=/Ready ·/').innerText()))

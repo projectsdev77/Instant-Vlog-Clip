@@ -121,7 +121,7 @@ async function run(device) {
     await snap('23-edit-tell-ai')
     await page.getByRole('button', { name: 'Close' }).click()
   }
-  await click(phone ? 'Export' : 'Export video', { exact: true })
+  await click('Export', { exact: true })
   await wait(400)
   await snap('24-export-ready')
   await page.getByRole('dialog').getByRole('button', { name: 'Export video' }).click()

@@ -31,10 +31,9 @@ export function VersionMenu({ project }: { project: Project }) {
         onClick={() => setOpen(!open)}
         data-testid="version-note"
         title={current.note}
-        className="flex h-10 max-w-[230px] items-center gap-1.5 rounded-full bg-white/6 pr-3 pl-4 text-[14px] transition hover:bg-white/10"
+        className="flex h-10 items-center gap-1.5 rounded-full bg-white/6 pr-3 pl-4 text-[14px] transition hover:bg-white/10"
       >
         <span className="font-semibold whitespace-nowrap">Version {current.version}</span>
-        {current.note && <span className="truncate text-muted">· {current.note.replace(/[“”]/g, '')}</span>}
         <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} strokeWidth={2.4} />
       </button>
       {open && (
