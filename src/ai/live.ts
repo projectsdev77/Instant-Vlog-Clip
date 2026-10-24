@@ -4,6 +4,7 @@ import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabase'
 import { analysisFromWire } from './catalog'
 import { AiError, type AiService } from './service'
 import { guestId } from './guest'
+import { forUsers, UNAVAILABLE } from './userMessage'
 
 /** How long each AI action may take before we give up (the model can be slow, especially on free plans). Supabase stops a function after 150 s. */
 const TIMEOUT_MS: Record<AiAction['action'], number> = {
@@ -17,7 +18,10 @@ const TIMEOUT_MS: Record<AiAction['action'], number> = {
 }
 
 async function call<T>(body: AiAction, attempt = 0): Promise<T> {
-  if (!supabaseUrl || !supabaseAnonKey) throw new AiError('AI is not configured (missing Supabase settings).', 'auth')
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('AI is not configured: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing.')
+    throw new AiError(UNAVAILABLE, 'upstream')
+  }
   const session = (await supabase?.auth.getSession())?.data.session
   let res: Response
   const timeout = AbortSignal.timeout(TIMEOUT_MS[body.action])
@@ -44,13 +48,15 @@ async function call<T>(body: AiAction, attempt = 0): Promise<T> {
       return (await res.json()) as T
     } catch {
       // An older deployed function answers actions it doesn't know with an empty body.
-      throw new AiError('The AI function sent an empty reply. It is probably out of date: run supabase functions deploy ai', 'upstream')
+      console.error('The AI function sent an empty reply. It is probably out of date: run supabase functions deploy ai')
+      throw new AiError(UNAVAILABLE, 'upstream')
     }
   }
   const err = (await res.json().catch(() => ({ code: 'upstream', error: res.statusText }))) as AiErrorBody
   if (err.code === 'upstream' && attempt < 1) return call(body, attempt + 1)
-  throw new AiError(err.error, err.code)
+  throw new AiError(forUsers(err.error), err.code)
 }
+
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -87,7 +93,10 @@ export const liveAi: AiService = {
   writeScript: (req) => call<ScriptResponse>({ action: 'write-script', payload: req }),
   async polishLines(lines, language) {
     const r = await call<PolishResponse>({ action: 'polish-lines', payload: { lines, language } })
-    if (!Array.isArray(r.lines)) throw new AiError('The AI function is out of date. Redeploy it with: supabase functions deploy ai', 'upstream')
+    if (!Array.isArray(r.lines)) {
+      console.error('The AI function is out of date. Redeploy it with: supabase functions deploy ai')
+      throw new AiError(UNAVAILABLE, 'upstream')
+    }
     return lines.map((l, i) => r.lines[i] ?? l)
   },
   planEdit: (req) => call<PlanResponse>({ action: 'plan-edit', payload: req }),

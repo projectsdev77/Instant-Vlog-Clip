@@ -26,8 +26,8 @@ const LIFETIME = '1970-01-01'
 async function bump(subject: string, day: string, field: 'generations' | 'revisions' | 'calls', limit: number): Promise<boolean> {
   const { data, error } = await db().rpc('bump_ai_usage', { p_subject: subject, p_day: day, p_field: field, p_limit: limit } as never)
   if (error) {
-    console.error('bump_ai_usage failed', error)
-    throw new SetupError('Usage limits are not set up: run `supabase db push` (or set QUOTAS_DISABLED=true while developing).')
+    console.error('bump_ai_usage failed. Usage limits are not set up: run `supabase db push` (or set QUOTAS_DISABLED=true while developing).', error)
+    throw new SetupError('The AI isn’t available right now. Please try again later.')
   }
   return data === true
 }

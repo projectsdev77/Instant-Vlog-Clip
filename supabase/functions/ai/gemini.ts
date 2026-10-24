@@ -67,7 +67,7 @@ export async function geminiJson<T>(req: JsonRequest): Promise<T> {
     }
   } catch (e) {
     console.error(`gemini ${modelFor(req.effort)} failed after ${Date.now() - started} ms`)
-    if (e instanceof ApiError && e.status === 429) throw new RateLimitError('The AI is busy right now (usage limit reached). Try again in a minute.')
+    if (e instanceof ApiError && e.status === 429) throw new RateLimitError('The AI is busy right now. Try again in a minute.')
     throw e
   }
   console.log(`gemini ${modelFor(req.effort)} effort=${req.effort} ${Date.now() - started} ms`)

@@ -8,16 +8,21 @@ const BASE = 'https://api.elevenlabs.io/v1'
 const TTS_MODEL = 'eleven_multilingual_v2'
 const STT_MODEL = 'scribe_v1'
 
-/** An ElevenLabs failure with a message that says what to fix. */
+/** A voice failure. Its message is for users; what to fix is in the function logs. */
 export class VoiceServiceError extends Error {}
+
+const UNAVAILABLE = 'The AI voice isn’t available right now. Please try again later.'
 
 const key = () => {
   const k = Deno.env.get('ELEVENLABS_API_KEY')
-  if (!k) throw new VoiceServiceError('Voice service: ELEVENLABS_API_KEY is not set in the Supabase secrets.')
+  if (!k) {
+    console.error('Voice setup: ELEVENLABS_API_KEY is not set in the Supabase secrets.')
+    throw new VoiceServiceError(UNAVAILABLE)
+  }
   return k
 }
 
-/** Turns an ElevenLabs error response into a readable message (logs the raw one). */
+/** Turns an ElevenLabs error into a plain message for users, and logs the raw error and what to fix. */
 async function failure(what: string, res: Response): Promise<VoiceServiceError> {
   const raw = await res.text()
   console.error(`ElevenLabs ${what} ${res.status}: ${raw}`)
@@ -29,16 +34,17 @@ async function failure(what: string, res: Response): Promise<VoiceServiceError> 
     detail = raw
   }
   const has = (s: string) => detail.toLowerCase().includes(s)
-  let msg: string
-  if (has('unusual_activity') || has('unusual activity')) msg = 'ElevenLabs paused free-tier use from this server. A paid ElevenLabs plan (Starter) fixes this.'
-  else if (has('missing_permissions')) msg = `Your ElevenLabs API key doesn't allow ${what}. Edit the key in ElevenLabs and turn that permission on.`
-  else if (res.status === 401) msg = 'ElevenLabs rejected the API key. Check ELEVENLABS_API_KEY in the Supabase secrets.'
-  else if (res.status === 402 || has('paid_plan_required') || has('payment_required')) msg = 'This voice needs a paid ElevenLabs plan.'
-  else if (has('quota_exceeded')) msg = 'The ElevenLabs credits for this month are used up.'
-  else if (has('voice_not_found') || res.status === 404) msg = "ElevenLabs couldn't find this voice on your account."
-  else if (res.status === 429) msg = 'ElevenLabs is busy. Try again in a moment.'
-  else msg = `ElevenLabs ${what} failed (${res.status}). Please try again.`
-  return new VoiceServiceError(`Voice service: ${msg}`)
+  let fix: string | undefined
+  if (has('unusual_activity') || has('unusual activity')) fix = 'ElevenLabs paused free-tier use from this server. A paid ElevenLabs plan (Starter) fixes this.'
+  else if (has('missing_permissions')) fix = `The ElevenLabs API key doesn't allow ${what}. Edit the key in ElevenLabs and turn that permission on.`
+  else if (res.status === 401) fix = 'ElevenLabs rejected the API key. Check ELEVENLABS_API_KEY in the Supabase secrets.'
+  else if (res.status === 402 || has('paid_plan_required') || has('payment_required')) fix = 'This voice needs a paid ElevenLabs plan.'
+  else if (has('quota_exceeded')) fix = 'The ElevenLabs credits for this month are used up.'
+  else if (has('voice_not_found') || res.status === 404) fix = "ElevenLabs couldn't find this voice on the account."
+  if (fix) console.error(`Voice setup: ${fix}`)
+  if (fix) return new VoiceServiceError(UNAVAILABLE)
+  if (res.status === 429) return new VoiceServiceError('The AI voice is busy right now. Try again in a moment.')
+  return new VoiceServiceError('The AI voice had a problem. Please try again.')
 }
 
 /** Voice settings per delivery (ElevenLabs voice_settings). */
