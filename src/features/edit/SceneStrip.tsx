@@ -44,12 +44,7 @@ export function SceneStrip({ project, plan, clips, timeline, selected, now, comp
           <p className="text-muted">
             Scenes · {plan.scenes.length} · {formatDuration(timeline.duration)} <span className="text-white/40">· click one to edit it</span>
           </p>
-          <p className="flex items-center gap-4 text-white/40">
-            <span className="flex items-center gap-1.5">
-              <Music2 className="size-3.5" strokeWidth={2.4} /> music only
-            </span>
-            <span>Drag to reorder</span>
-          </p>
+          <p className="text-white/40">Drag to reorder</p>
         </div>
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
