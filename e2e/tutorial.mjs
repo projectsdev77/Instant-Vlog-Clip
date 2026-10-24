@@ -1,4 +1,5 @@
 // First-visit tutorial: intro slides → "Try it with sample clips" → a tip on each step → finished vlog.
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
@@ -87,7 +88,7 @@ try {
   await page.getByRole('button', { name: 'How it works' }).click()
   await page.getByRole('dialog', { name: 'How it works' }).waitFor()
   ok('"How it works" reopens the intro')
-  console.log('errors:', errors)
+  console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
 } finally {
   await browser.close()
 }

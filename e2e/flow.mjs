@@ -1,4 +1,5 @@
 // End-to-end flow (uses the real AI; needs .env.local and a deployed function): clips → script → voice → generate → edit → export.
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
@@ -121,6 +122,6 @@ async function main() {
 try {
   await main()
 } finally {
-  console.log('errors:', JSON.stringify(errors, null, 1))
+  console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
   await browser.close()
 }

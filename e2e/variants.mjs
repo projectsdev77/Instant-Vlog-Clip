@@ -1,4 +1,5 @@
 // Other paths: own-voice recording, no-script montage, reload persistence, bad files.
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync, writeFileSync } from 'node:fs'
@@ -164,6 +165,6 @@ try {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.screenshot({ path: `${OUT}/home-desktop.png` })
 } finally {
-  console.log('errors:', JSON.stringify(errors, null, 1))
+  console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
   await browser.close()
 }

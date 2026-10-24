@@ -1,5 +1,6 @@
 // Plans, account, upgrade and legal pages, against the local stand-in for the
 // Edge Functions (it answers the account function like Stripe-free test mode).
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 
@@ -61,5 +62,5 @@ try {
   console.log('✗', e.message)
   process.exitCode = 1
 }
-console.log('errors:', errors)
+console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
 await browser.close()

@@ -1,4 +1,5 @@
 // Per-line voice tools in Edit (AI voice): mute a line, read it again in another delivery, add a new line.
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync, writeFileSync } from 'node:fs'
@@ -135,5 +136,5 @@ try {
   await page.screenshot({ path: 'test-results/lines-fail.png' })
   process.exitCode = 1
 }
-console.log('errors:', errors)
+console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
 await browser.close()

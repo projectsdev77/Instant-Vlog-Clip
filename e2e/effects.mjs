@@ -1,5 +1,6 @@
 // Effects flow (uses the real AI): TikTok template → generated edit has transitions/moves/speed → split, freeze, speed, camera → export.
 // FIX=public/examples uses the real stock footage instead of the test patterns.
+import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
@@ -48,5 +49,5 @@ step('exported: ' + (await page.locator('text=/Ready ·/').innerText()))
 const download = page.waitForEvent('download')
 await page.getByRole('button', { name: /Save to Photos|Download video/ }).click()
 await (await download).saveAs(`${SP}/fx.webm`)
-console.log('errors', errors)
+console.log('errors:', JSON.stringify(unexpected(errors), null, 1))
 await browser.close()
