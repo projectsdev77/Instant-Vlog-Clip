@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { DndContext, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -13,6 +14,8 @@ type Props = {
   clips: Clip[]
   timeline: Timeline
   selected: number
+  /** playhead, seconds: the playing scene's tile fills as it plays */
+  now: number
   compact: boolean
   busy: boolean
   onSelect: (i: number) => void
@@ -25,7 +28,7 @@ type Props = {
  * phones), the selected one is ringed, music-only scenes get a note badge.
  * Drag (long-press on touch) or Alt+←/→ to reorder.
  */
-export function SceneStrip({ project, plan, clips, timeline, selected, compact, busy, onSelect, onMove, onAdd }: Props) {
+export function SceneStrip({ project, plan, clips, timeline, selected, now, compact, busy, onSelect, onMove, onAdd }: Props) {
   const byId = new Map(clips.map((c) => [c.id, c]))
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } }), useSensor(KeyboardSensor))
   const onDragEnd = (e: DragEndEvent) => {
@@ -66,6 +69,8 @@ export function SceneStrip({ project, plan, clips, timeline, selected, compact, 
                   cover={byId.get(scene.shots[0]?.clipId)?.thumbnail}
                   musicOnly={!line}
                   label={line ? `Scene ${i + 1}: ${line.text}` : `Scene ${i + 1} · music only`}
+                  times={ts ? `${formatDuration(ts.start)}–${formatDuration(ts.end)}` : ''}
+                  progress={ts && now >= ts.start && now < ts.end ? (now - ts.start) / Math.max(0.01, ts.end - ts.start) : null}
                   selected={i === selected}
                   compact={compact}
                   busy={busy}
@@ -87,12 +92,21 @@ export function SceneStrip({ project, plan, clips, timeline, selected, compact, 
   )
 }
 
-function Tile(props: { id: string; index: number; last: boolean; seconds: number; cover?: string; musicOnly: boolean; label: string; selected: boolean; compact: boolean; busy: boolean; onSelect: () => void; onMove: (from: number, to: number) => void }) {
+function Tile(props: { id: string; index: number; last: boolean; seconds: number; cover?: string; musicOnly: boolean; label: string; times: string; progress: number | null; selected: boolean; compact: boolean; busy: boolean; onSelect: () => void; onMove: (from: number, to: number) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.id, disabled: props.busy })
   const { index } = props
+  // Phones: the strip scrolls sideways, so keep the playing scene in view.
+  const node = useRef<HTMLLIElement | null>(null)
+  const isPlaying = props.progress !== null
+  useEffect(() => {
+    if (isPlaying && props.compact) node.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }, [isPlaying, props.compact])
   return (
     <li
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el)
+        node.current = el
+      }}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
@@ -106,6 +120,7 @@ function Tile(props: { id: string; index: number; last: boolean; seconds: number
         {...listeners}
         aria-label={props.label}
         aria-current={props.selected ? 'true' : undefined}
+        title={`Scene ${index + 1} · ${props.times}`}
         onClick={props.onSelect}
         onKeyDown={(e) => {
           if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
@@ -117,11 +132,20 @@ function Tile(props: { id: string; index: number; last: boolean; seconds: number
           }
           listeners?.onKeyDown?.(e)
         }}
-        className={cn('relative block size-full touch-manipulation overflow-hidden rounded-[12px] bg-surface-2 bg-cover bg-center', props.selected && 'shadow-[0_0_0_2.5px_#ff5a1f]')}
+        className={cn(
+          'relative block size-full touch-manipulation overflow-hidden rounded-[12px] bg-surface-2 bg-cover bg-center',
+          props.selected ? 'shadow-[0_0_0_2.5px_#ff5a1f]' : props.progress !== null && 'shadow-[inset_0_0_0_2px_#fff]',
+        )}
         style={props.cover ? { backgroundImage: `url(${props.cover})` } : undefined}
       >
-        {!props.selected && <span className="absolute inset-0 bg-black/28" aria-hidden />}
-        <span className="tabular absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-black/60 text-[11px] font-bold" aria-hidden>
+        {!props.selected && props.progress === null && <span className="absolute inset-0 bg-black/28" aria-hidden />}
+        {/* The scene the preview is on: its tile fills as it plays. */}
+        {props.progress !== null && (
+          <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40" aria-hidden>
+            <span className="block h-full bg-white" style={{ width: `${Math.min(100, props.progress * 100)}%` }} />
+          </span>
+        )}
+        <span className={cn('tabular absolute top-1 left-1 grid size-5 place-items-center rounded-full text-[11px] font-bold', props.progress !== null ? 'bg-white text-ink' : 'bg-black/60')} aria-hidden>
           {index + 1}
         </span>
         {props.musicOnly && (

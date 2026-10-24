@@ -31,6 +31,8 @@ type Props = {
   /** Edit page: larger preview, thin scrubber with no play button, a label chip bottom-left */
   edit?: boolean
   badge?: React.ReactNode
+  /** times to tick on the scrubber (where scenes start) */
+  marks?: number[]
 }
 
 /**
@@ -38,7 +40,7 @@ type Props = {
  * drawn onto a canvas by the same compositor the exporter uses, and the
  * pre-mixed soundtrack is the master clock.
  */
-export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact, controlRef, onPlayingChange, silent, edit, badge }: Props) {
+export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, compact, controlRef, onPlayingChange, silent, edit, badge, marks }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const holderRef = useRef<HTMLDivElement>(null)
   const videos = useRef(new Map<string, HTMLVideoElement>())
@@ -297,6 +299,9 @@ export function PreviewPlayer({ timeline, project, mix, seek, onTime, autoPlay, 
           <div className={cn('w-full overflow-hidden rounded-full bg-white/14', edit ? 'h-[3px] lg:h-1' : 'h-1')}>
             <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
           </div>
+          {/* Scene boundaries */}
+          {timeline.duration > 0 &&
+            marks?.map((m) => <span key={m} className="pointer-events-none absolute top-1/2 h-2.5 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/45" style={{ left: `${(m / timeline.duration) * 100}%` }} aria-hidden />)}
           <div className="absolute size-3 -translate-x-1/2 rounded-full bg-white opacity-0 transition group-hover:opacity-100" style={{ left: `${pct}%` }} />
         </div>
         <span className="tabular shrink-0 text-[13px] font-medium text-muted">

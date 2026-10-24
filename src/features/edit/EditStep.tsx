@@ -151,6 +151,7 @@ export function EditStep() {
       clips={clips}
       timeline={timeline}
       selected={tab === 'scene' ? index : -1}
+      now={now}
       compact={!desktop}
       busy={stripBusy}
       onSelect={select}
@@ -201,7 +202,7 @@ export function EditStep() {
       <div className={cn(desktop && 'grid grid-cols-[360px_minmax(0,1fr)] gap-10 pt-7')}>
         <div className={cn('space-y-4', desktop && 'sticky top-[92px] self-start')}>
           <div data-tour="preview" className="flex justify-center">
-            <PreviewPlayer edit badge={badge} timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} />
+            <PreviewPlayer edit badge={badge} marks={timeline.scenes.slice(1).map((s) => s.start)} timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} />
           </div>
           {desktop && <AiCard thinking={thinking} onAsk={ask} />}
         </div>
