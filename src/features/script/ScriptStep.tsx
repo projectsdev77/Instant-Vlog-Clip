@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Music2, Plus, Sparkles, X } from 'lucide-react'
+import { Music2, Pencil, Plus, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ChipGroup } from '@/components/ui/Chip'
 import { Sheet } from '@/components/ui/Sheet'
@@ -179,17 +179,25 @@ export function ScriptStep() {
           <div className="flex min-w-0 flex-[3_1_560px] flex-col gap-8">
             <header className="flex flex-col gap-2.5">
               <span className="text-[13px] font-semibold tracking-[.14em] text-ember-300 uppercase">Step 2 of {stepsFor(project.voice.mode).length} · Script</span>
-              <textarea
-                rows={1}
-                value={project.title}
-                maxLength={60}
-                placeholder="Name your vlog"
-                aria-label="Vlog title"
-                onChange={(e) => updateProject({ title: e.target.value.replace(/\n/g, ' ') })}
-                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                className="w-full resize-none overflow-hidden bg-transparent text-[32px] leading-[1.1] font-extrabold tracking-[-0.04em] [field-sizing:content] caret-ember-300 outline-none placeholder:text-white/30 focus:shadow-[0_2px_0_0_#ff5a1f] md:text-[clamp(34px,4.2vw,48px)]"
-              />
-              <p className="max-w-[520px] text-[15px] leading-normal text-white/62">The title opens your vlog. Below, write one short line per moment. Each line becomes a scene and is read aloud.</p>
+              {/* The title looks like a heading but is a field: a dashed underline and a pencil say so. */}
+              <label data-tour="title" className="group flex cursor-text items-end gap-3">
+                <textarea
+                  rows={1}
+                  value={project.title}
+                  maxLength={60}
+                  placeholder="Name your vlog"
+                  aria-label="Vlog title"
+                  onChange={(e) => updateProject({ title: e.target.value.replace(/\n/g, ' ') })}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                  className="min-w-0 flex-1 resize-none overflow-hidden border-b-2 border-dashed border-white/20 bg-transparent pb-1 text-[32px] leading-[1.1] font-extrabold tracking-[-0.04em] [field-sizing:content] caret-ember-300 outline-none transition-colors placeholder:text-white/30 group-hover:border-white/40 focus:border-solid focus:border-ember-500 md:text-[clamp(34px,4.2vw,48px)]"
+                />
+                <span className="mb-2 grid size-10 shrink-0 place-items-center rounded-full bg-surface text-white/70 transition group-hover:bg-surface-2 group-hover:text-fg" aria-hidden>
+                  <Pencil className="size-[18px]" strokeWidth={2.4} />
+                </span>
+              </label>
+              <p className="max-w-[520px] text-[15px] leading-normal text-white/62">
+                {project.title ? 'Tap the title to rename your vlog; it shows at the start.' : 'Give your vlog a title, or leave it and the AI suggests one when it writes.'} Below, write one short line per moment. Each line becomes a scene and is read aloud.
+              </p>
             </header>
 
             <div className="flex flex-col gap-2.5">

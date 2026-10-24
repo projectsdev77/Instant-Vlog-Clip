@@ -12,6 +12,7 @@ export const TIPS: Tip[] = [
   { id: 'clips-add', page: 'clips', target: 'clips-add', title: 'Start with your clips', body: 'Choose a few videos from today. Messy is fine: the shaky and accidental bits get skipped.' },
   { id: 'clips-star', page: 'clips', target: 'clips-grid', title: 'Star the must-haves', body: 'Tap the star on any clip that has to be in the vlog. Tap × to remove one.' },
   { id: 'clips-length', page: 'clips', target: 'length', title: 'Pick a length', body: 'The vlog keeps close to it. Starred clips always make it in; turn on Use every clip to show them all.' },
+  { id: 'script-title', page: 'script', target: 'title', title: 'Name your vlog', body: 'Tap the title to change it. It shows at the start of your vlog. Leave it empty and the AI suggests one when it writes your lines.' },
   { id: 'script-ai', page: 'script', target: 'write-ai', title: 'Let the AI write it', body: 'It writes short lines from what’s in your clips. Or type your own lines: each one becomes a scene.' },
   { id: 'script-template', page: 'script', target: 'template', title: 'Pick a template', body: 'It sets the transitions, camera moves, color and captions. TikTok fast cuts is punchy; Cinematic is slow and filmic.' },
   { id: 'voice-mode', page: 'voice', target: 'voice-mode', title: 'Who tells the story?', body: 'An AI voice reads your lines (tap play to hear one), you record yourself over the finished video, or your lines show as captions only.' },
