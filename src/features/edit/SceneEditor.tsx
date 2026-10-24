@@ -207,7 +207,11 @@ export function SceneEditor({ project, plan, clips, index, onClose, onIndex, tim
               playheadLocal: playheadIn(timeline, now, shot.id),
               onSplit: (at) => act('tool', () => splitShot(index, si, at)),
               onFreeze: (at) => act('tool', () => freezeFrame(index, si, at)),
-              onDuplicate: () => act('tool', () => duplicateShot(index, si)),
+              onDuplicate: () =>
+                act('tool', async () => {
+                  await duplicateShot(index, si)
+                  toast(`Added a copy as scene ${index + 2}.`, 'info', { label: 'Undo', run: () => void undo() })
+                }),
               onDelete: () =>
                 act('tool', async () => {
                   const last = scene.shots.length <= 1

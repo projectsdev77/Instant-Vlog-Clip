@@ -37,7 +37,15 @@ export function ScenesPanel({ plan, timeline, project, clips, activeScene, onOpe
             <button type="button" onClick={() => onOpen(i)} className={cn(rowBase, 'p-2.5 pr-4', active ? rowSel : rowIdle)} aria-current={active ? 'true' : undefined}>
               <Thumb clip={first} className="w-12 rounded-[var(--radius-thumb)]" />
               <span className="min-w-0 flex-1">
-                <span className="line-clamp-2 text-[15px] leading-snug font-semibold">{line?.text ?? first?.analysis?.description ?? `Scene ${i + 1}`}</span>
+                {line ? (
+                  <span className="line-clamp-2 text-[15px] leading-snug font-semibold">{line.text}</span>
+                ) : (
+                  // No narration here: say so, and describe the footage in grey so it doesn't read as a line.
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[12px] font-bold text-muted">No line</span>
+                    <span className="truncate text-[14px] text-muted">{first?.analysis?.description ?? `Scene ${i + 1}`}</span>
+                  </span>
+                )}
                 <span className="mt-1.5 flex items-center gap-2 text-[13px] font-medium text-muted">
                   <span className="flex gap-[3px]" aria-hidden>
                     {scene.shots.map((sh) => (
