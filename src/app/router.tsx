@@ -4,6 +4,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { UpgradeSheet } from '@/features/account/UpgradeSheet'
 import { AuthSheet } from '@/features/auth/AuthSheet'
 import { HomePage } from '@/features/home/HomePage'
+import { AppError } from './AppError'
 
 // Everything past the home page (video decoding, AI, editor) loads on demand.
 const page = (load: () => Promise<{ default: ComponentType }>) => {
@@ -35,6 +36,7 @@ function Root() {
 export const router = createBrowserRouter([
   {
     element: <Root />,
+    errorElement: <AppError />,
     children: [
       { path: '/', element: <HomePage /> },
       {
