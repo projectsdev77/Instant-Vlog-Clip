@@ -48,7 +48,7 @@ function authMessage(e: { message?: string; status?: number; code?: string } | n
   if (e?.code === 'invalid_credentials' || /invalid login credentials/i.test(m)) return 'Wrong email or password.'
   if (e?.code === 'email_not_confirmed' || /email not confirmed/i.test(m)) return 'Confirm your email first: open the link we sent you.'
   if (e?.code === 'user_already_exists' || /already registered/i.test(m)) return 'There’s already an account with this email. Log in instead.'
-  if (e?.code === 'weak_password' || /password should|weak password/i.test(m)) return 'Choose a longer password (at least 8 characters).'
+  if (e?.code === 'weak_password' || /password should|weak password/i.test(m)) return 'Choose a stronger password: at least 8 characters, with an uppercase letter, a number and a special character.'
   if (e?.code === 'same_password' || /different from the old/i.test(m)) return 'Choose a password you haven’t used before.'
   if (e?.status === 429 || /rate limit|security purposes|too many/i.test(m)) return 'Too many emails were asked for. Wait a minute, then try again.'
   if (/provider is not enabled|unsupported provider/i.test(m)) return 'Google sign-in isn’t available right now. Use your email instead.'

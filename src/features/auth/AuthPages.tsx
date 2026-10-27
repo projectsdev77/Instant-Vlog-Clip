@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/Toast'
 import { supabase } from '@/lib/supabase'
 import { authEnabled, setNewPassword, useSession } from './auth'
 import { AUTH_TITLES, AuthForm, type AuthMode } from './AuthForm'
+import { PasswordRules, passwordOk } from './password'
 
 function AuthLayout({ title, children }: { title: string; children: ReactNode }) {
   useEffect(() => {
@@ -65,7 +66,7 @@ export function ResetPasswordPage() {
   }, [])
 
   const save = async () => {
-    if (password.length < 8) return setError('Use at least 8 characters for your password.')
+    if (!passwordOk(password)) return setError('Your password doesn’t meet all the requirements yet.')
     setBusy(true)
     setError('')
     try {
@@ -109,7 +110,7 @@ export function ResetPasswordPage() {
             autoFocus
             type={show ? 'text' : 'password'}
             autoComplete="new-password"
-            placeholder="New password (at least 8 characters)"
+            placeholder="New password"
             value={password}
             className="h-14 pr-14"
             onChange={(e) => {
@@ -122,6 +123,7 @@ export function ResetPasswordPage() {
             {show ? <EyeOff className="size-5" strokeWidth={2.2} /> : <Eye className="size-5" strokeWidth={2.2} />}
           </button>
         </div>
+        <PasswordRules password={password} />
         {error && (
           <p role="alert" className="text-[14px] font-medium text-danger">
             {error}

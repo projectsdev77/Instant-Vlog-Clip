@@ -4,12 +4,12 @@ import { Eye, EyeOff, MailCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
+import { PasswordRules, passwordOk } from './password'
 import { logIn, resendConfirmation, sendPasswordReset, signInWithGoogle, signUp } from './auth'
 
 // Google is on unless turned off for a build that has no Google sign-in set up.
 const googleEnabled = import.meta.env.VITE_AUTH_GOOGLE !== 'false'
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const MIN_PASSWORD = 8
 /** Seconds before an email can be sent again. */
 const RESEND_WAIT = 60
 
@@ -54,7 +54,7 @@ export function AuthForm({ mode, onMode, returnTo, onDone, onLeave }: Props) {
     const e = email.trim()
     if (!EMAIL.test(e)) return setError('Enter a valid email address.')
     if (mode !== 'forgot' && !password) return setError('Enter your password.')
-    if (mode === 'signup' && password.length < MIN_PASSWORD) return setError(`Use at least ${MIN_PASSWORD} characters for your password.`)
+    if (mode === 'signup' && !passwordOk(password)) return setError('Your password doesn’t meet all the requirements yet.')
     setBusy('submit')
     setError('')
     try {
@@ -166,7 +166,7 @@ export function AuthForm({ mode, onMode, returnTo, onDone, onLeave }: Props) {
             <TextInput
               type={show ? 'text' : 'password'}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              placeholder={mode === 'signup' ? `Password (at least ${MIN_PASSWORD} characters)` : 'Password'}
+              placeholder={mode === 'signup' ? 'Create a password' : 'Password'}
               value={password}
               className="h-14 pr-14"
               onChange={(e) => {
@@ -180,6 +180,7 @@ export function AuthForm({ mode, onMode, returnTo, onDone, onLeave }: Props) {
             </button>
           </div>
         )}
+        {mode === 'signup' && <PasswordRules password={password} />}
         {mode === 'login' && (
           <div className="flex justify-end">
             <button type="button" onClick={() => go('forgot')} className="text-[14px] font-semibold text-muted hover:text-fg">

@@ -179,7 +179,8 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 **Email and password sign-up.** In **Authentication → Sign In / Providers → Email**:
 - **Enable Email provider**: on.
 - **Confirm email**: on (new accounts get a confirmation link and can log in after clicking it).
-- **Minimum password length**: `8` (the app asks for at least 8 too).
+- **Minimum password length**: `8`.
+- **Password requirements**: **Lowercase, uppercase letters, digits and symbols** (the app asks for 8+ characters with an uppercase letter, a number and a special character; this makes the server check it too).
 - Save.
 
 The confirmation and "reset your password" emails use Supabase's standard templates (a link); they work without an email service. The reset link opens `/reset-password` on the site, which the Redirect URLs above already allow. Supabase's built-in sender only sends a few emails an hour, and only to members of your Supabase team, so space out tests or use Google.
