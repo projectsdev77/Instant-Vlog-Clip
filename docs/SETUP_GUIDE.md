@@ -227,7 +227,7 @@ Supabase's built-in sender only sends a few emails an hour and is meant for test
    - Copy the Client ID and secret.
 4. Supabase: **Authentication → Sign In / Providers → Google**. Turn it on and paste both.
 5. Vercel: set `VITE_AUTH_GOOGLE` to `true` (or delete the variable: Google is on unless it says `false`), then **Deployments → ⋯ → Redeploy**. Locally, the same in `.env.local`.
-6. To let everyone sign in (not just test users), click **Publish app** on the consent screen. Google may review it and asks for a domain you own (H).
+6. To let anyone sign in (not just test users): **Google Auth Platform → Audience → Publish app → Confirm**. No review is needed, because the app only asks for name, email and profile picture.
 
 ### J. Lock the server to your site
 
