@@ -40,6 +40,9 @@ type State = {
   replaceCurrentEdit: (plan: EditPlan) => Promise<void>
 }
 
+/** How many steps Undo can go back. */
+const MAX_UNDO = 50
+
 /** The project currently open in the editor. Every change is saved to IndexedDB. */
 export const useProject = create<State>((set, get) => ({
   project: null,
@@ -96,7 +99,7 @@ export const useProject = create<State>((set, get) => ({
     await get().updateProject((p) => {
       const kept = p.edits.slice(0, p.currentEdit + 1)
       const version = (kept[kept.length - 1]?.version ?? 0) + 1
-      const edits = [...kept, { ...plan, version, script: p.script }].slice(-20)
+      const edits = [...kept, { ...plan, version, script: p.script }].slice(-MAX_UNDO)
       return { edits, currentEdit: edits.length - 1 }
     })
   },
@@ -113,7 +116,7 @@ export const useProject = create<State>((set, get) => ({
 
 /** Every stored file a project still points at: line voices (now and in saved versions), recorded takes and the user's own song. */
 export function mediaInUse(p: Project): Set<string> {
-  const scripts = [p.script, ...p.edits.map((e) => e.script)]
+  const scripts = [p.script, ...p.edits.map((e) => e.script), ...(p.versions ?? []).map((v) => v.script)]
   return new Set([
     ...scripts.flatMap((s) => s?.lines.map((l) => l.audio?.mediaKey) ?? []).filter((k): k is string => !!k),
     ...(p.voiceTrack?.takes.map((t) => t.mediaKey) ?? []),

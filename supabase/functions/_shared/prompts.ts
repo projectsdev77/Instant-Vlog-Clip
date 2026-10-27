@@ -249,7 +249,7 @@ Finding what they mean:
 - Match words like "the coffee part" or "where we walk" to the scene whose line or footage (the catalog description of its clip) fits best.
 - "shot" is 1-based within the scene; 0 means every shot of the scene. Most scenes have one shot; use 0 unless they mean a specific shot.
 - For whole-vlog changes (music, look, captions, title, length, voice) leave scene "" and shot 0.
-- Scenes marked LOCKED were locked by the user: don't change them in any way. If the request is only about a locked scene, make no operations and say it's locked (they can unlock it in the Scene tab).
+- Scenes marked LOCKED were set by the user by hand. Leave them out of broad requests ("make it punchier", "calmer", "more cinematic"). If the user clearly means that scene ("the intro", "scene 2", "the coffee part"), change it as asked: they're asking for it.
 
 Operations (unused fields are "" or 0):
 - move-scene: scene, to = new 1-based position.

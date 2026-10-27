@@ -1,4 +1,4 @@
-import { ai } from '@/ai'
+import { ai, AiError } from '@/ai'
 import type { Clip } from '@/domain/types'
 import { getMedia } from '@/lib/mediaStore'
 import { decodeAudio, encodeWav } from '@/media/audio'
@@ -7,7 +7,12 @@ import { waitForImports } from '@/features/clips/importClips'
 
 const inFlight = new Map<string, Promise<void>>()
 
-/** Clips still to analyze; ones that failed are only retried when asked (Make, Write, Try again). */
+/** Waits before each automatic retry of a clip the AI couldn't look at. */
+const RETRY_DELAYS_MS = [3000, 10000]
+/** Errors that another try won't fix (out of free uses, signed out, a clip the AI won't take). */
+const FINAL = new Set<AiError['code']>(['quota', 'auth', 'bad_request', 'refusal'])
+
+/** Clips still to analyze. Each is tried up to three times on its own; after that, only when asked (Make, Write, Try again). */
 const needsAnalysis = (c: Clip, retryFailed: boolean) => c.status === 'ready' && !!c.contactSheet && !c.analysis && (retryFailed || !c.analysisFailed)
 
 /**
@@ -46,8 +51,8 @@ export function analyzeOne(clip: Clip): Promise<void> {
     await updateClip(clip.id, { status: 'analyzing', analysisFailed: false })
     try {
       let transcript = clip.transcript
-      if (!transcript && clip.hasAudio && (clip.signals?.speechRatio ?? 0) > 0.3) transcript = await transcribeClip(clip)
-      const analysis = await ai.analyzeClip({
+      if (!transcript && clip.hasAudio && (clip.signals?.speechRatio ?? 0) > 0.3) transcript = await transcribeClip(clip).catch(() => undefined)
+      const request = {
         clipId: clip.id,
         fileName: clip.fileName,
         durationSec: clip.durationSec,
@@ -55,7 +60,19 @@ export function analyzeOne(clip: Clip): Promise<void> {
         frameTimes: clip.contactSheet!.times,
         transcript: transcript?.text || undefined,
         speechRatio: clip.signals?.speechRatio ?? 0,
-      })
+      }
+      // A busy or unreachable AI often works a few seconds later, so try again on its own before giving up.
+      let analysis
+      for (let attempt = 0; ; attempt++) {
+        try {
+          analysis = await ai.analyzeClip(request)
+          break
+        } catch (e) {
+          const final = e instanceof AiError && FINAL.has(e.code)
+          if (final || attempt >= RETRY_DELAYS_MS.length) throw e
+          await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]))
+        }
+      }
       await updateClip(clip.id, { analysis, transcript, status: 'analyzed' })
     } catch (e) {
       console.warn('Clip analysis failed; using on-device signals', e)

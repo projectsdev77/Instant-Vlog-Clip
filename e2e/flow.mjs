@@ -4,6 +4,7 @@ import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { afterClipsContinue } from './clipsContinue.mjs'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 const OUT = process.env.OUT ?? 'test-results'
@@ -32,7 +33,7 @@ async function main() {
   step('clips imported')
   await page.getByRole('button', { name: 'Continue' }).click()
 
-  await page.waitForURL(/\/script$/)
+  await afterClipsContinue(page)
   await page.getByLabel('What’s it about?').fill('a sunny Saturday in the park')
   await page.getByRole('button', { name: 'Write it for me' }).click()
   await page.waitForFunction(() => document.querySelectorAll('ol textarea').length >= 3 && [...document.querySelectorAll('ol textarea')].every((t) => t.value), null, { timeout: 30000 })
@@ -78,18 +79,13 @@ async function main() {
   await page.locator('ol[aria-label=Scenes] li button').nth(1).click()
   await page.getByRole('heading', { name: /Scene 2/ }).waitFor()
   await shot('6-scene-editor')
-  const note = page.getByTestId('version-note').filter({ visible: true })
-  const v0 = desktop ? await note.innerText() : ''
   await page.locator('button[aria-label^="Use "]').first().click()
   await page.waitForTimeout(500)
   step('shot swapped')
-  const before = desktop ? await note.innerText() : ''
-  if (desktop && before === v0) throw new Error('swapping a shot should save a new version')
   if (!desktop) await page.getByRole('button', { name: 'Ask AI' }).click()
   await page.getByLabel('Tell the AI what to change').fill('open with the sunset')
   await page.getByRole('button', { name: 'Send' }).click()
   await page.waitForSelector('text=Moved that shot to the start.', { timeout: 30000 })
-  if (desktop) console.log('  note:', await note.innerText())
   step('tell the AI')
   await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
   step('undo')

@@ -68,13 +68,21 @@ describe('Ask AI', () => {
     expect(plan().look?.filter ?? 'none').toBe('none')
   })
 
-  it('leaves locked scenes alone and saves nothing when nothing changed', async () => {
+  it('changes a locked scene when the AI names it (the lock is shown to the AI, which leaves it out of broad requests)', async () => {
     await setUp(['b'])
     answer.next = { reply: 'Slowed it down.', ops: [op({ op: 'speed', scene: 's2', value: '0.5' })] }
     const r = await askAi('slow down scene 2')
-    expect(r.changed).toBe(false)
+    expect(r.changed).toBe(true)
+    expect(plan().scenes[1].shots[0].speed).toBe(0.5)
+    // the user's own lock stays
+    expect(plan().userScenes).toEqual(['b'])
+  })
+
+  it('saves nothing when the answer changes nothing', async () => {
+    await setUp()
+    answer.next = { reply: 'Done.', ops: [op({ op: 'music', value: 'lofi-walk' })] }
+    expect((await askAi('lo-fi music please')).changed).toBe(false)
     expect(project().edits).toHaveLength(1)
-    expect(plan().scenes[1].shots[0].speed).toBeUndefined()
   })
 
   it('shows the reply when the AI asks a question instead', async () => {

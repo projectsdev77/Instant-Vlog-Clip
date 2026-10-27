@@ -245,6 +245,23 @@ export type EditPlan = {
   globals?: EditGlobals
 }
 
+/** Why a version was saved. */
+export type VersionReason = 'start' | 'session' | 'ai' | 'export' | 'restore' | 'manual'
+
+/** A checkpoint in the Versions list: the whole vlog as it was (scenes, script and vlog-wide settings). */
+export type SavedVersion = {
+  id: string
+  createdAt: number
+  reason: VersionReason
+  /** the user's name for it, or what it was saved before (Ask AI request) */
+  name?: string
+  /** changes since the version before it */
+  changes: number
+  plan: EditPlan
+  script?: Script
+  globals: EditGlobals
+}
+
 /** Settings that live on the project, not the edit: title, music, captions, voice, length. */
 export type EditGlobals = { title: string; musicTrackId: string | null; musicGainDb: number; styleId: StyleId; voice: VoiceSettings; targetSec: TargetLength }
 
@@ -265,8 +282,10 @@ export type Project = {
   voice: VoiceSettings
   /** "Record my own" voiceover takes */
   voiceTrack?: VoiceTrack
-  /** undo history, newest last */
+  /** undo history (every change), newest last */
   edits: EditPlan[]
+  /** saved versions (checkpoints), newest last: made after an editing session, before Ask AI, on export, or by the user */
+  versions?: SavedVersion[]
   /** index into edits of the version being shown */
   currentEdit: number
   /** a built-in track id, OWN_MUSIC for the user's own song (ownMusic), or null for no music */

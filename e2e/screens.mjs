@@ -3,6 +3,7 @@ import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { afterClipsContinue } from './clipsContinue.mjs'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 const OUT = process.env.OUT ?? 'docs/screens'
@@ -37,7 +38,7 @@ async function run(device) {
   await wait(300)
   await snap('04-clips-ready')
   await click('Continue')
-  await page.waitForURL(/\/script$/)
+  await afterClipsContinue(page)
   await wait(400)
   await snap('05-script-empty')
   await page.getByLabel('What’s it about?').fill('a sunny Saturday in the park')

@@ -4,6 +4,7 @@ import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { afterClipsContinue } from './clipsContinue.mjs'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 const OUT = process.env.OUT ?? 'test-results'
@@ -27,7 +28,7 @@ async function newVlogWithClips(files) {
   await page.locator('input[type=file][multiple]').setInputFiles(files)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, files.length, { timeout: 60000 })
   await page.getByRole('button', { name: 'Continue' }).click()
-  await page.waitForURL(/\/script$/)
+  await afterClipsContinue(page)
 }
 
 try {

@@ -10,6 +10,7 @@ import { formatBytes, formatDuration } from '@/lib/format'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ExportCancelled, exportVideo, pickFormat, type ExportResult } from '@/render/export'
 import { outputSize } from '@/render/styles'
+import { saveVersion } from '@/features/edit/versions'
 
 type State = { kind: 'ready' } | { kind: 'rendering'; progress: number } | { kind: 'done'; result: ExportResult; url: string } | { kind: 'error'; message: string; at: number }
 
@@ -46,6 +47,7 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
     try {
       const result = await exportVideo(timeline, project, (progress) => setState({ kind: 'rendering', progress: (last = progress) }), abort.current.signal, { music: withMusic })
       setState({ kind: 'done', result, url: URL.createObjectURL(result.blob) })
+      void saveVersion('export')
     } catch (e) {
       if (e instanceof ExportCancelled) setState({ kind: 'ready' })
       else setState({ kind: 'error', at: last, message: (e as Error).message || 'Something went wrong while rendering.' })

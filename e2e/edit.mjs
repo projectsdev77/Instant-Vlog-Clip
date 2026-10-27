@@ -18,8 +18,11 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 const ok = (m) => console.log(`✓ ${m}`)
 const tiles = page.locator('ol[aria-label=Scenes] li button')
 const heading = () => page.getByRole('heading', { level: 2 }).first().innerText()
-const version = () => page.getByTestId('version-note').innerText()
-const versionNo = async () => Number((await version()).match(/Version (\d+)/)[1])
+// The undo step on screen (each change is one; the Versions menu only lists saved checkpoints)
+const versionNo = () => page.evaluate(async () => {
+  const { useProject, currentEdit } = await import('/src/store/projectStore.ts')
+  return currentEdit(useProject.getState().project).version
+})
 
 try {
   await page.goto(BASE)
@@ -27,8 +30,13 @@ try {
   await page.waitForURL(/\/clips/)
   await page.locator('input[type=file][multiple]').setInputFiles(fixtures)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
+  // The stand-in AI can't look at clips: Continue says so first, with Try again and Continue anyway
+  await page.waitForFunction(() => document.body.innerText.includes('AI missed it'), null, { timeout: 30000 })
   await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('dialog', { name: /The AI couldn’t look at \d+ clips?/ }).waitFor()
+  await page.getByRole('button', { name: 'Continue anyway' }).click()
   await page.waitForURL(/\/script$/)
+  ok('Continue warns about clips the AI couldn’t look at')
   await page.getByRole('button', { name: 'Write it for me' }).click()
   await page.waitForFunction(() => [...document.querySelectorAll('ol textarea')].length > 2 && [...document.querySelectorAll('ol textarea')].every((t) => t.value), null, { timeout: 30000 })
   await page.getByRole('button', { name: 'Continue' }).click()
@@ -113,13 +121,24 @@ try {
   await page.getByRole('button', { name: 'More camera options' }).filter({ hasText: 'Shake' }).waitFor()
   ok('effects under More (Montage, Shake) still work beside the main options')
 
-  // Version menu: open an older version
-  const vNow = await versionNo()
-  await page.getByTestId('version-note').click()
-  await page.getByRole('listbox', { name: 'Versions' }).getByRole('option', { name: /^Version 1/ }).click()
-  await page.waitForFunction(() => document.querySelector('[data-testid=version-note]')?.textContent?.startsWith('Version 1'))
-  await page.getByRole('button', { name: 'Redo' }).waitFor()
-  ok(`version menu opens version 1 (was ${vNow})`)
+  // Versions: the first edit is saved on its own; save one by name, change something, bring it back
+  const versions = page.getByRole('dialog', { name: 'Versions' })
+  await page.getByTestId('versions').click()
+  await versions.getByText('First edit').waitFor()
+  await versions.getByRole('button', { name: 'Save version' }).click()
+  await versions.getByLabel('Version name').fill('Two times')
+  await versions.getByLabel('Version name').press('Enter')
+  await page.waitForSelector('text=Saved “Two times”')
+  await page.getByRole('radiogroup', { name: 'Speed' }).getByRole('radio', { name: '1×' }).click()
+  await page.getByRole('radiogroup', { name: 'Speed' }).getByRole('radio', { name: '1×', checked: true }).waitFor()
+  if (!(await versions.isVisible())) await page.getByTestId('versions').click()
+  await versions.getByText('Changes since the last version').waitFor()
+  await versions.getByRole('button', { name: /^Two times/ }).click()
+  await page.getByRole('radiogroup', { name: 'Speed' }).getByRole('radio', { name: '2×', checked: true }).waitFor()
+  await page.getByTestId('versions').click()
+  await versions.getByText('Before restoring a version').waitFor()
+  await page.keyboard.press('Escape')
+  ok('Versions: first edit saved automatically; a named version comes back, and what was there is saved first')
 
   // Look: dragging a slider makes one version, not one per step
   await page.getByRole('tab', { name: 'Look' }).click()
@@ -151,7 +170,7 @@ try {
   if ((await versionNo()) !== a0 + 1) throw new Error(`three changes should save one version (${a0} → ${await versionNo()})`)
   if ((await music()) !== 'city-pop') throw new Error('the AI should have switched the music')
   await page.getByTestId('ai-reply').getByRole('button', { name: 'Undo' }).click()
-  await page.waitForFunction((v) => document.querySelector('[data-testid=version-note]')?.textContent?.startsWith(`Version ${v}`), a0)
+  await page.waitForFunction(async (v) => (await import('/src/store/projectStore.ts')).currentEdit((await import('/src/store/projectStore.ts')).useProject.getState().project).version === v, a0)
   if ((await music()) !== m0) throw new Error(`Undo should bring the music back (${m0} → ${await music()})`)
   ok(`Ask AI: speed, transition and music in one version, chips ${JSON.stringify(chips)}; Undo restores the music`)
   await page.getByLabel('Tell the AI what to change').fill('add a sticker')
@@ -179,6 +198,7 @@ try {
   ok('music and voice previews play and stop')
 } catch (e) {
   console.log('✗', e.message)
+  console.log('  on screen:', JSON.stringify(await page.locator('[role=alert], [role=status]').allInnerTexts().catch(() => [])))
   await page.screenshot({ path: 'test-results/edit-fail.png' })
   process.exitCode = 1
 }

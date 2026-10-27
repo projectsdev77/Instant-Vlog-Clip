@@ -8,7 +8,7 @@ import { buildCatalog } from '@/ai/catalog'
 import { useVoices } from '@/ai/voices'
 import { shotLength, speedOf, sumShots } from '@/domain/shots'
 import { TEMPLATES } from '@/domain/templates'
-import { DEFAULT_LOOK, FILTERS, OWN_MUSIC, type Delivery, type EditGlobals, type EditPlan, type Clip, type Look, type Moment, type Motion, type Project, type Shot, type TemplateId, type Transition, TRANSITIONS } from '@/domain/types'
+import { DEFAULT_LOOK, FILTERS, OWN_MUSIC, type Delivery, type EditPlan, type Clip, type Look, type Moment, type Motion, type Project, type Shot, type TemplateId, type Transition, TRANSITIONS } from '@/domain/types'
 import { TRACKS } from '@/render/musicTracks'
 import { STYLES } from '@/render/styles'
 import { currentEdit, useProject } from '@/store/projectStore'
@@ -35,6 +35,7 @@ import {
   swapShot,
   updateShot,
 } from './editActions'
+import { globalsOf, saveVersion } from './versions'
 
 const state = () => useProject.getState()
 
@@ -120,8 +121,6 @@ export function editRequest(project: Project, plan: EditPlan, request: string, h
   }
 }
 
-const globalsOf = (p: Project): EditGlobals => ({ title: p.title, musicTrackId: p.musicTrackId, musicGainDb: p.musicGainDb, styleId: p.styleId, voice: p.voice, targetSec: p.settings.targetSec })
-
 /** Everything Ask AI can change, to tell whether an answer changed anything. */
 const fingerprint = (p: Project, e: EditPlan) => JSON.stringify([e.scenes, e.look, e.fades, e.title, e.templateId, p.script?.lines.map((l) => [l.text, l.muted, l.delivery, l.seed]), globalsOf(p)])
 
@@ -132,14 +131,13 @@ class Skip extends Error {}
  * Applies one change. Scenes are found by the id they had when the request
  * was sent, so earlier changes (a move, a delete) don't shift later ones.
  */
-async function applyOp(op: EditOpWire, refs: Map<string, string>, locked: Set<string>) {
+async function applyOp(op: EditOpWire, refs: Map<string, string>) {
   const project = state().project!
   const plan = currentEdit(project)!
   const sceneId = refs.get(op.scene.trim())
   const sceneIndex = () => {
     const i = currentEdit(state().project)!.scenes.findIndex((s) => s.id === sceneId)
     if (i < 0) throw new Skip(`no scene ${op.scene}`)
-    if (locked.has(sceneId!)) throw new Skip(`scene ${op.scene} is locked`)
     return i
   }
   // Shot ops: one shot (1-based) or, with 0, every shot of the scene. Shots are found by id as they may split.
@@ -291,9 +289,10 @@ export async function askAi(request: string, history: EditRequest['history'] = [
   const reply = typeof answer.reply === 'string' && answer.reply.trim() ? answer.reply.trim() : ''
   if (!ops.length) return { reply: reply || 'I couldn’t tell what to change. Try saying which scene, or what should look or sound different.', changed: false }
 
+  // A version to come back to, named after the request.
+  await saveVersion('ai', request)
   const before = { script: project.script, globals: globalsOf(project), userScenes: plan.userScenes }
   const refs = new Map(plan.scenes.map((s, i) => [`s${i + 1}`, s.id]))
-  const locked = new Set(plan.userScenes)
   const startVersion = plan.version
   // A working copy, so tools that change the current version in place never touch the one before.
   await state().pushEdit({ ...plan, createdBy: 'ai', createdAt: Date.now() })
@@ -302,7 +301,7 @@ export async function askAi(request: string, history: EditRequest['history'] = [
   let failure: string | undefined
   for (const op of ops) {
     try {
-      await applyOp(op, refs, locked)
+      await applyOp(op, refs)
       applied++
     } catch (e) {
       if (e instanceof Skip) console.warn('Ask AI skipped a change:', e.message, op)

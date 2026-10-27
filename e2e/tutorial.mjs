@@ -1,6 +1,7 @@
 // First-visit tutorial: intro slides → "Try it with sample clips" → a tip on each step → finished vlog.
 import { unexpected } from './expected.mjs'
 import { chromium } from 'playwright'
+import { afterClipsContinue } from './clipsContinue.mjs'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 const OUT = process.env.OUT ?? 'test-results'
@@ -46,7 +47,7 @@ try {
   await next()
   await page.getByRole('button', { name: 'Continue' }).click()
 
-  await page.waitForURL(/\/script$/)
+  await afterClipsContinue(page)
   await tip.waitFor()
   await page.waitForTimeout(500)
   ok(`script tip: ${await tipTitle()}`)

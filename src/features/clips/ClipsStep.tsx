@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { Camera, Plus, RotateCcw, Star, X } from 'lucide-react'
 import { PrivacyLine } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
+import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
@@ -24,6 +25,7 @@ export function ClipsStep() {
   const { project, clips, updateClip, removeClip, updateProject } = useProject()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  const [missedPrompt, setMissedPrompt] = useState(false)
   const navigate = useNavigate()
   // The AI starts looking at clips as soon as they're read, while the user carries on.
   const waiting = clips.filter((c) => c.status === 'ready' && !c.analysis && !c.analysisFailed).length
@@ -49,7 +51,10 @@ export function ClipsStep() {
   const ready = clips.filter((c) => c.status !== 'error' && c.status !== 'importing')
   const starred = clips.filter((c) => c.mustInclude).length
 
+  // Clips the AI couldn't look at (after its own retries) get a heads-up before moving on.
+  const tryNext = () => (missed ? setMissedPrompt(true) : void next())
   const next = async () => {
+    setMissedPrompt(false)
     if (stepIndex(project.step) < stepIndex('script')) await updateProject({ step: 'script' })
     navigate(stepPath(project.id, 'script'))
   }
@@ -137,10 +142,29 @@ export function ClipsStep() {
         </div>
       </StepPage>
       <StepFooter summary={clips.length ? <span className="tabular">{`${clips.length} clips · ${formatDuration(totalSec)} of ${formatDuration(LIMITS.maxTotalSec)} max`}</span> : undefined}>
-        <Button size="md" disabled={!ready.length} onClick={next}>
+        <Button size="md" disabled={!ready.length} onClick={tryNext}>
           Continue
         </Button>
       </StepFooter>
+      <Sheet open={missedPrompt} title={missed === 1 ? 'The AI couldn’t look at 1 clip' : `The AI couldn’t look at ${missed} clips`} onClose={() => setMissedPrompt(false)}>
+        <p className="text-muted">
+          {missed === 1 ? 'It’s still used in your vlog' : 'They’re still used in your vlog'}, picked by sharpness and light, but the AI won’t know what’s in {missed === 1 ? 'it' : 'them'}, so {missed === 1 ? 'it' : 'they'} may not match your lines as well. It already tried a few times; trying again in a moment often works.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Button
+            block
+            onClick={() => {
+              setMissedPrompt(false)
+              void analyzeClipsInBackground({ retryFailed: true })
+            }}
+          >
+            <RotateCcw className="size-4" strokeWidth={2.4} /> Try again
+          </Button>
+          <Button variant="outline" block onClick={() => void next()}>
+            Continue anyway
+          </Button>
+        </div>
+      </Sheet>
       <SampleLoader />
       <Tour page="clips" />
     </>

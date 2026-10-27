@@ -5,6 +5,7 @@ import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { afterClipsContinue } from './clipsContinue.mjs'
 const dir = process.env.FIX ?? 'e2e/fixtures'; const fixtures = readdirSync(dir).filter((f) => f.endsWith('.webm')).map((f) => join(dir, f))
 const SP = process.env.OUT ?? 'test-results'
 const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] })
@@ -20,7 +21,7 @@ await page.locator('input[type=file][multiple]').setInputFiles(fixtures)
 await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
 await page.getByRole('button', { name: '15s', exact: true }).click()
 await page.getByRole('button', { name: 'Continue' }).click()
-await page.waitForURL(/\/script$/)
+await afterClipsContinue(page)
 await page.getByLabel('What’s it about?').fill('a sunny Saturday in the park')
 await page.getByRole('button', { name: 'TikTok fast cuts' }).click()
 await page.screenshot({ path: `${SP}/fx-script.png` })

@@ -20,6 +20,7 @@ import { SceneStrip } from './SceneStrip'
 import { LookPanel } from './LookPanel'
 import { AiCard, TellAiSheet, type AiReply } from './TellAi'
 import { VersionMenu } from './VersionMenu'
+import { useAutoVersions } from './versions'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import '@/features/voice/followVoice' // own voice: script and footage follow what was said
@@ -57,6 +58,7 @@ export function EditStep() {
   const [exporting, setExporting] = useState(false)
   const onTime = useCallback((t: number) => setNow(t), [])
   const desktop = useMediaQuery('(min-width: 1024px)')
+  useAutoVersions(project)
 
   // The header is the same as on every step; Edit only adds Export on the right (desktop).
   const canUndo = !!project && project.currentEdit > 0

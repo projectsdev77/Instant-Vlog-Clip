@@ -5,6 +5,8 @@ import type { Clip, ClipAudioMode, Moment, Shot, Transition } from './types'
 export const MIN_SPEED = 0.25
 export const MAX_SPEED = 4
 export const MAX_HOLD = 5
+/** Shortest a freeze can be trimmed to when a scene has to get shorter. */
+export const MIN_HOLD = 0.2
 
 export const speedOf = (s: Shot) => (s.hold ? 1 : Math.max(MIN_SPEED, Math.min(MAX_SPEED, s.speed ?? 1)))
 /** Seconds of the source clip the shot uses. */
@@ -111,7 +113,8 @@ export function fitShots(shots: Shot[], target: number, clips: Map<string, Clip>
   let excess = sumShots(out) - target
   while (excess > 1e-3 && out.length) {
     const last = out[out.length - 1]
-    const room = shotLength(last) - MIN_SHOT
+    // A freeze may be shorter than a moving shot; trim it rather than drop it over a rounding difference.
+    const room = last.hold ? last.hold - MIN_HOLD : shotLength(last) - MIN_SHOT
     if (room >= excess) {
       resize(last, -excess)
       excess = 0

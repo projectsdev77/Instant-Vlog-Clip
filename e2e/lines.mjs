@@ -4,6 +4,7 @@ import { chromium } from 'playwright'
 import { skipTutorial } from './skipTutorial.mjs'
 import { readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { afterClipsContinue } from './clipsContinue.mjs'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 const fixtures = readdirSync('e2e/fixtures').map((f) => join('e2e/fixtures', f))
@@ -28,7 +29,7 @@ try {
   await page.locator('input[type=file][multiple]').setInputFiles(fixtures)
   await page.waitForFunction((n) => document.querySelectorAll('ul li img').length >= n, fixtures.length - 1, { timeout: 60000 })
   await page.getByRole('button', { name: 'Continue' }).click()
-  await page.waitForURL(/\/script$/)
+  await afterClipsContinue(page)
   const box = page.locator('ol textarea').first()
   await box.fill('Morning coffee by the window.')
   await box.press('Enter')
