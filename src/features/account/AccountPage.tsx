@@ -119,7 +119,7 @@ export function AccountPage() {
             </h2>
             <div className="space-y-1.5">
               <div className="flex justify-between text-[14px]">
-                <span>Drafts and finished videos</span>
+                <span>Your vlogs</span>
                 <span className="tabular text-muted">
                   {formatBytes(space.used)} of {formatBytes(space.limit)}
                 </span>
@@ -129,7 +129,7 @@ export function AccountPage() {
             <p className="text-[13px] text-faint">
               {space.used >= space.limit
                 ? 'Your space is full. New finished videos stay on this device until you delete old vlogs on Home' + (pro ? '.' : ' or go Pro for more space.')
-                : 'Your original clips stay on your device and don’t count. Deleting a vlog on Home frees its space.'}
+                : 'Deleting a vlog frees its space.'}
             </p>
           </section>
         )}

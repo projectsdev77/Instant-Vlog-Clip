@@ -166,7 +166,7 @@ export function AuthSheet() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-[16px] text-muted">{reason ?? 'Guests get one free vlog. Sign in to keep making them.'} Your drafts and finished vlogs are saved to your account, so you can open them on any device.</p>
+          <p className="text-[16px] text-muted">{reason ?? 'Guests get one free vlog. Sign in to keep making them.'} Your vlogs are saved to your account, so you can open them anywhere.</p>
           {googleEnabled && (
             <>
               <Button block variant="outline" className="h-14" disabled={!!busy} onClick={() => void google()}>

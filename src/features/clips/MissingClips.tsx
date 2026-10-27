@@ -35,7 +35,7 @@ export function MissingClipsBanner({ className }: { className?: string }) {
         <p className="font-semibold">
           {missing.length === 1 ? '1 clip isn’t on this device' : `${missing.length} clips aren’t on this device`}
         </p>
-        <p className="text-muted">Your original clips stay on the device you added them on. Add {missing.length === 1 ? 'it' : 'them'} again to keep editing here: {missing.slice(0, 3).map((c) => c.fileName).join(', ')}{missing.length > 3 ? '…' : ''}</p>
+        <p className="text-muted">Add {missing.length === 1 ? 'it' : 'them'} again to keep editing: {missing.slice(0, 3).map((c) => c.fileName).join(', ')}{missing.length > 3 ? '…' : ''}</p>
       </div>
       <input ref={input} type="file" accept={ACCEPT_ATTR} multiple hidden onChange={(e) => void add(e.target.files).then(() => (e.target.value = ''))} />
       <Button size="sm" disabled={busy} onClick={() => input.current?.click()}>

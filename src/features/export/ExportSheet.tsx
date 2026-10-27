@@ -123,7 +123,7 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
               </span>
             </label>
           )}
-          <PrivacyLine>{signedIn ? 'Made on this device, then saved to your account.' : 'Made on this device. Nothing is uploaded.'}</PrivacyLine>
+          <PrivacyLine>{signedIn ? 'Saved to your account when it’s ready.' : 'Made on this device. Nothing is uploaded.'}</PrivacyLine>
           <Button variant="ember" block className="h-14" onClick={start}>
             Export video
           </Button>
@@ -158,7 +158,7 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
               ) : upload.kind === 'failed' ? (
                 upload.message
               ) : (
-                'Saved to your account. Find it on Home on any device.'
+                'Saved to your account.'
               )}
             </p>
           )}

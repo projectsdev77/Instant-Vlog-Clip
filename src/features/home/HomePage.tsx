@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router'
-import { Cloud, Download, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
+import { Cloud, Smartphone, Download, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { LogoTile, PrivacyLine, Wordmark } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -235,11 +235,7 @@ export function HomePage() {
               {cards.length} made · {openBackupButton}
             </span>
           </div>
-          <p className="-mt-3 mb-5 text-[13px] text-faint">
-            {userId
-              ? 'Saved to your account: sign in on any device to see them. Your original clips stay on the device you added them on; to keep editing somewhere else, you add them again.'
-              : 'Saved in this browser only. Sign in to save them to your account and open them on any device.'}
-          </p>
+          {!userId && <p className="-mt-3 mb-5 text-[13px] text-faint">Sign in to keep your vlogs on any device.</p>}
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-[18px]">
             {cards.map((c, i) => (
               <li key={c.id} className="min-w-0">
@@ -251,6 +247,11 @@ export function HomePage() {
                     {!c.project && (
                       <span className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[12px] font-semibold backdrop-blur" title="In your account, not on this device yet. Opening it brings it here.">
                         <Cloud className="size-3.5" strokeWidth={2.4} /> In your account
+                      </span>
+                    )}
+                    {c.project && !c.row && (
+                      <span className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[12px] font-semibold backdrop-blur" title={userId ? 'Not saved to your account yet' : 'Sign in to save it to your account'}>
+                        <Smartphone className="size-3.5" strokeWidth={2.4} /> This device only
                       </span>
                     )}
                     {c.row?.video_bytes && (
