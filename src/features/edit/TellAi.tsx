@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Send, Sparkles, Undo2 } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
+import type { HandEdit } from '@/domain/types'
+import type { Clash } from './askAi'
 
 /** The AI's last answer: what it changed, or why it changed nothing (or a question back). */
 export type AiReply = { text: string; changed: boolean }
@@ -14,9 +17,12 @@ type Props = {
   reply?: AiReply
   /** shown while the AI's change is the version on screen */
   onUndo?: () => void
+  /** the remembered answer about the user's own edits, with a way to be asked again */
+  remembered?: 'keep' | 'change'
+  onForget?: () => void
 }
 
-function AiInput({ thinking, onAsk, suggestions, reply, onUndo, autoFocus }: Props & { autoFocus?: boolean }) {
+function AiInput({ thinking, onAsk, suggestions, reply, onUndo, autoFocus }: Omit<Props, 'remembered' | 'onForget'> & { autoFocus?: boolean }) {
   const [text, setText] = useState('')
   const send = async (t: string) => {
     if (!t.trim() || thinking) return
@@ -75,12 +81,29 @@ function AiInput({ thinking, onAsk, suggestions, reply, onUndo, autoFocus }: Pro
 
 const HINT = 'Only what you ask for changes, and Undo takes it back.'
 
+function Hint({ remembered, onForget, className }: Pick<Props, 'remembered' | 'onForget'> & { className: string }) {
+  return (
+    <p className={className}>
+      {HINT}
+      {remembered && onForget && (
+        <>
+          {' '}
+          {remembered === 'keep' ? 'Your own edits are kept.' : 'The AI may change your own edits.'}{' '}
+          <button type="button" onClick={onForget} className="font-semibold text-ember-300 underline-offset-2 hover:underline">
+            Ask me each time
+          </button>
+        </>
+      )}
+    </p>
+  )
+}
+
 /** Desktop: a card under the preview. It sits in the page flow and never covers anything. */
 export function AiCard(props: Props) {
   return (
     <div data-tour="tell-ai" className="rounded-[22px] bg-surface p-3.5">
       <AiInput {...props} />
-      <p className="mt-3 text-[12px] text-white/45">{HINT}</p>
+      <Hint remembered={props.remembered} onForget={props.onForget} className="mt-3 text-[12px] text-white/45" />
     </div>
   )
 }
@@ -90,7 +113,47 @@ export function TellAiSheet({ open, onClose, ...props }: Props & { open: boolean
   return (
     <Sheet open={open} title="Ask AI" onClose={onClose}>
       <AiInput {...props} autoFocus />
-      <p className="mt-4 text-[13px] font-medium text-faint">{HINT}</p>
+      <Hint remembered={props.remembered} onForget={props.onForget} className="mt-4 text-[13px] font-medium text-faint" />
+    </Sheet>
+  )
+}
+
+const KIND_WORD: Record<HandEdit, string> = { footage: 'footage', effects: 'effects', sound: 'sound', words: 'words' }
+const and = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+
+/** "the footage in scene 2 and the words and effects in scene 4" */
+export function describeClashes(clashes: Clash[]): string {
+  return and(clashes.map((c) => `the ${and(c.kinds.map((k) => KIND_WORD[k]))} in scene ${c.scene}`))
+}
+
+/** Asked when Ask AI would change something the user changed by hand. */
+export function KeepChangesSheet({ clashes, onAnswer }: { clashes: Clash[] | null; onAnswer: (a: { choice: 'keep' | 'change'; remember: boolean } | null) => void }) {
+  const [remember, setRemember] = useState(false)
+  const answer = (choice: 'keep' | 'change') => {
+    onAnswer({ choice, remember })
+    setRemember(false)
+  }
+  return (
+    <Sheet open={!!clashes} title="Keep your changes?" onClose={() => onAnswer(null)}>
+      {clashes && (
+        <>
+          <p className="text-muted">
+            You changed {describeClashes(clashes)} yourself. This request would change {clashes.length === 1 && clashes[0].kinds.length === 1 ? 'it' : 'them'} too. Everything else you asked for happens either way.
+          </p>
+          <label className="mt-5 flex cursor-pointer items-center gap-3 text-[15px]">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="size-5 accent-[#ff5a1f]" />
+            Don’t ask again for this vlog
+          </label>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button block onClick={() => answer('keep')}>
+              Keep my changes
+            </Button>
+            <Button variant="outline" block onClick={() => answer('change')}>
+              Let AI change them
+            </Button>
+          </div>
+        </>
+      )}
     </Sheet>
   )
 }

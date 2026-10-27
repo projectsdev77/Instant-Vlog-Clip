@@ -173,8 +173,8 @@ export type EditStateWire = {
   lengthSec: number
   targetSec: number | 'auto'
   look: { filter: string; brightness: number; contrast: number; saturation: number; warmth: number; vignette: number; grain: number; letterbox: boolean; fades: 'none' | 'in' | 'out' | 'both' }
-  /** locked: the user locked the scene from AI changes */
-  scenes: { ref: string; seconds: number; line: string; lineMuted: boolean; delivery: string; locked: boolean; shots: EditShotWire[] }[]
+  /** handEdited: what the user changed in the scene by hand (footage, effects, sound, words) */
+  scenes: { ref: string; seconds: number; line: string; lineMuted: boolean; delivery: string; handEdited: string[]; shots: EditShotWire[] }[]
 }
 
 export const EDIT_OPS = [
@@ -240,7 +240,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-27.12'
+export const AI_FUNCTION_VERSION = '2026-10-27.13'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }

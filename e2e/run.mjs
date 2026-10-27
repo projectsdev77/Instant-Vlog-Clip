@@ -15,7 +15,7 @@ const SUITE_TIMEOUT_MS = 15 * 60_000
 const SUITES = [
   { name: 'flow', file: 'e2e/flow.mjs', what: 'Core journey: clips, script, AI voice, Make, Edit, Ask AI, undo, export' },
   { name: 'variants', file: 'e2e/variants.mjs', what: 'Own voice, Record page, say my own thing, montage, cancel Make, reload, backup and restore' },
-  { name: 'lines', file: 'e2e/lines.mjs', what: 'Line tools, scene lock, title off, own music, export without music' },
+  { name: 'lines', file: 'e2e/lines.mjs', what: 'Line tools, keep-your-changes question, title off, own music, export without music' },
   { name: 'tutorial', file: 'e2e/tutorial.mjs', what: 'First-visit tutorial on a phone' },
   { name: 'tutorial-desktop', file: 'e2e/tutorial.mjs', env: { DESKTOP: '1' }, what: 'First-visit tutorial on a computer' },
   { name: 'edit', file: 'e2e/edit.mjs', what: 'Edit page: strip, scene tools, More options, versions, length, sliders, captions, previews' },

@@ -15,7 +15,7 @@ vi.mock('@/ai', async (original) => {
 const op = (o: Partial<EditOpWire> & Pick<EditOpWire, 'op'>): EditOpWire => ({ scene: '', shot: 0, to: 0, value: '', amount: 0, ...o })
 const shot = (id: string, clipId: string, inPoint: number, out: number) => ({ id, clipId, in: inPoint, out, crop: { focusX: 0.5, focusY: 0.5, zoom: 1 }, clipAudio: 'mute' as const, transitionIn: 'cut' as const })
 
-async function setUp(userScenes: string[] = []) {
+async function setUp(handEdits?: EditPlan['handEdits']) {
   const p = await createProject()
   useProject.setState({ project: null, clips: [] })
   await useProject.getState().load(p.id)
@@ -37,7 +37,7 @@ async function setUp(userScenes: string[] = []) {
       { id: 'b', lineId: 'l1', shots: [shot('x2', 'c2', 0, 2)] },
       { id: 'c', lineId: 'l2', shots: [shot('x3', 'c2', 3, 5)] },
     ],
-    userScenes,
+    handEdits,
   }
   await useProject.getState().pushEdit(plan)
 }
@@ -60,22 +60,49 @@ describe('Ask AI', () => {
     expect(plan().look?.filter).toBe('mono')
     expect(plan().scenes[1].shots[0].speed).toBe(0.5)
     expect(project().musicTrackId).toBe('city-pop')
-    // the scene the AI changed doesn't become locked
-    expect(plan().userScenes ?? []).toEqual([])
+    // what the AI changed doesn't count as the user's own edit
+    expect(plan().handEdits).toBeUndefined()
     await undo()
     expect(project().currentEdit).toBe(0)
     expect(project().musicTrackId).toBe('lofi-walk')
     expect(plan().look?.filter ?? 'none').toBe('none')
   })
 
-  it('changes a locked scene when the AI names it (the lock is shown to the AI, which leaves it out of broad requests)', async () => {
-    await setUp(['b'])
-    answer.next = { reply: 'Slowed it down.', ops: [op({ op: 'speed', scene: 's2', value: '0.5' })] }
-    const r = await askAi('slow down scene 2')
-    expect(r.changed).toBe(true)
+  it('asks before changing the user’s own edits; "keep" applies the rest, "change" overwrites them', async () => {
+    await setUp({ b: ['effects'], c: ['words'] })
+    const ops = [op({ op: 'speed', scene: 's2', value: '0.5' }), op({ op: 'rewrite-line', scene: 's3', value: 'See you soon' }), op({ op: 'camera', scene: 's1', value: 'punch' }), op({ op: 'clip-sound', scene: 's2', value: 'full' })]
+    answer.next = { reply: 'Done.', ops }
+    const decide = vi.fn(async () => ({ choice: 'keep' as const, remember: false }))
+    const r = await askAi('punchier', [], decide)
+    // only the speed of scene 2 and the words of scene 3 clash; the camera and the sound don't
+    expect(decide).toHaveBeenCalledWith([
+      { scene: 2, kinds: ['effects'] },
+      { scene: 3, kinds: ['words'] },
+    ])
+    expect(r.reply).toContain('left your own changes in scene 2, 3')
+    expect(plan().scenes[1].shots[0].speed).toBeUndefined()
+    expect(plan().scenes[0].shots[0].motion).toBe('punch')
+    expect(plan().scenes[1].shots[0].clipAudio).toBe('full')
+    expect(plan().handEdits).toEqual({ b: ['effects'], c: ['words'] })
+
+    await undo()
+    await askAi('punchier', [], async () => ({ choice: 'change', remember: false }))
     expect(plan().scenes[1].shots[0].speed).toBe(0.5)
-    // the user's own lock stays
-    expect(plan().userScenes).toEqual(['b'])
+    // what the user let the AI change is no longer theirs
+    expect(plan().handEdits).toEqual(undefined)
+  })
+
+  it('remembers the answer for this vlog when asked to, and backing out changes nothing', async () => {
+    await setUp({ b: ['effects'] })
+    answer.next = { reply: 'Slowed it down.', ops: [op({ op: 'speed', scene: 's2', value: '0.5' })] }
+    expect(await askAi('slow down scene 2', [], async () => null)).toEqual({ reply: 'Okay, nothing changed.', changed: false })
+    expect(project().edits).toHaveLength(1)
+    await askAi('slow down scene 2', [], async () => ({ choice: 'keep', remember: true }))
+    expect(project().aiHandEdits).toBe('keep')
+    const decide = vi.fn()
+    const r = await askAi('slow down scene 2', [], decide)
+    expect(decide).not.toHaveBeenCalled()
+    expect(r).toEqual({ reply: 'Kept your own changes in scene 2, so there was nothing else to change.', changed: false })
   })
 
   it('saves nothing when the answer changes nothing', async () => {
@@ -100,13 +127,13 @@ describe('Ask AI', () => {
     expect(plan().scenes[0].shots[0].motion).toBe('punch')
   })
 
-  it('describes the vlog with scene refs and locks, and suggests changes from the footage', async () => {
-    await setUp(['b'])
+  it('describes the vlog with scene refs and hand edits, and suggests changes from the footage', async () => {
+    await setUp({ b: ['footage', 'words'] })
     const s = editState(project(), plan())
-    expect(s.scenes.map((x) => [x.ref, x.line, x.locked])).toEqual([
-      ['s1', 'Hello there', false],
-      ['s2', 'Coffee first', true],
-      ['s3', 'Bye now', false],
+    expect(s.scenes.map((x) => [x.ref, x.line, x.handEdited])).toEqual([
+      ['s1', 'Hello there', []],
+      ['s2', 'Coffee first', ['footage', 'words']],
+      ['s3', 'Bye now', []],
     ])
     expect(s.music).toBe('lofi-walk')
     expect(suggestionsFor(project(), plan(), useProject.getState().clips)).toEqual(['Make the intro funnier', 'Make it punchier', 'Black and white'])

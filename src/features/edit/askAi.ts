@@ -6,9 +6,10 @@ import type { EditOpWire, EditRequest, EditResponse, EditStateWire } from '@shar
 import { ai } from '@/ai'
 import { buildCatalog } from '@/ai/catalog'
 import { useVoices } from '@/ai/voices'
+import { handEditsIn } from '@/domain/handEdits'
 import { shotLength, speedOf, sumShots } from '@/domain/shots'
 import { TEMPLATES } from '@/domain/templates'
-import { DEFAULT_LOOK, FILTERS, OWN_MUSIC, type Delivery, type EditPlan, type Clip, type Look, type Moment, type Motion, type Project, type Shot, type TemplateId, type Transition, TRANSITIONS } from '@/domain/types'
+import { DEFAULT_LOOK, FILTERS, OWN_MUSIC, type Delivery, type EditPlan, type HandEdit, type Clip, type Look, type Moment, type Motion, type Project, type Shot, type TemplateId, type Transition, TRANSITIONS } from '@/domain/types'
 import { TRACKS } from '@/render/musicTracks'
 import { STYLES } from '@/render/styles'
 import { currentEdit, useProject } from '@/store/projectStore'
@@ -41,6 +42,35 @@ const state = () => useProject.getState()
 
 export type AskResult = { reply: string; changed: boolean }
 
+/** A scene where the AI's answer would change something the user changed by hand. */
+export type Clash = { scene: number; kinds: HandEdit[] }
+/** Asks the user what to do about clashes; null means they backed out. */
+export type Decide = (clashes: Clash[]) => Promise<{ choice: 'keep' | 'change'; remember: boolean } | null>
+
+/** Which hand edit each AI change would overwrite (delete-scene overwrites them all). */
+const OP_KIND: Partial<Record<EditOpWire['op'], HandEdit>> = {
+  'swap-footage': 'footage',
+  speed: 'effects',
+  camera: 'effects',
+  transition: 'effects',
+  frame: 'effects',
+  'freeze-end': 'effects',
+  'clip-sound': 'sound',
+  'clip-volume': 'sound',
+  'rewrite-line': 'words',
+  'remove-line': 'words',
+  'reread-line': 'words',
+  'mute-line': 'words',
+}
+
+/** The hand edits an AI change would overwrite. */
+function overwrites(op: EditOpWire, plan: EditPlan, refs: Map<string, string>): HandEdit[] {
+  const mine = plan.handEdits?.[refs.get(op.scene.trim()) ?? ''] ?? []
+  if (op.op === 'delete-scene') return mine
+  const kind = OP_KIND[op.op]
+  return kind && mine.includes(kind) ? [kind] : []
+}
+
 const MOTIONS: Motion[] = ['none', 'zoomIn', 'zoomOut', 'panLeft', 'panRight', 'punch', 'shake']
 const DELIVERIES: Delivery[] = ['natural', 'calm', 'energetic', 'slow']
 const ADJUST = { brightness: [-1, 1], contrast: [-1, 1], saturation: [-1, 1], warmth: [-1, 1], vignette: [0, 1], grain: [0, 1] } as const
@@ -52,7 +82,6 @@ export function editState(project: Project, plan: EditPlan): EditStateWire {
   const look = plan.look ?? DEFAULT_LOOK
   const fades = plan.fades ?? { in: false, out: false }
   const show = plan.title.showUntilSec
-  const locked = new Set(plan.userScenes)
   return {
     title: project.title,
     titleShow: show === 0 ? 'off' : show === 'always' ? 'always' : 'start',
@@ -82,7 +111,7 @@ export function editState(project: Project, plan: EditPlan): EditStateWire {
         line: line?.text ?? '',
         lineMuted: !!line?.muted,
         delivery: line?.delivery ?? 'natural',
-        locked: locked.has(s.id),
+        handEdited: plan.handEdits?.[s.id] ?? [],
         shots: s.shots.map((x) => ({
           clipId: x.clipId,
           in: x.in,
@@ -279,20 +308,46 @@ function collapse(startVersion: number) {
   })
 }
 
-/** Sends the request, applies the answer and returns the AI's reply. */
-export async function askAi(request: string, history: EditRequest['history'] = []): Promise<AskResult> {
+/**
+ * Sends the request, applies the answer and returns the AI's reply. When the
+ * answer would change something the user changed by hand, `decide` asks them
+ * first (unless they chose to remember an answer for this vlog).
+ */
+export async function askAi(request: string, history: EditRequest['history'] = [], decide?: Decide): Promise<AskResult> {
   const project = state().project
   const plan = currentEdit(project)
   if (!project || !plan) throw new Error('No edit to change')
   const answer: EditResponse = await ai.editRequest(editRequest(project, plan, request, history))
-  const ops = (Array.isArray(answer.ops) ? answer.ops : []).slice(0, 30)
-  const reply = typeof answer.reply === 'string' && answer.reply.trim() ? answer.reply.trim() : ''
+  let ops = (Array.isArray(answer.ops) ? answer.ops : []).slice(0, 30)
+  let reply = typeof answer.reply === 'string' && answer.reply.trim() ? answer.reply.trim() : ''
   if (!ops.length) return { reply: reply || 'I couldn’t tell what to change. Try saying which scene, or what should look or sound different.', changed: false }
+
+  // The user's own edits: ask before the AI changes them again.
+  const refs = new Map(plan.scenes.map((s, i) => [`s${i + 1}`, s.id]))
+  const clashing = ops.filter((op) => overwrites(op, plan, refs).length)
+  let overwritten: EditOpWire[] = []
+  if (clashing.length) {
+    const bySceneId = new Map<string, HandEdit[]>()
+    for (const op of clashing) {
+      const id = refs.get(op.scene.trim())!
+      bySceneId.set(id, [...new Set([...(bySceneId.get(id) ?? []), ...overwrites(op, plan, refs)])])
+    }
+    const clashes = [...bySceneId].map(([id, kinds]) => ({ scene: plan.scenes.findIndex((s) => s.id === id) + 1, kinds })).sort((a, b) => a.scene - b.scene)
+    const remembered = project.aiHandEdits && project.aiHandEdits !== 'ask' ? project.aiHandEdits : undefined
+    const answerOf = remembered ? { choice: remembered, remember: false } : decide ? await decide(clashes) : { choice: 'keep' as const, remember: false }
+    if (!answerOf) return { reply: 'Okay, nothing changed.', changed: false }
+    if (answerOf.remember) await state().updateProject({ aiHandEdits: answerOf.choice })
+    if (answerOf.choice === 'keep') {
+      ops = ops.filter((op) => !clashing.includes(op))
+      const where = clashes.map((c) => c.scene).join(', ')
+      if (!ops.length) return { reply: `Kept your own changes in scene ${where}, so there was nothing else to change.`, changed: false }
+      reply = `${reply} I left your own changes in scene ${where} as they were.`.trim()
+    } else overwritten = clashing
+  }
 
   // A version to come back to, named after the request.
   await saveVersion('ai', request)
-  const before = { script: project.script, globals: globalsOf(project), userScenes: plan.userScenes }
-  const refs = new Map(plan.scenes.map((s, i) => [`s${i + 1}`, s.id]))
+  const before = { script: project.script, globals: globalsOf(project), handEdits: plan.handEdits }
   const startVersion = plan.version
   // A working copy, so tools that change the current version in place never touch the one before.
   await state().pushEdit({ ...plan, createdBy: 'ai', createdAt: Date.now() })
@@ -321,14 +376,19 @@ export async function askAi(request: string, history: EditRequest['history'] = [
     return { reply: failure ? `That didn’t work: ${failure}` : 'Nothing needed to change for that. Try saying which scene, or what should look or sound different.', changed: false }
   }
 
-  // One version for the whole answer. Scenes the AI changed stay open to later AI changes (only the user's own locks count),
-  // and both versions keep the vlog-wide settings so Undo / Redo bring them back.
-  const kept = new Set(result.scenes.map((s) => s.id))
+  // One version for the whole answer, keeping the vlog-wide settings so Undo / Redo bring them back.
+  // The user's own edits stay marked, except the ones they let the AI change.
+  const handEdits: Record<string, HandEdit[]> = { ...before.handEdits }
+  for (const op of overwritten) {
+    const id = refs.get(op.scene.trim())!
+    const gone = overwrites(op, plan, refs)
+    handEdits[id] = (handEdits[id] ?? []).filter((k) => !gone.includes(k))
+  }
   await state().updateProject((p) => {
     const i = p.edits.findIndex((e) => e.version === startVersion)
     const edits = [...p.edits]
     edits[i] = { ...edits[i], globals: before.globals }
-    edits[p.currentEdit] = { ...edits[p.currentEdit], createdBy: 'ai', note: `“${request}”`, userScenes: before.userScenes?.filter((id) => kept.has(id)), globals: globalsOf(p), script: p.script }
+    edits[p.currentEdit] = { ...edits[p.currentEdit], createdBy: 'ai', note: `“${request}”`, handEdits: handEditsIn(result, handEdits), globals: globalsOf(p), script: p.script }
     return { edits }
   })
   return { reply: failure ? `${reply} (Part of it didn’t work: ${failure})` : reply || 'Done.', changed: true }

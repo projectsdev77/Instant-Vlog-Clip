@@ -88,32 +88,43 @@ try {
   ok('undo restores the old words of an edited line')
   await page.screenshot({ path: 'test-results/lines.png' })
 
-  // A shot changed by hand is locked from the AI and survives Tell the AI (checked below)
-  await page.locator('ol[aria-label=Scenes] li button').first().click()
-  await page.getByRole('radiogroup', { name: 'Clip sound' }).first().getByRole('radio', { name: 'Full' }).click()
-  const lock = page.getByRole('button', { name: /Lock(ed)? from AI/ })
-  await page.getByRole('button', { name: 'Locked from AI', pressed: true }).waitFor()
-  // The lock is a toggle: off, then on again
-  await lock.click()
-  await page.getByRole('button', { name: 'Lock from AI', pressed: false }).waitFor()
-  await lock.click()
-  await page.getByRole('button', { name: 'Locked from AI', pressed: true }).waitFor()
-  ok('a shot changed by hand locks its scene; the lock toggles off and on')
-
-  // Title: turn it off; it stays off after Tell the AI
+  // Title: turn it off; it stays off after Ask AI
   await page.getByRole('tab', { name: 'Text', exact: true }).click()
   await page.getByRole('radio', { name: 'Off' }).click()
   await page.getByRole('radio', { name: 'Off', checked: true }).waitFor()
   await page.getByPlaceholder(/Ask AI/).fill('make it punchier')
   await page.getByPlaceholder(/Ask AI/).press('Enter')
   await page.getByTestId('ai-reply').waitFor({ timeout: 60000 })
-  if ((await page.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) !== 'true') throw new Error('title came back after Tell the AI')
-  ok('title turned off, and stays off after Tell the AI')
+  if ((await page.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) !== 'true') throw new Error('title came back after Ask AI')
+  ok('title turned off, and stays off after Ask AI')
+
+  // The user's own edit: Ask AI asks before changing it, and can remember the answer
   await page.locator('ol[aria-label=Scenes] li button').first().click()
-  await page.getByRole('button', { name: 'Locked from AI', pressed: true }).waitFor({ timeout: 5000 }).catch(() => {
-    throw new Error('your scene was lost after Tell the AI')
-  })
-  ok('your scene is kept after Tell the AI')
+  const sound = page.getByRole('radiogroup', { name: 'Clip sound' }).first()
+  await sound.getByRole('radio', { name: 'Full' }).click()
+  await sound.getByRole('radio', { name: 'Full', checked: true }).waitFor()
+  const ask = async (text) => {
+    await page.getByPlaceholder(/Ask AI|Answer/).fill(text)
+    await page.getByPlaceholder(/Ask AI|Answer/).press('Enter')
+  }
+  const sheet = page.getByRole('dialog', { name: 'Keep your changes?' })
+  await ask('mute the first scene')
+  await sheet.getByText('You changed the sound in scene 1 yourself').waitFor({ timeout: 30000 })
+  await sheet.getByRole('button', { name: 'Keep my changes' }).click()
+  await page.getByTestId('ai-reply').filter({ hasText: 'Kept your own changes in scene 1' }).waitFor()
+  await sound.getByRole('radio', { name: 'Full', checked: true }).waitFor()
+  ok('Ask AI asks before changing your own edit, and "Keep my changes" keeps it')
+  await ask('mute the first scene')
+  await sheet.getByLabel('Don’t ask again for this vlog').check()
+  await sheet.getByRole('button', { name: 'Let AI change them' }).click()
+  await sound.getByRole('radio', { name: 'Off', checked: true }).waitFor({ timeout: 30000 })
+  await page.getByRole('button', { name: 'Ask me each time' }).waitFor()
+  await sound.getByRole('radio', { name: 'Full' }).click()
+  await ask('mute the first scene')
+  await sound.getByRole('radio', { name: 'Off', checked: true }).waitFor({ timeout: 30000 })
+  if (await sheet.isVisible()) throw new Error('the remembered answer should not ask again')
+  await page.getByRole('button', { name: 'Ask me each time' }).click()
+  ok('"Let AI change them" with Don’t ask again remembers; "Ask me each time" brings the question back')
 
   // Own music: confirm rights, upload a song, pick its start; export without music
   const rate = 22050, secs = 12, samples = rate * secs

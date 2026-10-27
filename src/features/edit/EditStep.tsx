@@ -13,12 +13,12 @@ import { ExportSheet } from '@/features/export/ExportSheet'
 import { AiError } from '@/ai'
 import { authEnabled, promptForAccess } from '@/features/auth/auth'
 import { addScene, moveScene, undo, redo } from './editActions'
-import { askAi, suggestionsFor } from './askAi'
+import { askAi, suggestionsFor, type Clash, type Decide } from './askAi'
 import { MusicPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
 import { SceneTab } from './SceneTab'
 import { SceneStrip } from './SceneStrip'
 import { LookPanel } from './LookPanel'
-import { AiCard, TellAiSheet, type AiReply } from './TellAi'
+import { AiCard, KeepChangesSheet, TellAiSheet, type AiReply } from './TellAi'
 import { VersionMenu } from './VersionMenu'
 import { useAutoVersions } from './versions'
 import { useEditorData } from './useEditorData'
@@ -55,6 +55,9 @@ export function EditStep() {
   // The AI's last reply (and the version its change made), plus the last few turns it gets as context.
   const [reply, setReply] = useState<AiReply & { version?: number }>()
   const [history, setHistory] = useState<EditRequest['history']>([])
+  // Ask AI would change the user's own edits: the question on screen, and how to answer it.
+  const [clashes, setClashes] = useState<{ list: Clash[]; answer: (a: Awaited<ReturnType<Decide>>) => void } | null>(null)
+  const decide: Decide = (list) => new Promise((answer) => setClashes({ list, answer }))
   const [exporting, setExporting] = useState(false)
   const onTime = useCallback((t: number) => setNow(t), [])
   const desktop = useMediaQuery('(min-width: 1024px)')
@@ -90,7 +93,7 @@ export function EditStep() {
     setThinking(true)
     setReply(undefined)
     try {
-      const r = await askAi(text, history)
+      const r = await askAi(text, history, decide)
       const version = r.changed ? currentEdit(useProject.getState().project)?.version : undefined
       setReply({ ...r, text: r.reply, version })
       setHistory((h) => [...h, { request: text, reply: r.reply }].slice(-3))
@@ -114,6 +117,8 @@ export function EditStep() {
     suggestions: suggestionsFor(project, plan, clips),
     reply,
     onUndo: reply?.changed && reply.version === plan.version ? () => void undo() : undefined,
+    remembered: project.aiHandEdits && project.aiHandEdits !== 'ask' ? project.aiHandEdits : undefined,
+    onForget: () => void useProject.getState().updateProject({ aiHandEdits: 'ask' }),
   }
 
   const strip = async (fn: () => Promise<void>) => {
@@ -245,7 +250,14 @@ export function EditStep() {
       )}
 
       {!exporting && !aiSheet && <Tour page="edit" />}
-      <TellAiSheet open={aiSheet} onClose={() => setAiSheet(false)} {...aiProps} />
+      <KeepChangesSheet
+        clashes={clashes?.list ?? null}
+        onAnswer={(a) => {
+          clashes?.answer(a)
+          setClashes(null)
+        }}
+      />
+      <TellAiSheet open={aiSheet && !clashes} onClose={() => setAiSheet(false)} {...aiProps} />
       {exporting && <ExportSheet project={project} timeline={timeline} clips={clips} onClose={() => setExporting(false)} />}
     </main>
   )

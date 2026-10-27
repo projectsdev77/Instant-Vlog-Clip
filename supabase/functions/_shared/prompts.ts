@@ -249,7 +249,7 @@ Finding what they mean:
 - Match words like "the coffee part" or "where we walk" to the scene whose line or footage (the catalog description of its clip) fits best.
 - "shot" is 1-based within the scene; 0 means every shot of the scene. Most scenes have one shot; use 0 unless they mean a specific shot.
 - For whole-vlog changes (music, look, captions, title, length, voice) leave scene "" and shot 0.
-- Scenes marked LOCKED were set by the user by hand. Leave them out of broad requests ("make it punchier", "calmer", "more cinematic"). If the user clearly means that scene ("the intro", "scene 2", "the coffee part"), change it as asked: they're asking for it.
+- Some scenes say what the user changed there by hand (footage, effects, sound or words). For broad requests ("make it punchier", "calmer", "more cinematic") prefer leaving those parts as they are. If the user clearly means that scene or that thing ("the intro", "scene 2", "the coffee part"), change it as asked; the editor checks with them before overwriting their own changes.
 
 Operations (unused fields are "" or 0):
 - move-scene: scene, to = new 1-based position.
@@ -312,7 +312,7 @@ export function editUserText(req: EditRequest): string {
             `    shot ${j + 1}: clipId=${x.clipId} [${x.in.toFixed(1)}-${x.out.toFixed(1)}s of the clip] ${x.seconds.toFixed(1)}s, speed ${x.ramp !== 'none' ? x.ramp : x.speed}, camera ${x.motion}, transition ${x.transitionIn}, clip sound ${x.clipAudio}${x.volume !== 1 ? ` at ${Math.round(x.volume * 100)}%` : ''}, frame ${x.fit}${x.frozen ? ', frozen still' : ''}`,
         )
         .join('\n')
-      return `${i + 1}. ref=${s.ref} ${s.seconds.toFixed(1)}s, ${line}${s.locked ? ' (LOCKED by the user)' : ''}\n${shots}`
+      return `${i + 1}. ref=${s.ref} ${s.seconds.toFixed(1)}s, ${line}${s.handEdited?.length ? ` (the user changed the ${s.handEdited.join(', ')} by hand)` : ''}\n${shots}`
     })
     .join('\n')
   const l = v.look

@@ -237,13 +237,16 @@ export type EditPlan = {
   /** fade from / to black at the start and end */
   fades?: { in: boolean; out: boolean }
   templateId?: TemplateId
-  /** scenes whose footage the user picked by hand: AI re-plans keep them */
-  userScenes?: string[]
+  /** what the user changed by hand in each scene (by scene id): Ask AI asks before changing it again */
+  handEdits?: Record<string, HandEdit[]>
   /** the script as it was when this version was saved, so undo / redo bring the words back too */
   script?: Script
   /** vlog-wide settings at this version (kept around Ask AI changes), so undo / redo bring them back too */
   globals?: EditGlobals
 }
+
+/** The kinds of hand edits Ask AI watches for. */
+export type HandEdit = 'footage' | 'effects' | 'sound' | 'words'
 
 /** Why a version was saved. */
 export type VersionReason = 'start' | 'session' | 'ai' | 'export' | 'restore' | 'manual'
@@ -284,6 +287,8 @@ export type Project = {
   voiceTrack?: VoiceTrack
   /** undo history (every change), newest last */
   edits: EditPlan[]
+  /** when Ask AI would change the user's own edits: ask each time (default), or the answer they chose to remember */
+  aiHandEdits?: 'ask' | 'keep' | 'change'
   /** saved versions (checkpoints), newest last: made after an editing session, before Ask AI, on export, or by the user */
   versions?: SavedVersion[]
   /** index into edits of the version being shown */

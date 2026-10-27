@@ -81,7 +81,7 @@ function editAnswer({ request, vlog }) {
   if (r.includes('shorter') || r.includes('20')) return { reply: 'Made it about 20 seconds.', ops: [op({ op: 'length', amount: 20 })] }
   if (r.includes('funnier') || r.includes('intro')) return { reply: 'Rewrote the intro to be funnier.', ops: [op({ op: 'rewrite-line', scene: 's1', value: 'Okay, this weekend got a little out of hand.' })] }
   if (r.startsWith('open with')) return { reply: 'Moved that shot to the start.', ops: [op({ op: 'move-scene', scene: last, to: 1 })] }
-  if (r.includes('locked')) return { reply: 'Changed the first scene.', ops: [op({ op: 'camera', scene: 's1', value: 'punch' })] }
+  if (r.includes('mute the first')) return { reply: 'Muted the first scene.', ops: [op({ op: 'clip-sound', scene: 's1', value: 'mute' })] }
   return { reply: 'Which scene do you mean?', ops: [] }
 }
 

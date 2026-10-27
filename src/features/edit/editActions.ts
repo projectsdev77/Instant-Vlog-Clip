@@ -3,12 +3,12 @@ import { refitPlan } from '@/domain/repair'
 import { MIN_SHOT } from '@/domain/timing'
 import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
 import { pickFootage } from '@/domain/pickFootage'
-import { withUserScene } from '@/domain/userScenes'
+import { withHandEdit } from '@/domain/handEdits'
 import { scriptFromSpeech } from '@/domain/voiceTrack'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
-import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type EditGlobals, type ScriptLine, type TargetLength } from '@/domain/types'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type EditGlobals, type HandEdit, type ScriptLine, type TargetLength } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
 import { planContext } from '@/pipeline/generate'
 import { linesNeedingVoice, voiceAllLines, voiceLine } from '@/pipeline/voice'
@@ -67,7 +67,7 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
   const fresh = shotFromMoment(clip, moment, shotLength(old) * speedOf(old), { clipAudio: old.clipAudio, transitionIn: old.transitionIn })
   const shot: Shot = { ...old, clipId: fresh.clipId, in: fresh.in, out: fresh.out, crop: fresh.crop, hold: undefined }
   await commit(
-    mapShot(plan, sceneIndex, shotIndex, () => shot),
+    mapShot(plan, sceneIndex, shotIndex, 'footage', () => shot),
     'Swapped a shot',
   )
 }
@@ -75,13 +75,13 @@ export async function swapShot(sceneIndex: number, shotIndex: number, clipId: st
 /** Trims edit the current version in place (no new version). */
 export async function trimShot(sceneIndex: number, shotIndex: number, inPoint: number, outPoint: number) {
   const { project, plan } = requireEdit()
-  const changed = mapShot(plan, sceneIndex, shotIndex, (x) => ({ ...x, in: inPoint, out: outPoint }))
+  const changed = mapShot(plan, sceneIndex, shotIndex, 'footage', (x) => ({ ...x, in: inPoint, out: outPoint }))
   await state().replaceCurrentEdit(refitPlan(changed, planContext(project)))
 }
 
 export async function setShotAudio(sceneIndex: number, shotIndex: number, clipAudio: 'mute' | 'duck' | 'full') {
   const { plan } = requireEdit()
-  await state().replaceCurrentEdit(mapShot(plan, sceneIndex, shotIndex, (x) => ({ ...x, clipAudio })))
+  await state().replaceCurrentEdit(mapShot(plan, sceneIndex, shotIndex, 'sound', (x) => ({ ...x, clipAudio })))
 }
 
 /** Changes a line's words; AI voice is regenerated for just that line. */
@@ -93,7 +93,7 @@ export async function editLine(lineId: string, text: string) {
   const fresh = state().project!
   const line = fresh.script!.lines.find((l) => l.id === lineId)!
   if (fresh.voice.mode === 'ai') await voiceLine(line, fresh.voice.voiceId, fresh.settings.language)
-  await commit(plan, 'Rewrote a line')
+  await commit(wordsEdited(plan, lineId), 'Rewrote a line')
 }
 
 async function patchLine(lineId: string, patch: Partial<ScriptLine>) {
@@ -127,7 +127,7 @@ export async function addLine(sceneIndex: number, text: string): Promise<number>
   const scenes = intoScene
     ? plan.scenes.map((s, i) => (i === sceneIndex ? { ...s, lineId: line.id } : s))
     : [...plan.scenes.slice(0, sceneIndex + 1), { id: uid('sc_'), lineId: line.id, shots: [] }, ...plan.scenes.slice(sceneIndex + 1)]
-  await commit({ ...plan, scenes }, 'Added a line')
+  await commit(wordsEdited({ ...plan, scenes }, line.id), 'Added a line')
   return state().project!.edits[state().project!.currentEdit].scenes.findIndex((s) => s.lineId === line.id)
 }
 
@@ -226,14 +226,14 @@ export async function addLineAt(t: number, text: string) {
 export async function setLineMuted(lineId: string, muted: boolean) {
   const { plan } = requireEdit()
   await patchLine(lineId, { muted })
-  await commit(plan, muted ? 'Muted a line' : 'Unmuted a line')
+  await commit(wordsEdited(plan, lineId), muted ? 'Muted a line' : 'Unmuted a line')
 }
 
 /** Reads a line again: a different take, optionally in another delivery. */
 export async function rereadLine(lineId: string, delivery: Delivery) {
   const { plan } = requireEdit()
   await patchLine(lineId, { delivery, seed: Math.floor(Math.random() * 1_000_000_000) })
-  await commit(plan, delivery === 'natural' ? 'Read a line again' : `Read a line again (${DELIVERY_LABEL[delivery].toLowerCase()})`)
+  await commit(wordsEdited(plan, lineId), delivery === 'natural' ? 'Read a line again' : `Read a line again (${DELIVERY_LABEL[delivery].toLowerCase()})`)
 }
 
 export const DELIVERY_LABEL: Record<Delivery, string> = { natural: 'Natural', calm: 'Calmer', energetic: 'More energy', slow: 'Slower' }
@@ -280,7 +280,7 @@ export const openVersion = (index: number) => state().updateProject((p) => resto
 export async function duplicateScene(index: number) {
   const { plan } = requireEdit()
   const copy: Scene = { id: uid('sc_'), shots: plan.scenes[index].shots.map((s, i) => ({ ...s, id: uid('s_'), transitionIn: i === 0 ? 'cut' : s.transitionIn })) }
-  await commit(withUserScene({ ...plan, scenes: [...plan.scenes.slice(0, index + 1), copy, ...plan.scenes.slice(index + 1)] }, copy.id), 'Duplicated a scene')
+  await commit(withHandEdit({ ...plan, scenes: [...plan.scenes.slice(0, index + 1), copy, ...plan.scenes.slice(index + 1)] }, copy.id, 'footage'), 'Duplicated a scene')
 }
 
 /** A new footage-only scene after `index`, with a good moment nobody uses yet. Returns its index. */
@@ -291,7 +291,7 @@ export async function addScene(index: number): Promise<number> {
   const shots = pickFootage('', state().clips, draft, at, 2.5)
   if (!shots.length) throw new Error('There’s no footage left to add. Add more clips first.')
   const scene: Scene = { ...draft.scenes[at], shots }
-  await commit(withUserScene({ ...plan, scenes: [...plan.scenes.slice(0, at), scene, ...plan.scenes.slice(at)] }, scene.id), 'Added a scene')
+  await commit(withHandEdit({ ...plan, scenes: [...plan.scenes.slice(0, at), scene, ...plan.scenes.slice(at)] }, scene.id, 'footage'), 'Added a scene')
   return at
 }
 
@@ -302,44 +302,39 @@ export async function setTargetLength(sec: Exclude<TargetLength, 'auto'>) {
   await commit(plan, `Length about ${sec}s`)
 }
 
-/** Lets AI re-plans change a scene the user had locked (or changed by hand). */
-export async function releaseScene(sceneId: string) {
-  const { plan } = requireEdit()
-  await state().replaceCurrentEdit({ ...plan, userScenes: plan.userScenes?.filter((id) => id !== sceneId) })
-}
-
-/** Keeps a scene as it is when the AI re-plans the vlog. */
-export async function lockScene(sceneId: string) {
-  const { plan } = requireEdit()
-  await state().replaceCurrentEdit(withUserScene(plan, sceneId))
-}
-
-/** Changes one shot by hand; its scene becomes one the user picked footage for (AI re-plans keep it). */
-const mapShot = (plan: EditPlan, sceneIndex: number, shotIndex: number, fn: (s: Shot) => Shot | Shot[]): EditPlan =>
-  withUserScene(
+/** Changes one shot by hand; the scene remembers what kind of change it was (Ask AI asks before changing it again). */
+const mapShot = (plan: EditPlan, sceneIndex: number, shotIndex: number, kind: HandEdit, fn: (s: Shot) => Shot | Shot[]): EditPlan =>
+  withHandEdit(
     mapScenes(plan, (scenes) => scenes.map((s, i) => (i !== sceneIndex ? s : { ...s, shots: s.shots.flatMap((x, j) => (j === shotIndex ? fn(x) : [x])) }))),
     plan.scenes[sceneIndex].id,
+    kind,
   )
+
+/** The words of a line were changed by hand. */
+const wordsEdited = (plan: EditPlan, lineId: string): EditPlan => {
+  const scene = plan.scenes.find((s) => s.lineId === lineId)
+  return scene ? withHandEdit(plan, scene.id, 'words') : plan
+}
 
 const clipDurations = () => new Map(state().clips.map((c) => [c.id, c.durationSec]))
 
 /** Changes effects on one shot (transition, camera move, fit, volume). */
 export async function updateShot(sceneIndex: number, shotIndex: number, patch: Partial<Shot>, note: string) {
   const { plan } = requireEdit()
-  await commit(mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, ...patch })), note)
+  await commit(mapShot(plan, sceneIndex, shotIndex, 'volume' in patch ? 'sound' : 'effects', (s) => ({ ...s, ...patch })), note)
 }
 
 /** Volume changes while dragging are merged into one version per pause. */
 export async function setShotVolume(sceneIndex: number, shotIndex: number, volume: number) {
   const id = requireEdit().plan.scenes[sceneIndex].shots[shotIndex].id
-  await commitMerged(`volume:${id}`, (plan) => mapShot(plan, sceneIndex, shotIndex, (s) => ({ ...s, volume })), 'Clip volume')
+  await commitMerged(`volume:${id}`, (plan) => mapShot(plan, sceneIndex, shotIndex, 'sound', (s) => ({ ...s, volume })), 'Clip volume')
 }
 
 /** Speed or speed curve; the shot keeps its length in the vlog and uses more or less footage. */
 export async function setShotSpeed(sceneIndex: number, shotIndex: number, speed: number, ramp: Shot['ramp'] = 'none') {
   const { plan } = requireEdit()
   await commit(
-    mapShot(plan, sceneIndex, shotIndex, (s) => {
+    mapShot(plan, sceneIndex, shotIndex, 'effects', (s) => {
       const next = { ...s, hold: undefined, ramp: ramp === 'none' ? undefined : ramp }
       setSpeed(next, speed, clipDurations())
       if (next.ramp) next.clipAudio = 'mute'
@@ -358,7 +353,7 @@ function cutPoint(s: Shot, local: number | undefined): number {
 export async function splitShot(sceneIndex: number, shotIndex: number, local?: number) {
   const { plan } = requireEdit()
   await commit(
-    mapShot(plan, sceneIndex, shotIndex, (s) => {
+    mapShot(plan, sceneIndex, shotIndex, 'footage', (s) => {
       if (s.hold) {
         const at = cutPoint(s, local)
         return [{ ...s, hold: round(at) }, { ...s, id: uid('s_'), hold: round(s.hold - at), transitionIn: 'cut' }]
@@ -378,7 +373,7 @@ export async function splitShot(sceneIndex: number, shotIndex: number, local?: n
 export async function freezeFrame(sceneIndex: number, shotIndex: number, local?: number) {
   const { plan } = requireEdit()
   await commit(
-    mapShot(plan, sceneIndex, shotIndex, (s) => {
+    mapShot(plan, sceneIndex, shotIndex, 'effects', (s) => {
       const at = cutPoint(s, local)
       const src = round(sourceTime(s, at))
       if (s.hold) return [s, { ...s, id: uid('s_'), transitionIn: 'cut', hold: 1 }]
@@ -402,7 +397,7 @@ export async function holdLastFrame(sceneIndex: number, shotIndex: number) {
   const shot = plan.scenes[sceneIndex].shots[shotIndex]
   if (!shot.hold && shotLength(shot) - MIN_SHOT - 0.05 < 0.2) throw new Error('This shot is too short to freeze its end. Trim it longer first.')
   await commit(
-    mapShot(plan, sceneIndex, shotIndex, (s) => {
+    mapShot(plan, sceneIndex, shotIndex, 'effects', (s) => {
       if (s.hold) return s
       const len = shotLength(s)
       // the moving part keeps at least the shortest shot length, or re-fitting would drop the freeze
@@ -423,9 +418,10 @@ export async function duplicateShot(sceneIndex: number, shotIndex: number) {
   const copy = { ...plan.scenes[sceneIndex].shots[shotIndex], id: uid('s_'), transitionIn: 'cut' as const }
   const copyScene = uid('sc_')
   await commit(
-    withUserScene(
+    withHandEdit(
       mapScenes(plan, (scenes) => [...scenes.slice(0, sceneIndex + 1), { id: copyScene, shots: [copy] }, ...scenes.slice(sceneIndex + 1)]),
       copyScene,
+      'footage',
     ),
     'Duplicated a shot',
   )
@@ -434,7 +430,7 @@ export async function duplicateShot(sceneIndex: number, shotIndex: number) {
 export async function deleteShot(sceneIndex: number, shotIndex: number) {
   const { plan } = requireEdit()
   if (plan.scenes[sceneIndex].shots.length <= 1) return deleteScene(sceneIndex)
-  await commit(mapShot(plan, sceneIndex, shotIndex, () => []), 'Removed a shot')
+  await commit(mapShot(plan, sceneIndex, shotIndex, 'footage', () => []), 'Removed a shot')
 }
 
 /**
@@ -484,5 +480,5 @@ export async function applyTemplate(id: TemplateId) {
 export async function removeLine(lineId: string) {
   const { project, plan } = requireEdit()
   if (project.script) await setScriptLines(project, project.script.lines.filter((l) => l.id !== lineId))
-  await commit({ ...plan, scenes: plan.scenes.map((s) => (s.lineId === lineId ? { ...s, lineId: undefined } : s)) }, 'Removed a line')
+  await commit(wordsEdited({ ...plan, scenes: plan.scenes.map((s) => (s.lineId === lineId ? { ...s, lineId: undefined } : s)) }, lineId), 'Removed a line')
 }

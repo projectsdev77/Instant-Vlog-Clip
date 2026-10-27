@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Copy, Lock, LockOpen, Music2, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Music2, RotateCcw, Scissors, Snowflake, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { toast } from '@/components/ui/Toast'
 import { rankedMoments } from '@/domain/moments'
@@ -17,8 +17,6 @@ import {
   editLine,
   freezeFrame,
   holdLastFrame,
-  lockScene,
-  releaseScene,
   removeLineKeepTime,
   rereadLine,
   setLineMuted,
@@ -93,7 +91,6 @@ export function SceneTab({ project, plan, clips, index, onIndex, timeline, now }
   const shot = scene.shots[si]
   const clip = byId.get(shot.clipId)
   const ts = timeline.scenes[index]
-  const locked = !!plan.userScenes?.includes(scene.id)
   const mode = project.voice.mode
   const veryFirst = index === 0 && si === 0
   const playhead = (() => {
@@ -124,25 +121,11 @@ export function SceneTab({ project, plan, clips, index, onIndex, timeline, now }
           <p className="tabular text-[13px] text-muted">
             {ts ? (ts.end - ts.start).toFixed(1) : '0.0'}s on screen · starts at {formatDuration(ts?.start ?? 0)}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
           {!line && (
-            <span className="flex h-8 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-[12px] font-bold text-fg" title="Nobody talks in this scene: no voice, no caption, just music over the video.">
+            <span className="mt-2 flex h-8 w-fit items-center gap-1.5 rounded-full bg-surface-2 px-3 text-[12px] font-bold text-fg" title="Nobody talks in this scene: no voice, no caption, just music over the video.">
               <Music2 className="size-3.5" strokeWidth={2.6} /> Music only
             </span>
           )}
-          {/* Locked scenes stay as they are when the AI edits; changing a shot by hand locks the scene. */}
-          <button
-            type="button"
-            aria-pressed={locked}
-            disabled={!!busy}
-            title={locked ? 'The AI won’t change this scene. Tap to unlock.' : 'Keep this scene as it is when you ask the AI for changes.'}
-            onClick={() => act('lock', () => (locked ? releaseScene(scene.id) : lockScene(scene.id)))}
-            className={cn('flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold transition', locked ? 'bg-accent-soft text-ember-300 shadow-[inset_0_0_0_1.5px_#ff5a1f]' : 'bg-surface-2 text-muted hover:text-fg')}
-          >
-            {locked ? <Lock className="size-3.5" strokeWidth={2.6} /> : <LockOpen className="size-3.5" strokeWidth={2.6} />}
-            {locked ? 'Locked from AI' : 'Lock from AI'}
-          </button>
-          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <RoundButton label="Previous scene" disabled={index === 0} onClick={() => onIndex(index - 1)}>
