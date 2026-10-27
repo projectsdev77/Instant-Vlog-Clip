@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from '@/app/router'
 import { Toaster } from '@/components/ui/Toast'
+import { startCloudSync } from '@/cloud/autoSync'
 import './index.css'
 
 // After a new deploy, a tab opened earlier asks for code files that no longer
@@ -19,6 +20,9 @@ window.addEventListener('vite:preloadError', (e) => {
   e.preventDefault()
   location.reload()
 })
+
+// Signed-in users' vlogs are saved to their account in the background.
+startCloudSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -21,6 +21,7 @@ const SUITES = [
   { name: 'edit', file: 'e2e/edit.mjs', what: 'Edit page: strip, scene tools, More options, versions, length, sliders, captions, previews' },
   { name: 'effects', file: 'e2e/effects.mjs', what: 'Templates, shot tools (split, freeze, speed, camera) and export' },
   { name: 'account', file: 'e2e/account.mjs', what: 'Plans, Account, checkout return, delete account, legal pages' },
+  { name: 'cloud', file: 'e2e/cloud.mjs', what: 'Account storage: a vlog saved on one device opens on another, clips added again, deleted everywhere' },
 ]
 
 const only = process.argv.slice(2)
@@ -83,7 +84,7 @@ function runSuite(suite) {
   return new Promise((resolve) => {
     const t0 = Date.now()
     console.log(`\n━━ ${suite.name}: ${suite.what}`)
-    const child = spawn(process.execPath, [suite.file], { env: { ...process.env, BASE_URL: APP_URL, ...suite.env }, stdio: 'inherit' })
+    const child = spawn(process.execPath, [suite.file], { env: { ...process.env, BASE_URL: APP_URL, STUB_URL: `http://localhost:${STUB_PORT}`, ...suite.env }, stdio: 'inherit' })
     const timer = setTimeout(() => child.kill(), SUITE_TIMEOUT_MS)
     child.on('exit', (code, signal) => {
       clearTimeout(timer)

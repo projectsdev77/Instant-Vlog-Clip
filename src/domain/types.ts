@@ -56,7 +56,8 @@ export type LocalSignals = {
   duplicateOf?: string
 }
 
-export type ClipStatus = 'importing' | 'ready' | 'analyzing' | 'analyzed' | 'error'
+/** `missing`: known from the account, but the video file isn't on this device yet (add it again to keep editing). */
+export type ClipStatus = 'importing' | 'ready' | 'analyzing' | 'analyzed' | 'error' | 'missing'
 
 export type Clip = {
   id: string
@@ -249,7 +250,7 @@ export type EditPlan = {
 export type HandEdit = 'footage' | 'effects' | 'sound' | 'words'
 
 /** Why a version was saved. */
-export type VersionReason = 'start' | 'session' | 'ai' | 'export' | 'restore' | 'manual'
+export type VersionReason = 'start' | 'session' | 'ai' | 'export' | 'restore' | 'manual' | 'sync'
 
 /** A checkpoint in the Versions list: the whole vlog as it was (scenes, script and vlog-wide settings). */
 export type SavedVersion = {
@@ -287,6 +288,8 @@ export type Project = {
   voiceTrack?: VoiceTrack
   /** undo history (every change), newest last */
   edits: EditPlan[]
+  /** the account this vlog is saved to (set the first time it syncs) */
+  ownerId?: string
   /** when Ask AI would change the user's own edits: ask each time (default), or the answer they chose to remember */
   aiHandEdits?: 'ask' | 'keep' | 'change'
   /** saved versions (checkpoints), newest last: made after an editing session, before Ask AI, on export, or by the user */

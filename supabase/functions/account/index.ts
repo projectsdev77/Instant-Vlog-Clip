@@ -92,7 +92,27 @@ async function portal(user: { id: string }, returnUrl: string) {
   return { url: session.url }
 }
 
-/** Cancels any subscription at once, removes the Stripe customer, usage and the account. */
+/** Removes every file the user saved (drafts' audio, finished videos); their `vlogs` rows go with the user. */
+async function deleteSavedVlogs(userId: string) {
+  const bucket = db().storage.from('vlogs')
+  const paths: string[] = []
+  const walk = async (dir: string) => {
+    const { data, error } = await bucket.list(dir, { limit: 1000 })
+    if (error) return console.error('listing saved files failed', error.message)
+    for (const item of data ?? []) {
+      if (item.id) paths.push(`${dir}/${item.name}`)
+      else await walk(`${dir}/${item.name}`)
+    }
+  }
+  await walk(userId)
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await bucket.remove(paths.slice(i, i + 100))
+    if (error) console.error('deleting saved files failed', error.message)
+  }
+  await db().from('vlogs').delete().eq('user_id', userId)
+}
+
+/** Cancels any subscription at once, removes the Stripe customer, saved vlogs, usage and the account. */
 async function deleteAccount(user: { id: string }) {
   const s = stripe()
   const sub = await subscriptionOf(user.id)
@@ -100,6 +120,7 @@ async function deleteAccount(user: { id: string }) {
     // Deleting the customer also cancels their subscriptions immediately.
     await s.customers.del(sub.stripe_customer_id).catch((e) => console.error('deleting the Stripe customer failed', e))
   }
+  await deleteSavedVlogs(user.id)
   await db().from('ai_usage').delete().eq('subject', `user:${user.id}`)
   await db().from('subscriptions').delete().eq('user_id', user.id)
   const { error } = await db().auth.admin.deleteUser(user.id)

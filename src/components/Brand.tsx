@@ -17,7 +17,7 @@ export function Wordmark({ className }: { className?: string }) {
   return <span className={cn('text-[17px] font-bold tracking-[-0.01em] whitespace-nowrap', className)}>Instant Vlog Clip</span>
 }
 
-export function PrivacyLine({ children = 'Your videos stay on this device.', className }: { children?: React.ReactNode; className?: string }) {
+export function PrivacyLine({ children = 'Your original clips stay on this device.', className }: { children?: React.ReactNode; className?: string }) {
   return (
     <p className={cn('flex items-center gap-2 text-[14px] font-medium text-white/80', className)}>
       <Lock className="size-4 shrink-0" strokeWidth={2.2} aria-hidden /> {children}

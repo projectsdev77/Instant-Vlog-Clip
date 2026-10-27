@@ -1,4 +1,5 @@
-// A local stand-in for the Supabase Edge Functions (ai and account), so the
+// A local stand-in for Supabase (the ai and account functions, sign-in, and the
+// vlogs table and file storage used to save vlogs to the account), so the
 // browser tests run without API keys, cost or limits. Its answers are fixed:
 // it checks that the app behaves, not how good the AI is.
 //   node e2e/stub-ai.mjs   (e2e/run.mjs starts it for you)
@@ -13,7 +14,7 @@ const VERSION = readFileSync(new URL('../supabase/functions/_shared/contracts.ts
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': '*',
-  'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'access-control-expose-headers': 'x-ai-version',
   'x-ai-version': VERSION,
 }
@@ -139,25 +140,92 @@ function ai(action, payload) {
   }
 }
 
+// Account storage: the vlogs table and the vlogs bucket, in memory, for one signed-in user.
+const vlogs = new Map()
+const files = new Map()
+const SPACE_LIMIT = Number(process.env.STUB_SPACE_LIMIT ?? 50_000_000)
+const filter = (url, key) => new URL(url, 'http://x').searchParams.get(key)?.replace(/^eq\./, '')
+
+function rest(req, body) {
+  const url = req.url
+  if (url.includes('/rest/v1/rpc/my_storage')) return [200, { used: [...files.values()].reduce((a, b) => a + b.length, 0), limit: SPACE_LIMIT, plan: 'free' }]
+  if (!url.includes('/rest/v1/vlogs')) return [404, { message: 'stub: unknown table' }]
+  const id = filter(url, 'id')
+  if (req.method === 'GET') {
+    const rows = [...vlogs.values()].filter((r) => !id || r.id === id).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    const cols = new URL(url, 'http://x').searchParams.get('select')
+    return [200, cols === '*' || !cols ? rows : rows.map((r) => Object.fromEntries(cols.split(',').map((c) => c.trim()).map((c) => [c, r[c] ?? null])))]
+  }
+  if (req.method === 'POST') {
+    for (const row of [body].flat()) vlogs.set(row.id, { video_bytes: null, video_at: null, ...vlogs.get(row.id), ...row })
+    return [201, null]
+  }
+  if (req.method === 'PATCH') {
+    if (vlogs.has(id)) vlogs.set(id, { ...vlogs.get(id), ...body })
+    return [204, null]
+  }
+  if (req.method === 'DELETE') {
+    vlogs.delete(id)
+    return [204, null]
+  }
+  return [405, null]
+}
+
+function storage(req, raw) {
+  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname.replace(/^\/storage\/v1\//, ''))
+  if (path.startsWith('object/list/vlogs')) {
+    const { prefix = '' } = JSON.parse(raw.toString() || '{}')
+    const dir = prefix.replace(/\/$/, '')
+    const names = new Map()
+    for (const k of files.keys()) {
+      if (!k.startsWith(`${dir}/`)) continue
+      const [first, ...rest] = k.slice(dir.length + 1).split('/')
+      names.set(first, rest.length ? null : 'file')
+    }
+    return [200, [...names].map(([name, kind]) => ({ name, id: kind ? name : null, metadata: kind ? { size: files.get(`${dir}/${name}`).length } : null }))]
+  }
+  if (path.startsWith('object/sign/vlogs/')) return [200, { signedURL: `/object/public/${path.slice('object/sign/'.length)}?token=stub` }]
+  if (req.method === 'DELETE' && path === 'object/vlogs') {
+    for (const p of JSON.parse(raw.toString()).prefixes ?? []) files.delete(p)
+    return [200, []]
+  }
+  const key = path.replace(/^object\/(authenticated\/|public\/)?vlogs\//, '')
+  if (req.method === 'POST' || req.method === 'PUT') {
+    files.set(key, raw)
+    return [200, { Key: `vlogs/${key}` }]
+  }
+  if (req.method === 'GET') return files.has(key) ? [200, files.get(key), 'application/octet-stream'] : [400, { statusCode: '404', error: 'not_found', message: 'Object not found' }]
+  return [405, null]
+}
+
 http
   .createServer((req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(200, cors)
       return res.end('ok')
     }
-    let body = ''
-    req.on('data', (c) => (body += c))
+    const chunks = []
+    req.on('data', (c) => chunks.push(c))
     req.on('end', () => {
+      const raw = Buffer.concat(chunks)
       let parsed = {}
       try {
-        parsed = JSON.parse(body)
+        parsed = JSON.parse(raw.toString())
       } catch {
         // not JSON
       }
-      const send = (code, o) => {
-        res.writeHead(code, { ...cors, 'content-type': 'application/json' })
-        res.end(JSON.stringify(o))
+      const send = (code, o, type) => {
+        if (o === null) {
+          res.writeHead(code, cors)
+          return res.end()
+        }
+        res.writeHead(code, { ...cors, 'content-type': type ?? 'application/json' })
+        res.end(Buffer.isBuffer(o) ? o : JSON.stringify(o))
       }
+      // For the tests: what the account holds now.
+      if (req.url.startsWith('/__stub/account')) return send(200, { vlogs: [...vlogs.values()].map(({ data: _d, ...r }) => r), files: [...files.keys()] })
+      if (req.url.includes('/rest/v1/')) return send(...rest(req, parsed))
+      if (req.url.includes('/storage/v1/')) return send(...storage(req, raw))
       if (req.url.includes('/auth/v1/')) {
         const [code, out] = auth(req.url, parsed)
         return send(code, out)

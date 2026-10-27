@@ -185,6 +185,12 @@ function ClipTile({ clip, onStar, onRemove }: { clip: Clip; onStar: () => void; 
             Reading…
           </div>
         )}
+        {clip.status === 'missing' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/70 p-3 text-center text-[12px] font-semibold">
+            <span>Not on this device</span>
+            <span className="font-medium text-white/70">Add it again above</span>
+          </div>
+        )}
         {failed && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-[rgb(42_12_12/.9)] p-3 text-center text-[13px] font-medium">
             <span className="grid size-8 place-items-center rounded-full bg-danger text-[15px] font-extrabold text-danger-fg">!</span>

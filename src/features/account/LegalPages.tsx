@@ -82,7 +82,11 @@ export function PrivacyPage() {
       <Draft />
       <div className="space-y-10">
         <Section title="What stays on your device">
-          <p>Your video clips, your finished vlogs and your project history are stored in your browser. Videos are never uploaded to our servers. Exporting happens in your browser too.</p>
+          <p>Your original video clips stay on the device you added them on. They are never uploaded to our servers. Making and exporting the video happens in your browser.</p>
+        </Section>
+        <Section title="What is saved to your account">
+          <p>When you’re signed in, your drafts (the edit, your script, saved versions and small preview images), the voice audio, any song you added, and the latest finished video of each vlog are saved to your account, so you can open them on any device. Only you can see them. Deleting a vlog removes it from your account; deleting your account removes all of it. [Confirm how long saved vlogs are kept, and the space each plan includes.]</p>
+          <p>When you’re signed out, everything is kept in your browser only.</p>
         </Section>
         <Section title="What is sent to AI services, and why">
           <ul className="list-disc space-y-2 pl-5">

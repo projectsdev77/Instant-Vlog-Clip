@@ -78,7 +78,8 @@ export async function restoreVersion(id: string) {
 export function versionLabel(v: SavedVersion): string {
   if (v.reason === 'manual' && v.name) return v.name
   if (v.reason === 'ai') return v.name ? `Before Ask AI: “${v.name}”` : 'Before an Ask AI change'
-  return { start: 'First edit', session: 'Editing session', export: 'Exported', restore: 'Before restoring a version', manual: 'Saved version', ai: '' }[v.reason]
+  if (v.reason === 'sync') return v.name ?? 'Copy from another device'
+  return { start: 'First edit', session: 'Editing session', export: 'Exported', restore: 'Before restoring a version', manual: 'Saved version' }[v.reason]
 }
 
 /**

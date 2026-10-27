@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router'
-import { Download, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
+import { Cloud, Download, MoreHorizontal, Play, Plus, Upload } from 'lucide-react'
 import { LogoTile, PrivacyLine, Wordmark } from '@/components/Brand'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -16,6 +16,9 @@ import { createProject, deleteProject } from '@/store/projectStore'
 import { stepPath } from '@/features/project/steps'
 import type { Project } from '@/domain/types'
 import { AccountButton } from '@/features/auth/AccountButton'
+import { refreshAccount, useCloud } from '@/cloud/autoSync'
+import { deleteFromAccount, isMine, pullProject, videoLink } from '@/cloud/sync'
+import type { CloudRow } from '@/cloud/backend'
 import { EXAMPLES, FALLBACK_BGS, type CoverItem } from './covers'
 import { CoverVideo } from './CoverVideo'
 import { WhatYouGet } from './WhatYouGet'
@@ -31,9 +34,18 @@ function vlogLength(p: Project): number {
   return edit ? edit.scenes.reduce((a, s) => a + sumShots(s.shots), 0) : 0
 }
 
+/** A vlog on Home: on this device, in the account, or both. */
+type Card = { id: string; title: string; updatedAt: number; seconds: number; project?: Project; row?: CloudRow }
+
 export function HomePage() {
   const navigate = useNavigate()
-  const projects = useLiveQuery(() => db.projects.orderBy('updatedAt').reverse().toArray(), [])
+  const { userId, rows } = useCloud()
+  const allProjects = useLiveQuery(() => db.projects.orderBy('updatedAt').reverse().toArray(), [])
+  // Signed in: this account's vlogs (and ones made here before signing in), plus the ones only in the account.
+  const projects = allProjects?.filter((p) => !userId || isMine(p, userId))
+  useEffect(() => {
+    if (userId) void refreshAccount()
+  }, [userId])
   const thumbs = useLiveQuery(async () => {
     const map = new Map<string, string>()
     for (const p of projects ?? []) {
@@ -44,7 +56,8 @@ export function HomePage() {
     }
     return map
   }, [projects])
-  const [deleting, setDeleting] = useState<Project | null>(null)
+  const [deleting, setDeleting] = useState<Card | null>(null)
+  const [opening, setOpening] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
   const [restoring, setRestoring] = useState(false)
@@ -57,6 +70,24 @@ export function HomePage() {
   const closeMenu = () => {
     setDeleting(null)
     setConfirmDelete(false)
+  }
+  const downloadVideo = async (c: Card) => {
+    const url = await videoLink(c.id, `${(c.title || 'vlog').replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'vlog'}.mp4`)
+    if (!url) return toast('Couldn’t get the video. Try again in a moment.', 'error')
+    const a = document.createElement('a')
+    a.href = url
+    a.click()
+    closeMenu()
+  }
+  const remove = async (c: Card) => {
+    closeMenu()
+    try {
+      if (userId && (c.row || (c.project && c.project.ownerId === userId))) await deleteFromAccount(c.id)
+      if (c.project) await deleteProject(c.id)
+      useCloud.setState((st) => ({ rows: st.rows?.filter((r) => r.id !== c.id) ?? null }))
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    }
   }
   const downloadBackup = async (p: Project) => {
     setBackingUp(true)
@@ -93,9 +124,29 @@ export function HomePage() {
     navigate(stepPath(p.id, 'clips'))
   }
   const open = (p: Project) => navigate(stepPath(p.id, p.step === 'generate' && p.edits.length ? 'edit' : p.step))
+  const openCard = async (c: Card) => {
+    if (c.project && (!c.row || Date.parse(c.row.updated_at) <= c.project.updatedAt)) return open(c.project)
+    // In the account (only, or newer there): bring it to this device first.
+    setOpening(c.id)
+    try {
+      const p = await pullProject(c.id)
+      if (p) open(p)
+      else if (c.project) open(c.project)
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setOpening(null)
+    }
+  }
 
   const list = projects ?? []
-  const firstVisit = projects !== undefined && list.length === 0
+  const local = new Set(list.map((p) => p.id))
+  const rowById = new Map((rows ?? []).map((r) => [r.id, r]))
+  const cards: Card[] = [
+    ...list.map((p) => ({ id: p.id, title: p.title, updatedAt: p.updatedAt, seconds: vlogLength(p), project: p, row: rowById.get(p.id) })),
+    ...(rows ?? []).filter((r) => !local.has(r.id)).map((r) => ({ id: r.id, title: r.title, updatedAt: Date.parse(r.updated_at), seconds: 0, row: r })),
+  ].sort((a, b) => b.updatedAt - a.updatedAt)
+  const firstVisit = projects !== undefined && cards.length === 0
   const { introSeen, openIntro } = useTutorial()
   // First visit: show how it works before anything else.
   useEffect(() => {
@@ -108,11 +159,11 @@ export function HomePage() {
   }
   const mine: CoverItem[] = firstVisit
     ? []
-    : list.slice(0, 3).map((p, i) => ({
+    : cards.slice(0, 3).map((p, i) => ({
         id: p.id,
         title: p.title || 'Untitled vlog',
-        meta: `${relativeDate(p.updatedAt)}${vlogLength(p) ? ` · ${formatDuration(vlogLength(p))}` : ''}`,
-        image: thumbs?.get(p.id),
+        meta: `${relativeDate(p.updatedAt)}${p.seconds ? ` · ${formatDuration(p.seconds)}` : ''}`,
+        image: thumbs?.get(p.id) ?? p.row?.cover ?? undefined,
         bg: FALLBACK_BGS[i % FALLBACK_BGS.length],
         tag: i === 0 ? 'New' : undefined,
       }))
@@ -155,7 +206,7 @@ export function HomePage() {
             </div>
           )}
         </div>
-        <CoverFan covers={covers} onOpen={(c) => c.id && open(list.find((p) => p.id === c.id)!)} />
+        <CoverFan covers={covers} onOpen={(c) => c.id && void openCard(cards.find((p) => p.id === c.id)!)} />
       </section>
 
       <section className="relative mx-auto mt-6 max-w-[1120px] px-4 md:mt-14 md:px-10">
@@ -176,31 +227,50 @@ export function HomePage() {
 
       <WhatYouGet />
 
-      {list.length > 0 && (
+      {cards.length > 0 && (
         <section className="relative mx-auto mt-10 max-w-[1120px] px-4 md:px-10">
           <div className="mb-5 flex items-baseline justify-between">
             <h2 className="title-2">Your vlogs</h2>
             <span className="flex items-center gap-2 text-[14px] text-muted">
-              {list.length} made · {openBackupButton}
+              {cards.length} made · {openBackupButton}
             </span>
           </div>
-          <p className="-mt-3 mb-5 text-[13px] text-faint">Saved in this browser only. Clearing your browsing data, or opening the site on another device, won’t bring them back, so download a backup (the ••• menu) of the ones you want to keep.</p>
+          <p className="-mt-3 mb-5 text-[13px] text-faint">
+            {userId
+              ? 'Saved to your account: sign in on any device to see them. Your original clips stay on the device you added them on; to keep editing somewhere else, you add them again.'
+              : 'Saved in this browser only. Sign in to save them to your account and open them on any device.'}
+          </p>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-[18px]">
-            {list.map((p, i) => (
-              <li key={p.id} className="min-w-0">
-                <button type="button" onClick={() => open(p)} className="group block w-full text-left">
+            {cards.map((c, i) => (
+              <li key={c.id} className="min-w-0">
+                <button type="button" onClick={() => void openCard(c)} disabled={opening === c.id} className="group block w-full text-left">
                   <div className="relative aspect-[9/16] overflow-hidden rounded-[var(--radius-card)] transition duration-150 ease-ember group-hover:-translate-y-1" style={{ background: FALLBACK_BGS[i % FALLBACK_BGS.length] }}>
-                    {thumbs?.get(p.id) && <img src={thumbs.get(p.id)} alt="" className="size-full object-cover" />}
+                    {(thumbs?.get(c.id) ?? c.row?.cover) && <img src={thumbs?.get(c.id) ?? c.row?.cover ?? ''} alt="" className="size-full object-cover" />}
                     <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-b from-transparent to-black/50" />
-                    {vlogLength(p) > 0 && <span className="tabular absolute bottom-2.5 left-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[12px] font-semibold">{formatDuration(vlogLength(p))}</span>}
+                    {c.seconds > 0 && <span className="tabular absolute bottom-2.5 left-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[12px] font-semibold">{formatDuration(c.seconds)}</span>}
+                    {!c.project && (
+                      <span className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[12px] font-semibold backdrop-blur" title="In your account, not on this device yet. Opening it brings it here.">
+                        <Cloud className="size-3.5" strokeWidth={2.4} /> In your account
+                      </span>
+                    )}
+                    {c.row?.video_bytes && (
+                      <span className="absolute right-2.5 bottom-2.5 grid size-7 place-items-center rounded-full bg-black/60" title="The finished video is saved in your account">
+                        <Play className="size-3.5 fill-current" strokeWidth={2.4} />
+                      </span>
+                    )}
+                    {opening === c.id && (
+                      <span className="absolute inset-0 grid place-items-center bg-black/55">
+                        <Spinner className="size-6" />
+                      </span>
+                    )}
                   </div>
                 </button>
                 <div className="mt-2.5 flex items-start gap-1">
-                  <button type="button" onClick={() => open(p)} className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-[15px] font-semibold">{p.title || 'Untitled vlog'}</div>
-                    <div className="text-[13px] font-medium text-muted">{relativeDate(p.updatedAt)}</div>
+                  <button type="button" onClick={() => void openCard(c)} className="min-w-0 flex-1 text-left">
+                    <div className="truncate text-[15px] font-semibold">{c.title || 'Untitled vlog'}</div>
+                    <div className="text-[13px] font-medium text-muted">{relativeDate(c.updatedAt)}</div>
                   </button>
-                  <button type="button" aria-label={`More options for ${p.title || 'Untitled vlog'}`} onClick={() => setDeleting(p)} className="-mt-2 -mr-2 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-white/8 hover:text-fg">
+                  <button type="button" aria-label={`More options for ${c.title || 'Untitled vlog'}`} onClick={() => setDeleting(c)} className="-mt-2 -mr-2 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-white/8 hover:text-fg">
                     <MoreHorizontal className="size-5" />
                   </button>
                 </div>
@@ -219,7 +289,7 @@ export function HomePage() {
       )}
 
       <input ref={backupInput} type="file" accept=".vlogbackup,application/octet-stream" hidden onChange={(e) => void openBackup(e.target.files?.[0]).then(() => (e.target.value = ''))} />
-      {list.length === 0 && projects !== undefined && (
+      {cards.length === 0 && projects !== undefined && (
         <div className="relative mx-auto mt-6 flex max-w-[1120px] justify-center px-4 md:px-10">
           {openBackupButton}
         </div>
@@ -250,16 +320,11 @@ export function HomePage() {
       <Sheet open={!!deleting} title={confirmDelete ? 'Delete this vlog?' : deleting?.title || 'Untitled vlog'} onClose={closeMenu}>
         {confirmDelete ? (
           <>
-            <p className="text-muted">“{deleting?.title || 'Untitled vlog'}” will be removed from this device. This can’t be undone.</p>
+            <p className="text-muted">
+              “{deleting?.title || 'Untitled vlog'}” will be removed {userId && (deleting?.row || deleting?.project?.ownerId === userId) ? 'from this device and your account' : 'from this device'}. This can’t be undone.
+            </p>
             <div className="mt-6 flex flex-col gap-2">
-              <Button
-                variant="danger"
-                block
-                onClick={() => {
-                  if (deleting) void deleteProject(deleting.id)
-                  closeMenu()
-                }}
-              >
+              <Button variant="danger" block onClick={() => deleting && void remove(deleting)}>
                 Delete vlog
               </Button>
               <Button variant="outline" block onClick={closeMenu}>
@@ -269,10 +334,19 @@ export function HomePage() {
           </>
         ) : (
           <div className="flex flex-col gap-2">
-            <Button variant="outline" block disabled={backingUp} onClick={() => deleting && void downloadBackup(deleting)}>
-              {backingUp ? <Spinner /> : <Download className="size-4" strokeWidth={2.4} />} Download a backup
-            </Button>
-            <p className="mb-2 px-1 text-[13px] text-faint">One file with this vlog’s clips, recordings and edits. Open it later with “Open a backup” on this page, on any device.</p>
+            {deleting?.row?.video_bytes && (
+              <Button variant="outline" block onClick={() => deleting && void downloadVideo(deleting)}>
+                <Download className="size-4" strokeWidth={2.4} /> Download the video
+              </Button>
+            )}
+            {deleting?.project && (
+              <>
+                <Button variant="outline" block disabled={backingUp} onClick={() => deleting.project && void downloadBackup(deleting.project)}>
+                  {backingUp ? <Spinner /> : <Download className="size-4" strokeWidth={2.4} />} Download a backup
+                </Button>
+                <p className="mb-2 px-1 text-[13px] text-faint">One file with this vlog’s clips, recordings and edits. Open it later with “Open a backup” on this page, on any device.</p>
+              </>
+            )}
             <Button variant="danger" block onClick={() => setConfirmDelete(true)}>
               Delete vlog
             </Button>

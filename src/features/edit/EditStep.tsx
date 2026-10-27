@@ -22,9 +22,11 @@ import { AiCard, KeepChangesSheet, TellAiSheet, type AiReply } from './TellAi'
 import { VersionMenu } from './VersionMenu'
 import { useAutoVersions } from './versions'
 import { useEditorData } from './useEditorData'
+import { useCloud } from '@/cloud/autoSync'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import '@/features/voice/followVoice' // own voice: script and footage follow what was said
 import { ExportSupportNotice } from '@/features/export/ExportSupport'
+import { MissingClipsBanner } from '@/features/clips/MissingClips'
 import { Tour } from '@/features/tutorial/Tour'
 
 const TABS: { id: PanelId; label: string }[] = [
@@ -191,6 +193,7 @@ export function EditStep() {
     <main className="relative mx-auto w-full max-w-[1280px] flex-1 px-4 pt-4 pb-36 lg:px-10 lg:pt-[22px] lg:pb-11">
       <div className="ember-wash -z-10" aria-hidden />
       <ExportSupportNotice className="mb-4" />
+      <MissingClipsBanner className="mb-4" />
       {/* Step heading, as on the other steps; undo, redo and versions on the right */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 lg:mb-6">
         <div className="min-w-0 space-y-1.5">
@@ -199,9 +202,7 @@ export function EditStep() {
           </div>
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="truncate text-[24px] leading-tight font-extrabold tracking-[-0.03em] lg:text-[30px]">{project.title || 'Untitled vlog'}</h1>
-            <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted" title="Every change is saved on this device as you go">
-              <span className="size-1.5 rounded-full bg-success" aria-hidden /> Saved
-            </span>
+            <SavedMark />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -260,6 +261,23 @@ export function EditStep() {
       <TellAiSheet open={aiSheet && !clashes} onClose={() => setAiSheet(false)} {...aiProps} />
       {exporting && <ExportSheet project={project} timeline={timeline} clips={clips} onClose={() => setExporting(false)} />}
     </main>
+  )
+}
+
+/** "Saved": on this device as you go, and to the account when signed in. */
+function SavedMark() {
+  const { userId, status } = useCloud()
+  const [label, title, dot] = !userId
+    ? ['Saved', 'Every change is saved on this device as you go', 'bg-success']
+    : status === 'saving'
+      ? ['Saving…', 'Saving to your account', 'bg-white/40']
+      : status === 'offline'
+        ? ['Saved on this device', 'Couldn’t reach your account; it will be saved there when you’re back online', 'bg-warning']
+        : ['Saved', 'Saved on this device and to your account', 'bg-success']
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted" title={title}>
+      <span className={cn('size-1.5 rounded-full', dot)} aria-hidden /> {label}
+    </span>
   )
 }
 

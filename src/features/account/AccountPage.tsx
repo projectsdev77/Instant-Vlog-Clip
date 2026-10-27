@@ -11,6 +11,8 @@ import { db } from '@/lib/db'
 import { deleteProject } from '@/store/projectStore'
 import { SitePage } from './SiteLayout'
 import { deleteAccount, openBillingPortal, useAccountStatus } from './billing'
+import { refreshAccount, useCloud } from '@/cloud/autoSync'
+import { formatBytes } from '@/lib/format'
 
 const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '')
 
@@ -20,6 +22,11 @@ export function AccountPage() {
   const [params, setParams] = useSearchParams()
   const { status, error, refresh } = useAccountStatus(!!session)
   const [busy, setBusy] = useState<string | null>(null)
+  const space = useCloud((s) => s.space)
+  const signedInId = useCloud((s) => s.userId)
+  useEffect(() => {
+    if (signedInId) void refreshAccount()
+  }, [signedInId])
 
   // Back from Stripe Checkout: the webhook can take a moment, so check again a few times.
   const polls = useRef(0)
@@ -100,8 +107,30 @@ export function AccountPage() {
               Today
             </h2>
             <Usage label="Vlogs made" used={status.usage.generations} limit={status.limits.generationsPerDay} />
-            <Usage label="AI edits (Tell the AI)" used={status.usage.revisions} limit={status.limits.revisionsPerDay} />
+            <Usage label="AI edits (Ask AI)" used={status.usage.revisions} limit={status.limits.revisionsPerDay} />
             <p className="text-[13px] text-faint">Limits reset at midnight UTC.</p>
+          </section>
+        )}
+
+        {space && (
+          <section aria-labelledby="space-h" className="space-y-3 rounded-[var(--radius-panel)] bg-surface p-6">
+            <h2 id="space-h" className="text-[17px] font-bold">
+              Account space
+            </h2>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[14px]">
+                <span>Drafts and finished videos</span>
+                <span className="tabular text-muted">
+                  {formatBytes(space.used)} of {formatBytes(space.limit)}
+                </span>
+              </div>
+              <Progress value={Math.min(1, space.used / Math.max(1, space.limit))} />
+            </div>
+            <p className="text-[13px] text-faint">
+              {space.used >= space.limit
+                ? 'Your space is full. New finished videos stay on this device until you delete old vlogs on Home' + (pro ? '.' : ' or go Pro for more space.')
+                : 'Your original clips stay on your device and don’t count. Deleting a vlog on Home frees its space.'}
+            </p>
           </section>
         )}
 
@@ -174,13 +203,13 @@ function DeleteAccount({ pro, busy, onDelete }: { pro: boolean; busy: boolean; o
         Delete account
       </h2>
       <p className="text-[14px] text-muted">
-        Removes your account and usage history{pro ? ', and cancels Pro right away with no refund for the time left' : ''}. Vlogs are saved in this browser, not in your account, so they stay unless you tick the box below.
+        Removes your account, the vlogs and videos saved in it, and your usage history{pro ? ', and cancels Pro right away with no refund for the time left' : ''}. Copies on this device stay unless you tick the box below.
       </p>
       {open ? (
         <div className="space-y-3">
           <label className="flex cursor-pointer items-center gap-3 text-[14px]">
             <input type="checkbox" checked={alsoVlogs} onChange={(e) => setAlsoVlogs(e.target.checked)} className="size-4 accent-[#ff5a1f]" />
-            Also delete the vlogs saved in this browser
+            Also delete the vlogs on this device
           </label>
           <label htmlFor="confirm-delete" className="block text-[14px]">
             Type DELETE to confirm

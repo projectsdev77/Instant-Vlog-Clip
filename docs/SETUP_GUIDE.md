@@ -166,7 +166,9 @@ supabase functions deploy ai
 supabase functions deploy account
 supabase functions deploy stripe-webhook --no-verify-jwt
 ```
-`db push` should list `20261023000000_subscriptions.sql`. Redeploy the functions whenever the code under `supabase/functions` changes; the app shows "AI function is out of date" if `ai` is behind.
+`db push` should list `20261023000000_subscriptions.sql` and `20261027000000_vlog_storage.sql` (the `vlogs` table, the private `vlogs` storage bucket and the account-space check). Redeploy the functions whenever the code under `supabase/functions` changes; the app shows "AI function is out of date" if `ai` is behind.
+
+**Account storage works on the free Supabase plan** (about 1 GB of files, 50 MB per file). Each user's space is set in the `storage_limits` table (Table Editor): Free 2 GB and Pro 50 GB by default. To try the "space full" message while testing, set the `free` row to a small number such as `20000000` (20 MB), then back. To check it worked: sign in, make a vlog, then open **Table Editor → vlogs** (one row) and **Storage → vlogs** (a folder with your user id holding the voice files, and `video.mp4` after an export).
 
 ### C. Supabase sign-in addresses
 

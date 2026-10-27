@@ -10,6 +10,7 @@ import { useProject } from '@/store/projectStore'
 import type { ProjectStep } from '@/domain/types'
 import { stepIndex, stepPath, stepsFor } from './steps'
 import { useHeaderSlots } from './headerSlots'
+import { MissingClipsBanner } from '@/features/clips/MissingClips'
 
 export function ProjectLayout() {
   const { projectId = '' } = useParams()
@@ -106,6 +107,8 @@ export function StepPage({ children, className }: { children: ReactNode; classNa
   return (
     <main className={cn('relative mx-auto w-full max-w-[1120px] flex-1 px-4 pt-8 pb-40 md:px-10 md:pt-12', className)}>
       <div className="ember-wash -z-10" aria-hidden />
+      {/* A draft opened from the account on another device: its clips need adding again here. */}
+      <MissingClipsBanner className="mb-6" />
       {children}
     </main>
   )

@@ -49,7 +49,7 @@ Each call's model and duration are in the `ai` function logs (Supabase → Edge 
 
 ## 3. Supabase
 
-1. **Database**: `supabase link --project-ref <ref>` then `supabase db push` (creates `ai_usage` and `subscriptions`).
+1. **Plan and database**: upgrade the project to **Supabase Pro** (free projects pause after a week without use, and only hold about 1 GB of files; Pro includes about 100 GB, then roughly $0.02 per GB a month). Then `supabase link --project-ref <ref>` and `supabase db push` (creates `ai_usage`, `subscriptions`, and the account storage: the `vlogs` table, the private `vlogs` bucket, `storage_limits`). Set the real space per plan in `storage_limits` (defaults: Free 2 GB, Pro 50 GB) and make sure the free row isn't still a small test number.
 2. **Functions**:
    ```
    supabase functions deploy ai
@@ -59,8 +59,8 @@ Each call's model and duration are in the `ai` function logs (Supabase → Edge 
 3. **Secrets** (Edge Functions → Secrets, or `supabase secrets set`):
    `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `ALLOWED_ORIGIN=https://<your domain>`, the Stripe ones from step 4. Make sure `QUOTAS_DISABLED` is **not** set.
 4. **Auth → URL configuration**: Site URL `https://<your domain>`; add `https://<your domain>/**` to Redirect URLs (sign-in links return to the page the user was on).
-5. **Auth → Emails**: set up custom SMTP (Supabase's built-in sender is rate-limited and meant for testing), then edit the Magic Link template with the app's name and tone.
-6. **Google sign-in** (optional): create an OAuth client in Google Cloud, add it under Auth → Providers → Google, set `VITE_AUTH_GOOGLE=true` in Vercel. Google reviews the consent screen before it shows your app name to everyone; start this early.
+5. **Auth → Emails**: set up custom SMTP (Supabase's built-in sender is rate-limited and meant for testing). The app signs people in with a 6-digit code: set Email OTP Length to 6 and use `{{ .Token }}` (not a link) in the Magic Link and Confirm signup templates (see docs/SETUP_GUIDE.md, part C).
+6. **Google sign-in**: create an OAuth client in Google Cloud, add it under Auth → Providers → Google, and set `VITE_AUTH_GOOGLE=true` in Vercel (or remove the variable). Google reviews the consent screen before it shows your app name to everyone; start this early.
 
 ## 4. Stripe
 
@@ -84,6 +84,7 @@ Full click-by-click steps, with the tests to run and the billing settings that m
 - Fill every `[bracketed]` placeholder in [`src/features/account/LegalPages.tsx`](../src/features/account/LegalPages.tsx) (company, contact, minimum age, refund policy, jurisdiction, data regions).
 - Have a lawyer review the Terms and Privacy Policy, then set `LEGAL_REVIEWED = true` in that file to remove the draft banner.
 - If you add analytics or error monitoring, add them to the Privacy Policy (and a cookie notice where required).
+- Account storage: decide how long saved vlogs are kept and the space per plan, and state both in the Privacy Policy ("What is saved to your account") and the plan descriptions.
 
 ## 7. Music
 

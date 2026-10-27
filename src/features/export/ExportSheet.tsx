@@ -7,10 +7,14 @@ import { Sheet } from '@/components/ui/Sheet'
 import type { Timeline } from '@/domain/timeline'
 import type { Clip, Project } from '@/domain/types'
 import { formatBytes, formatDuration } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ExportCancelled, exportVideo, pickFormat, type ExportResult } from '@/render/export'
 import { outputSize } from '@/render/styles'
 import { saveVersion } from '@/features/edit/versions'
+import { useCloud } from '@/cloud/autoSync'
+import { SpaceFull, uploadVideo } from '@/cloud/sync'
+import { Spinner } from '@/components/ui/Spinner'
 
 type State = { kind: 'ready' } | { kind: 'rendering'; progress: number } | { kind: 'done'; result: ExportResult; url: string } | { kind: 'error'; message: string; at: number }
 
@@ -21,6 +25,9 @@ function fileName(project: Project, ext: string) {
 
 export function ExportSheet({ project, timeline, clips, onClose }: { project: Project; timeline: Timeline; clips: Clip[]; onClose: () => void }) {
   const [state, setState] = useState<State>({ kind: 'ready' })
+  // Signed in: the finished video is also saved to the account (replacing the last one).
+  const signedIn = !!useCloud((s) => s.userId)
+  const [upload, setUpload] = useState<{ kind: 'saving' | 'saved' } | { kind: 'failed'; message: string } | null>(null)
   const [container, setContainer] = useState('MP4')
   const hasMusic = !!project.musicTrackId
   const [withMusic, setWithMusic] = useState(true)
@@ -48,6 +55,12 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
       const result = await exportVideo(timeline, project, (progress) => setState({ kind: 'rendering', progress: (last = progress) }), abort.current.signal, { music: withMusic })
       setState({ kind: 'done', result, url: URL.createObjectURL(result.blob) })
       void saveVersion('export')
+      if (signedIn) {
+        setUpload({ kind: 'saving' })
+        uploadVideo(project.id, result.blob)
+          .then(() => setUpload({ kind: 'saved' }))
+          .catch((e) => setUpload({ kind: 'failed', message: e instanceof SpaceFull ? e.message : 'Couldn’t save the video to your account. It’s still here to download or share.' }))
+      }
     } catch (e) {
       if (e instanceof ExportCancelled) setState({ kind: 'ready' })
       else setState({ kind: 'error', at: last, message: (e as Error).message || 'Something went wrong while rendering.' })
@@ -110,7 +123,7 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
               </span>
             </label>
           )}
-          <PrivacyLine>Made on this device. Nothing is uploaded.</PrivacyLine>
+          <PrivacyLine>{signedIn ? 'Made on this device, then saved to your account.' : 'Made on this device. Nothing is uploaded.'}</PrivacyLine>
           <Button variant="ember" block className="h-14" onClick={start}>
             Export video
           </Button>
@@ -136,6 +149,19 @@ export function ExportSheet({ project, timeline, clips, onClose }: { project: Pr
               <CheckCircle2 className="size-4" strokeWidth={2.4} /> Ready · {formatBytes(state.result.blob.size)}
             </span>
           </div>
+          {upload && (
+            <p role="status" className={cn('text-center text-[14px]', upload.kind === 'failed' ? 'text-danger' : 'text-muted')}>
+              {upload.kind === 'saving' ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="size-3.5" /> Saving to your account…
+                </span>
+              ) : upload.kind === 'failed' ? (
+                upload.message
+              ) : (
+                'Saved to your account. Find it on Home on any device.'
+              )}
+            </p>
+          )}
           {desktop ? (
             <div className="flex flex-col gap-2">
               <Button block onClick={download}>

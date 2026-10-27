@@ -5,7 +5,7 @@ There are three kinds of tests. The first two run on their own; the third is you
 | | What it checks | Command | Time |
 | --- | --- | --- | --- |
 | Unit tests | The logic underneath: fitting scenes to a length, repairing bad AI answers, the backup edit, templates, caption timing | `npm test` | seconds |
-| Browser tests | The app clicked through in Chromium like a person would: 8 suites, from importing clips to exporting, the Edit page tools, plans and account | `npm run e2e` | 5–10 min |
+| Browser tests | The app clicked through in Chromium like a person would: 9 suites, from importing clips to exporting, the Edit page tools, plans and account, and saving vlogs to the account | `npm run e2e` | 5–10 min |
 | Manual | AI quality, voices, real microphones and phones, Safari, real Stripe payments, how it looks | the test plan | an afternoon |
 
 `npm run test:all` runs lint, the type check, the unit tests and the browser tests one after another.
