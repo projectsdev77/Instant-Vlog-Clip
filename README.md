@@ -53,7 +53,7 @@ GEMINI_API_KEY=... deno run -A scripts/ai-smoke.ts [contact-sheet.jpg]
    supabase functions deploy stripe-webhook --no-verify-jwt
    ```
    Optional secrets: `GEMINI_MODEL` (script and edit plan) and `GEMINI_FAST_MODEL` (polish and clip analysis), both defaulting to `gemini-flash-lite-latest`, Google's fastest model (regular Flash took 1–2 minutes per request on a free-tier key); try `gemini-flash-latest` for the script and plan once billing is on. Each call's model and duration are in the function logs, `ALLOWED_ORIGIN` (your site URL, for CORS), `QUOTAS_DISABLED=true` (local testing), and the limits `FREE_GENERATIONS_PER_DAY`, `FREE_REVISIONS_PER_DAY`, `PRO_GENERATIONS_PER_DAY`, `PRO_REVISIONS_PER_DAY` (defaults in [plans.ts](supabase/functions/_shared/plans.ts)), `GUEST_GENERATIONS_TOTAL` (1), `GUEST_REVISIONS_TOTAL` (5), `IP_GUEST_GENERATIONS_PER_DAY` (3), `CALLS_PER_DAY` (500).
-4. In Supabase Auth, enable email sign-in (and Google if wanted), and add your site URL to the redirect URLs.
+4. In Supabase Auth, enable email sign-in with 6-digit codes (and Google if wanted), and add your site URL to the redirect URLs ([SETUP_GUIDE](docs/SETUP_GUIDE.md) C and I).
 5. Create `.env.local` from `.env.example`:
    ```
    VITE_SUPABASE_URL=https://<your-ref>.supabase.co

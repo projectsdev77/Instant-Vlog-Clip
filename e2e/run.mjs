@@ -72,7 +72,7 @@ await waitFor(`http://localhost:${STUB_PORT}/`, 10_000, stub, 'The stand-in AI')
 const vite = start(['node_modules/vite/bin/vite.js', '--port', String(APP_PORT), '--strictPort'], {
   VITE_SUPABASE_URL: `http://localhost:${STUB_PORT}`,
   VITE_SUPABASE_ANON_KEY: 'test-anon-key',
-  VITE_AUTH_GOOGLE: 'false',
+  VITE_AUTH_GOOGLE: 'true',
 })
 await waitFor(APP_URL, 60_000, vite, `The dev server (port ${APP_PORT})`)
 // The first page load makes Vite bundle dependencies; do it before the first suite.

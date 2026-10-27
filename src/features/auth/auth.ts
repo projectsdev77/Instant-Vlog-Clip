@@ -42,14 +42,32 @@ export async function promptForAccess(code: string, message: string) {
   else useAuthSheet.getState().show(message)
 }
 
-export async function signInWithEmail(email: string) {
-  const { error } = await supabase!.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } })
-  if (error) throw error
+/** Sign-in errors in plain words (the service's own messages aren't shown to users). */
+function authMessage(e: { message?: string; status?: number; code?: string } | null | undefined, fallback: string): string {
+  const m = e?.message ?? ''
+  if (e?.status === 429 || /rate limit|security purposes|too many/i.test(m)) return 'Too many codes were asked for. Wait a minute, then try again.'
+  if (/expired|invalid|otp/i.test(m) || e?.code === 'otp_expired') return 'That code didn’t work. Check it, or send a new one.'
+  if (/provider is not enabled|unsupported provider/i.test(m)) return 'Google sign-in isn’t available right now. Use your email instead.'
+  if (/fetch|network/i.test(m)) return 'Can’t connect. Check your internet and try again.'
+  if (m) console.error('Sign-in error (hidden from the user):', m)
+  return fallback
+}
+
+/** Emails a 6-digit sign-in code (a new account is made on first sign-in). */
+export async function sendCode(email: string) {
+  const { error } = await supabase!.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })
+  if (error) throw new Error(authMessage(error, 'We couldn’t send the code. Please try again.'))
+}
+
+/** Signs in with the code from the email. */
+export async function verifyCode(email: string, code: string) {
+  const { error } = await supabase!.auth.verifyOtp({ email, token: code, type: 'email' })
+  if (error) throw new Error(authMessage(error, 'That code didn’t work. Check it, or send a new one.'))
 }
 
 export async function signInWithGoogle() {
   const { error } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
-  if (error) throw error
+  if (error) throw new Error(authMessage(error, 'Google sign-in didn’t work. Use your email instead.'))
 }
 
 export async function signOut() {

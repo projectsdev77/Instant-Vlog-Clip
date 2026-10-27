@@ -85,6 +85,22 @@ function editAnswer({ request, vlog }) {
   return { reply: 'Which scene do you mean?', ops: [] }
 }
 
+// Sign-in with an emailed code: any address gets "a code"; 123456 is the right one.
+function auth(url, body) {
+  const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: body.email ?? 'test@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() }
+  if (url.includes('/otp')) return [200, {}]
+  if (url.includes('/verify')) {
+    if (body.token !== '123456') return [403, { code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }]
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+    const exp = Math.floor(Date.now() / 1000) + 3600
+    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, exp, role: 'authenticated', email: user.email })}.sig`
+    return [200, { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'test-refresh', user }]
+  }
+  if (url.includes('/user')) return [200, user]
+  if (url.includes('/logout')) return [204, {}]
+  return [404, { msg: 'stub: unknown auth call' }]
+}
+
 function ai(action, payload) {
   switch (action) {
     // Clip analysis "fails", so the app's on-device fallback and retry paths run.
@@ -141,6 +157,10 @@ http
       const send = (code, o) => {
         res.writeHead(code, { ...cors, 'content-type': 'application/json' })
         res.end(JSON.stringify(o))
+      }
+      if (req.url.includes('/auth/v1/')) {
+        const [code, out] = auth(req.url, parsed)
+        return send(code, out)
       }
       if (req.url.includes('/functions/v1/account')) {
         const out = account(parsed.action)

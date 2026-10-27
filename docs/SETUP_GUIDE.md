@@ -154,7 +154,7 @@ Do this once Step 9 passes and the legal pages are final (Part 2, step G).
 
 ### A. Vercel
 
-Import the GitHub repo in Vercel and add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_AUTH_GOOGLE=false` as environment variables. Every push to the branch updates the site.
+Import the GitHub repo in Vercel and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables, plus `VITE_AUTH_GOOGLE=false` until Google sign-in is set up (I). Every push to the branch updates the site.
 
 ### B. Database and functions
 
@@ -174,7 +174,22 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 - **Site URL**: your Vercel address (later your domain).
 - **Redirect URLs**: `https://<your Vercel address>/**` and `http://localhost:5173/**`.
 
-**Authentication → Emails → Templates**: edit **Magic Link** and **Confirm signup** with the app's name and a friendly line. Keep the `{{ .ConfirmationURL }}` link in them.
+**Sign-in codes.** The app signs people in with a 6-digit code from their email (no link to click). Two settings make the emails send the code:
+
+1. **Authentication → Sign In / Providers → Email**: set **Email OTP Length** to `6` (and leave **Email OTP Expiration** at 3600 seconds or less). Save.
+2. **Authentication → Emails → Templates**: in both **Magic Link** and **Confirm signup**, replace the body with a version that shows the code instead of a link, for example:
+
+   - Subject: `Your Instant Vlog Clip code: {{ .Token }}`
+   - Body:
+     ```html
+     <h2>Your sign-in code</h2>
+     <p>Enter this code in Instant Vlog Clip:</p>
+     <p style="font-size:32px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
+     <p>It works for one hour. If you didn't ask for it, you can ignore this email.</p>
+     ```
+   Remove `{{ .ConfirmationURL }}` so there's no link to click. Save each template.
+
+Test: sign in on the site with your email; the email should show 6 digits, and typing them signs you in. Supabase's built-in sender only sends a few emails an hour (see E), so space out your tests.
 
 ### D. Stripe
 
@@ -210,7 +225,7 @@ Supabase's built-in sender only sends a few emails an hour and is meant for test
    - Stripe public details, portal links and branding (Part 1, Steps 3 and 5).
    - Google sign-in origins (I).
 
-### I. Google sign-in (optional)
+### I. Google sign-in
 
 1. [console.cloud.google.com](https://console.cloud.google.com): create or pick a project.
 2. **APIs & Services → OAuth consent screen**:
@@ -224,7 +239,7 @@ Supabase's built-in sender only sends a few emails an hour and is meant for test
    - Authorised redirect URI: `https://tywkwrxgmwmenaqmaios.supabase.co/auth/v1/callback`
    - Copy the Client ID and secret.
 4. Supabase: **Authentication → Sign In / Providers → Google**. Turn it on and paste both.
-5. Vercel: set `VITE_AUTH_GOOGLE` to `true`, then **Deployments → ⋯ → Redeploy**.
+5. Vercel: set `VITE_AUTH_GOOGLE` to `true` (or delete the variable: Google is on unless it says `false`), then **Deployments → ⋯ → Redeploy**. Locally, the same in `.env.local`.
 6. To let everyone sign in (not just test users), click **Publish app** on the consent screen. Google may review it and asks for a domain you own (H).
 
 ### J. Lock the server to your site
