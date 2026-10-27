@@ -48,8 +48,8 @@ export function AccountPage() {
   if (!authEnabled) return <SitePage title="Account">Accounts aren’t available in this build.</SitePage>
   if (!session)
     return (
-      <SitePage title="Account" lead="Sign in to see your plan and usage.">
-        <Button onClick={() => navigate('/signin?next=/account')}>Sign in</Button>
+      <SitePage title="Account" lead="Log in to see your plan and usage.">
+        <Button onClick={() => navigate('/login?next=/account')}>Log in</Button>
       </SitePage>
     )
 

@@ -86,17 +86,24 @@ function editAnswer({ request, vlog }) {
   return { reply: 'Which scene do you mean?', ops: [] }
 }
 
-// Sign-in: any address gets "an email"; a code of 123456 would sign in (verify).
+// Sign-in: sign-up always "sends a confirmation email"; taken@example.com already has an account;
+// logging in works with the password "correct-horse-9"; reset and resend emails always "go out".
+function session(email) {
+  const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email, app_metadata: {}, user_metadata: {}, identities: [{ id: '1' }], created_at: new Date().toISOString() }
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+  const exp = Math.floor(Date.now() / 1000) + 3600
+  const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, exp, role: 'authenticated', email })}.sig`
+  return { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'test-refresh', user }
+}
+
 function auth(url, body) {
   const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: body.email ?? 'test@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() }
-  if (url.includes('/otp')) return [200, {}]
-  if (url.includes('/verify')) {
-    if (body.token !== '123456') return [403, { code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }]
-    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
-    const exp = Math.floor(Date.now() / 1000) + 3600
-    const token = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, exp, role: 'authenticated', email: user.email })}.sig`
-    return [200, { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'test-refresh', user }]
+  if (url.includes('/signup')) return [200, { ...user, identities: body.email === 'taken@example.com' ? [] : [{ id: '1' }] }]
+  if (url.includes('/token')) {
+    if (body.password === 'correct-horse-9') return [200, session(body.email)]
+    return [400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }]
   }
+  if (url.includes('/recover') || url.includes('/resend') || url.includes('/otp')) return [200, {}]
   if (url.includes('/user')) return [200, user]
   if (url.includes('/logout')) return [204, {}]
   return [404, { msg: 'stub: unknown auth call' }]

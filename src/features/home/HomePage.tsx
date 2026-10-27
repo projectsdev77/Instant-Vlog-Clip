@@ -184,12 +184,15 @@ export function HomePage() {
       <header className="relative mx-auto flex max-w-[1120px] items-center justify-between gap-3 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] md:px-10 md:pt-7">
         <div className="flex min-w-0 items-center gap-2.5">
           <LogoTile />
-          <Wordmark />
+          {/* Very narrow phones: the logo alone, so Log in and Sign up fit */}
+          <span className="max-[420px]:hidden">
+            <Wordmark />
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={openIntro} className="flex h-10 items-center gap-1.5 rounded-full border border-white/16 px-3.5 text-[14px] font-semibold text-white/90 transition hover:bg-white/10">
+          <button type="button" onClick={openIntro} aria-label="How it works" title="How it works" className="flex size-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/16 text-[14px] font-semibold whitespace-nowrap text-white/90 transition hover:bg-white/10 sm:w-auto sm:px-3.5">
             <CirclePlay className="size-4" strokeWidth={2.4} />
-            How it works
+            <span className="max-sm:hidden">How it works</span>
           </button>
           <AccountButton />
         </div>

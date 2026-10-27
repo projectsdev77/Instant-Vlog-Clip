@@ -25,7 +25,7 @@ export function PricingPage() {
   const goPro = async () => {
     if (!authEnabled) return
     if (!session) {
-      useAuthSheet.getState().show('Sign in first, then start your Pro trial.')
+      useAuthSheet.getState().show('Create an account or log in to start your Pro trial.')
       return
     }
     setBusy(true)

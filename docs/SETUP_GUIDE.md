@@ -176,7 +176,13 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 - **Site URL**: your Vercel address (later your domain).
 - **Redirect URLs**: `https://<your Vercel address>/**` and `http://localhost:5173/**`.
 
-**Sign-in emails** contain a link (Supabase only lets you change the email text once a custom email service is set up; see E). Optionally edit the subject under **Authentication → Emails → Templates** (**Magic Link** and **Confirm signup**). Supabase's built-in sender only sends a few emails an hour, and only to members of your Supabase team, so space out tests or use Google sign-in.
+**Email and password sign-up.** In **Authentication → Sign In / Providers → Email**:
+- **Enable Email provider**: on.
+- **Confirm email**: on (new accounts get a confirmation link and can log in after clicking it).
+- **Minimum password length**: `8` (the app asks for at least 8 too).
+- Save.
+
+The confirmation and "reset your password" emails use Supabase's standard templates (a link); they work without an email service. The reset link opens `/reset-password` on the site, which the Redirect URLs above already allow. Supabase's built-in sender only sends a few emails an hour, and only to members of your Supabase team, so space out tests or use Google.
 
 ### D. Stripe
 
