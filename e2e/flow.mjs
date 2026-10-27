@@ -88,7 +88,7 @@ async function main() {
   if (!desktop) await page.getByRole('button', { name: 'Ask AI' }).click()
   await page.getByLabel('Tell the AI what to change').fill('open with the sunset')
   await page.getByRole('button', { name: 'Send' }).click()
-  await page.waitForSelector('text=/Done: open with the sunset/', { timeout: 30000 })
+  await page.waitForSelector('text=Moved that shot to the start.', { timeout: 30000 })
   if (desktop) console.log('  note:', await note.innerText())
   step('tell the AI')
   await page.getByRole('button', { name: 'Undo', exact: true }).first().click()

@@ -1,14 +1,22 @@
 import { useState } from 'react'
-import { Send, Sparkles } from 'lucide-react'
+import { Send, Sparkles, Undo2 } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
 
-/** "Shorter, 20s" sets the length on the device; the others go to the AI. */
-export const AI_SUGGESTIONS = ['Open with the sunset', 'Make it punchier', 'Shorter, 20s']
+/** The AI's last answer: what it changed, or why it changed nothing (or a question back). */
+export type AiReply = { text: string; changed: boolean }
 
-type Props = { thinking: boolean; onAsk: (text: string) => Promise<boolean> }
+type Props = {
+  thinking: boolean
+  onAsk: (text: string) => Promise<boolean>
+  /** chips made from the user's own footage */
+  suggestions: string[]
+  reply?: AiReply
+  /** shown while the AI's change is the version on screen */
+  onUndo?: () => void
+}
 
-function AiInput({ thinking, onAsk, autoFocus }: Props & { autoFocus?: boolean }) {
+function AiInput({ thinking, onAsk, suggestions, reply, onUndo, autoFocus }: Props & { autoFocus?: boolean }) {
   const [text, setText] = useState('')
   const send = async (t: string) => {
     if (!t.trim() || thinking) return
@@ -28,7 +36,7 @@ function AiInput({ thinking, onAsk, autoFocus }: Props & { autoFocus?: boolean }
           value={text}
           autoFocus={autoFocus}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ask AI to change anything…"
+          placeholder={reply && !reply.changed ? 'Answer, or ask something else…' : 'Ask AI to change anything…'}
           aria-label="Tell the AI what to change"
           disabled={thinking}
           className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-white/40 focus-visible:shadow-none"
@@ -43,8 +51,19 @@ function AiInput({ thinking, onAsk, autoFocus }: Props & { autoFocus?: boolean }
           </button>
         )}
       </form>
+      {reply && !thinking && (
+        <div data-testid="ai-reply" className="flex items-start gap-2.5 rounded-[16px] bg-surface-2 px-3.5 py-3 text-[14px] leading-snug" role="status">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-ember-300" strokeWidth={2.2} />
+          <p className="min-w-0 flex-1">{reply.text}</p>
+          {reply.changed && onUndo && (
+            <button type="button" onClick={onUndo} className="-my-1 flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-bold text-ember-300 hover:bg-white/6">
+              <Undo2 className="size-3.5" strokeWidth={2.6} /> Undo
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
-        {AI_SUGGESTIONS.map((s) => (
+        {suggestions.map((s) => (
           <button key={s} type="button" disabled={thinking} onClick={() => void send(s)} className="h-8 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-white/85 transition hover:bg-[#262321] disabled:opacity-40">
             {s}
           </button>
@@ -54,12 +73,14 @@ function AiInput({ thinking, onAsk, autoFocus }: Props & { autoFocus?: boolean }
   )
 }
 
+const HINT = 'Only what you ask for changes, and Undo takes it back.'
+
 /** Desktop: a card under the preview. It sits in the page flow and never covers anything. */
 export function AiCard(props: Props) {
   return (
     <div data-tour="tell-ai" className="rounded-[22px] bg-surface p-3.5">
       <AiInput {...props} />
-      <p className="mt-3 text-[12px] text-white/45">Every change saves a new version. Undo takes you back.</p>
+      <p className="mt-3 text-[12px] text-white/45">{HINT}</p>
     </div>
   )
 }
@@ -69,7 +90,7 @@ export function TellAiSheet({ open, onClose, ...props }: Props & { open: boolean
   return (
     <Sheet open={open} title="Ask AI" onClose={onClose}>
       <AiInput {...props} autoFocus />
-      <p className="mt-4 text-[13px] font-medium text-faint">Every change saves a new version. Undo takes you back.</p>
+      <p className="mt-4 text-[13px] font-medium text-faint">{HINT}</p>
     </Sheet>
   )
 }

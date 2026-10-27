@@ -13,7 +13,7 @@ const APP_URL = `http://localhost:${APP_PORT}`
 const SUITE_TIMEOUT_MS = 15 * 60_000
 
 const SUITES = [
-  { name: 'flow', file: 'e2e/flow.mjs', what: 'Core journey: clips, script, AI voice, Make, Edit, Tell the AI, undo, export' },
+  { name: 'flow', file: 'e2e/flow.mjs', what: 'Core journey: clips, script, AI voice, Make, Edit, Ask AI, undo, export' },
   { name: 'variants', file: 'e2e/variants.mjs', what: 'Own voice, Record page, say my own thing, montage, cancel Make, reload, backup and restore' },
   { name: 'lines', file: 'e2e/lines.mjs', what: 'Line tools, scene lock, title off, own music, export without music' },
   { name: 'tutorial', file: 'e2e/tutorial.mjs', what: 'First-visit tutorial on a phone' },

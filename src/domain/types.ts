@@ -241,7 +241,12 @@ export type EditPlan = {
   userScenes?: string[]
   /** the script as it was when this version was saved, so undo / redo bring the words back too */
   script?: Script
+  /** vlog-wide settings at this version (kept around Ask AI changes), so undo / redo bring them back too */
+  globals?: EditGlobals
 }
+
+/** Settings that live on the project, not the edit: title, music, captions, voice, length. */
+export type EditGlobals = { title: string; musicTrackId: string | null; musicGainDb: number; styleId: StyleId; voice: VoiceSettings; targetSec: TargetLength }
 
 export type StyleId = 'ember' | 'classic' | 'bold' | 'minimal' | 'neon' | 'soft' | 'none'
 

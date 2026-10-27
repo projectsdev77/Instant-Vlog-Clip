@@ -68,6 +68,23 @@ function account(action) {
   }
 }
 
+// Ask AI: a few fixed answers by keyword, like the real editor would give.
+function editAnswer({ request, vlog }) {
+  const r = request.toLowerCase()
+  const op = (o) => ({ scene: '', shot: 0, to: 0, value: '', amount: 0, ...o })
+  const last = vlog.scenes[vlog.scenes.length - 1].ref
+  const broll = vlog.scenes.find((s) => !s.line)?.ref ?? vlog.scenes[1]?.ref ?? 's1'
+  if (r.includes('sticker')) return { reply: 'I can’t add stickers. I can change the look, the music, the captions or the footage.', ops: [] }
+  if (r.includes('black and white')) return { reply: 'Switched the whole vlog to black and white.', ops: [op({ op: 'filter', value: 'mono' })] }
+  if (r.includes('punchier')) return { reply: 'Sped up a footage scene and added a whip between scenes.', ops: [op({ op: 'speed', scene: broll, value: '2' }), op({ op: 'transition', scene: vlog.scenes[1]?.ref ?? 's1', value: 'whip' }), op({ op: 'music', value: 'city-pop' })] }
+  if (r.includes('slow')) return { reply: 'Slowed that part down.', ops: [op({ op: 'speed', scene: broll, value: '0.5' })] }
+  if (r.includes('shorter') || r.includes('20')) return { reply: 'Made it about 20 seconds.', ops: [op({ op: 'length', amount: 20 })] }
+  if (r.includes('funnier') || r.includes('intro')) return { reply: 'Rewrote the intro to be funnier.', ops: [op({ op: 'rewrite-line', scene: 's1', value: 'Okay, this weekend got a little out of hand.' })] }
+  if (r.startsWith('open with')) return { reply: 'Moved that shot to the start.', ops: [op({ op: 'move-scene', scene: last, to: 1 })] }
+  if (r.includes('locked')) return { reply: 'Changed the first scene.', ops: [op({ op: 'camera', scene: 's1', value: 'punch' })] }
+  return { reply: 'Which scene do you mean?', ops: [] }
+}
+
 function ai(action, payload) {
   switch (action) {
     // Clip analysis "fails", so the app's on-device fallback and retry paths run.
@@ -80,6 +97,8 @@ function ai(action, payload) {
     // An empty plan makes the app build its own edit from the script.
     case 'plan-edit':
       return [200, { note: 'stub plan', scenes: [] }]
+    case 'edit-request':
+      return [200, editAnswer(payload)]
     case 'polish-lines':
       return [200, { lines: payload.lines.map((l) => l.replace('bery good i likedd it', 'Very good, I liked it.').replace('very good weekend i had right there', 'What a great weekend that was.')) }]
     case 'write-script':

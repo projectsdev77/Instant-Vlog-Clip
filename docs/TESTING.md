@@ -38,7 +38,7 @@ You don't need API keys and nothing reaches your Supabase project: the runner st
 The run ends with a summary:
 
 ```
-✓ PASS  flow                82 s  Core journey: clips, script, AI voice, Make, Edit, Tell the AI, undo, export
+✓ PASS  flow                82 s  Core journey: clips, script, AI voice, Make, Edit, Ask AI, undo, export
 ✗ FAIL  lines               44 s  exit code 1
 ```
 

@@ -8,6 +8,8 @@
  * Every object lists all properties as required with additionalProperties false.
  */
 
+import { EDIT_OPS } from './contracts.ts'
+
 type Schema = Record<string, unknown>
 
 const obj = (properties: Record<string, unknown>) => ({
@@ -82,6 +84,22 @@ export const planSchema = obj({
       ),
     }),
     1,
+  ),
+})
+
+export const editSchema = obj({
+  reply: { ...str, description: 'What you changed, or why nothing changed, in one or two friendly sentences for the user' },
+  ops: arr(
+    obj({
+      op: { type: 'string', enum: [...EDIT_OPS] },
+      scene: { ...str, description: 'Scene ref such as "s3"; empty string for whole-vlog changes' },
+      shot: { type: 'integer', minimum: 0, description: '1-based shot in the scene; 0 for every shot or when not used' },
+      to: { type: 'integer', minimum: 0, description: 'move-scene: new 1-based position; otherwise 0' },
+      value: { ...str, description: 'The new setting or text; empty string when not used' },
+      amount: { type: 'number', description: 'A number when the op needs one; otherwise 0' },
+    }),
+    0,
+    30,
   ),
 })
 

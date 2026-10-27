@@ -4,20 +4,21 @@ import { Redo2, Sparkles, Undo2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
-import { sumShots } from '@/domain/shots'
 import { currentEdit, useProject } from '@/store/projectStore'
+import type { EditRequest } from '@shared/contracts.ts'
 import { PreviewPlayer } from '@/render/PreviewPlayer'
 import { stepPath, stepsFor } from '@/features/project/steps'
 import { useHeaderSlots } from '@/features/project/headerSlots'
 import { ExportSheet } from '@/features/export/ExportSheet'
 import { AiError } from '@/ai'
 import { authEnabled, promptForAccess } from '@/features/auth/auth'
-import { addScene, moveScene, setTargetLength, tellAi, undo, redo } from './editActions'
+import { addScene, moveScene, undo, redo } from './editActions'
+import { askAi, suggestionsFor } from './askAi'
 import { MusicPanel, StylePanel, VoicePanel, type PanelId } from './GlobalPanels'
 import { SceneTab } from './SceneTab'
 import { SceneStrip } from './SceneStrip'
 import { LookPanel } from './LookPanel'
-import { AiCard, TellAiSheet } from './TellAi'
+import { AiCard, TellAiSheet, type AiReply } from './TellAi'
 import { VersionMenu } from './VersionMenu'
 import { useEditorData } from './useEditorData'
 import { useMediaQuery } from '@/lib/useMediaQuery'
@@ -50,6 +51,9 @@ export function EditStep() {
   const [thinking, setThinking] = useState(false)
   const [stripBusy, setStripBusy] = useState(false)
   const [aiSheet, setAiSheet] = useState(false)
+  // The AI's last reply (and the version its change made), plus the last few turns it gets as context.
+  const [reply, setReply] = useState<AiReply & { version?: number }>()
+  const [history, setHistory] = useState<EditRequest['history']>([])
   const [exporting, setExporting] = useState(false)
   const onTime = useCallback((t: number) => setNow(t), [])
   const desktop = useMediaQuery('(min-width: 1024px)')
@@ -82,16 +86,17 @@ export function EditStep() {
 
   const ask = async (text: string): Promise<boolean> => {
     setThinking(true)
+    setReply(undefined)
     try {
-      if (text === 'Shorter, 20s') {
-        await setTargetLength(20)
-        const sec = Math.round(timelineSeconds())
-        toast(sec > 23 ? `Now ${sec}s: the spoken lines need that long. Remove a line to go shorter.` : `Now about 20s.`, 'success', { label: 'Undo', run: () => void undo() })
-      } else {
-        await tellAi(text)
-        toast(`Done: ${text}`, 'success', { label: 'Undo', run: () => void undo() })
+      const r = await askAi(text, history)
+      const version = r.changed ? currentEdit(useProject.getState().project)?.version : undefined
+      setReply({ ...r, text: r.reply, version })
+      setHistory((h) => [...h, { request: text, reply: r.reply }].slice(-3))
+      // Phone: close the sheet so the change can be seen; the reply stays in a toast.
+      if (r.changed && !desktop) {
+        setAiSheet(false)
+        toast(r.reply, 'success', { label: 'Undo', run: () => void undo() })
       }
-      setAiSheet(false)
       return true
     } catch (e) {
       if (authEnabled && e instanceof AiError && (e.code === 'quota' || e.code === 'auth')) void promptForAccess(e.code, e.message)
@@ -101,11 +106,12 @@ export function EditStep() {
       setThinking(false)
     }
   }
-  // The new length, read after the change has been saved and re-fitted.
-  const timelineSeconds = () => {
-    const p = useProject.getState().project
-    const e = p && currentEdit(p)
-    return e ? e.scenes.reduce((a, s) => a + sumShots(s.shots), 0) : 0
+  const aiProps = {
+    thinking,
+    onAsk: ask,
+    suggestions: suggestionsFor(project, plan, clips),
+    reply,
+    onUndo: reply?.changed && reply.version === plan.version ? () => void undo() : undefined,
   }
 
   const strip = async (fn: () => Promise<void>) => {
@@ -208,7 +214,7 @@ export function EditStep() {
           <div data-tour="preview" className="flex justify-center">
             <PreviewPlayer edit badge={badge} marks={timeline.scenes.slice(1).map((s) => s.start)} timeline={timeline} project={project} mix={mix ?? staleMix} seek={seek} onTime={onTime} autoPlay={params.get('play') === '1'} />
           </div>
-          {desktop && <AiCard thinking={thinking} onAsk={ask} />}
+          {desktop && <AiCard {...aiProps} />}
         </div>
 
         {desktop ? (
@@ -237,7 +243,7 @@ export function EditStep() {
       )}
 
       {!exporting && !aiSheet && <Tour page="edit" />}
-      <TellAiSheet open={aiSheet} onClose={() => setAiSheet(false)} thinking={thinking} onAsk={ask} />
+      <TellAiSheet open={aiSheet} onClose={() => setAiSheet(false)} {...aiProps} />
       {exporting && <ExportSheet project={project} timeline={timeline} clips={clips} onClose={() => setExporting(false)} />}
     </main>
   )

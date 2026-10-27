@@ -7,6 +7,7 @@ import type {
   PolishResponse,
   AiErrorBody,
   AnalyzeClipResponse,
+  EditResponse,
   PlanResponse,
   ScriptResponse,
 } from '../_shared/contracts.ts'
@@ -14,6 +15,9 @@ import {
   ANALYZE_SYSTEM,
   analyzeChecklist,
   analyzeUserText,
+  EDIT_SYSTEM,
+  editChecklist,
+  editUserText,
   PLAN_SYSTEM,
   POLISH_SYSTEM,
   polishChecklist,
@@ -24,7 +28,7 @@ import {
   scriptChecklist,
   scriptUserText,
 } from '../_shared/prompts.ts'
-import { analyzeClipSchema, planSchema, polishSchema, scriptSchema } from '../_shared/schemas.ts'
+import { analyzeClipSchema, editSchema, planSchema, polishSchema, scriptSchema } from '../_shared/schemas.ts'
 import { generateJson, RateLimitError, RefusalError } from './llm.ts'
 import { listVoices, synthesize, transcribe, VoiceServiceError } from './elevenlabs.ts'
 import { authorize, QuotaError, AuthError, SetupError, type UsageKind } from './quota.ts'
@@ -46,6 +50,8 @@ function b64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
   return out
 }
+
+const ACTIONS = new Set<string>(['analyze-clip', 'write-script', 'polish-lines', 'plan-edit', 'edit-request', 'synthesize', 'transcribe', 'list-voices'])
 
 async function handle(req: AiAction) {
   switch (req.action) {
@@ -94,6 +100,15 @@ async function handle(req: AiAction) {
         checklist: planChecklist(req.payload),
         parts: [{ type: 'text', text: planUserText(req.payload) }],
       })
+    case 'edit-request':
+      return await generateJson<EditResponse>({
+        system: EDIT_SYSTEM,
+        effort: 'medium',
+        schema: editSchema,
+        maxTokens: 6000,
+        checklist: editChecklist(req.payload),
+        parts: [{ type: 'text', text: editUserText(req.payload) }],
+      })
     case 'synthesize':
       return await synthesize(req.payload.text, req.payload.voiceId, req.payload.delivery, req.payload.seed)
     case 'transcribe':
@@ -105,9 +120,10 @@ async function handle(req: AiAction) {
 
 /**
  * Users are limited per vlog: the first plan of an edit counts as a generation,
- * "Tell the AI" changes count as revisions, everything else as plain calls.
+ * "Ask AI" changes count as revisions, everything else as plain calls.
  */
 function usageKind(body: AiAction): UsageKind {
+  if (body.action === 'edit-request') return 'revision'
   if (body.action !== 'plan-edit') return 'call'
   if (body.payload.feedback) return 'revision'
   return body.payload.previousIssues?.length ? 'call' : 'generation'
@@ -123,6 +139,7 @@ Deno.serve(async (request) => {
     return fail('bad_request', 'Invalid JSON', 400)
   }
   try {
+    if (!ACTIONS.has(body.action)) return fail('bad_request', 'Unknown action', 400)
     // The voice list is free to fetch and holds nothing private, so it skips sign-in and limits.
     if (body.action === 'list-voices') return json(await listVoices())
     await authorize(request, usageKind(body))

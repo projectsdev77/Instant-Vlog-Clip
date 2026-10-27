@@ -105,7 +105,7 @@ try {
   await page.getByRole('radio', { name: 'Off', checked: true }).waitFor()
   await page.getByPlaceholder(/Ask AI/).fill('make it punchier')
   await page.getByPlaceholder(/Ask AI/).press('Enter')
-  await page.waitForSelector('text=/make it punchier/', { timeout: 60000 })
+  await page.getByTestId('ai-reply').waitFor({ timeout: 60000 })
   if ((await page.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) !== 'true') throw new Error('title came back after Tell the AI')
   ok('title turned off, and stays off after Tell the AI')
   await page.locator('ol[aria-label=Scenes] li button').first().click()

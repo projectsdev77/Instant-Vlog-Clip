@@ -3,14 +3,14 @@ import { refitPlan } from '@/domain/repair'
 import { MIN_SHOT } from '@/domain/timing'
 import { fitShots, round, shotFromMoment, shotLength, sourceTime, speedOf, sumShots } from '@/domain/shots'
 import { pickFootage } from '@/domain/pickFootage'
-import { keepUserScenes, withUserScene } from '@/domain/userScenes'
+import { withUserScene } from '@/domain/userScenes'
 import { scriptFromSpeech } from '@/domain/voiceTrack'
 import { resolveTemplate, setSpeed, stylize } from '@/domain/templates'
 import { uid } from '@/domain/ids'
 import { trackById } from '@/render/musicTracks'
-import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type ScriptLine, type TargetLength } from '@/domain/types'
+import { DEFAULT_LOOK, type EditPlan, type Look, type Moment, type Project, type Scene, type Shot, type TemplateId, type VoiceMode, type Delivery, type EditGlobals, type ScriptLine, type TargetLength } from '@/domain/types'
 import { currentEdit, useProject } from '@/store/projectStore'
-import { planContext, planWithAi } from '@/pipeline/generate'
+import { planContext } from '@/pipeline/generate'
 import { linesNeedingVoice, voiceAllLines, voiceLine } from '@/pipeline/voice'
 
 const state = () => useProject.getState()
@@ -251,52 +251,30 @@ export async function setVoiceMode(mode: VoiceMode) {
   await refitCurrent()
 }
 
-/**
- * What survives a new AI edit: the scenes the user picked footage for (re-fitted
- * to the new timing) and the title choice (off, 3 s, whole video).
- */
-function keepUserChoices(current: EditPlan, next: EditPlan, project: Project): EditPlan {
-  const kept = current.userScenes?.length ? refitPlan(keepUserScenes(current, next), planContext(project)) : next
-  return { ...kept, title: { ...kept.title, showUntilSec: current.title.showUntilSec } }
-}
-
-export async function tellAi(feedback: string) {
-  const { project, plan } = requireEdit()
-  const { plan: next, usedFallback } = await planWithAi(planContext(project, undefined, { fixedLayout: true }), { feedback, current: plan })
-  if (usedFallback) throw new Error("The AI editor isn't available right now. Try again in a moment.")
-  await state().pushEdit({ ...keepUserChoices(plan, next, project), createdBy: 'ai', note: `“${feedback}”` })
-}
-
-export async function regenerate() {
-  const { project, plan: current } = requireEdit()
-  const { plan } = await planWithAi(planContext(project, undefined, { fixedLayout: true }))
-  await state().pushEdit(keepUserChoices(current, plan, project))
-}
-
 /** How long the title shows: 0 = not at all, a number of seconds, or the whole video. */
 export async function setTitleShow(showUntilSec: number | 'always') {
   const { plan } = requireEdit()
   await commit({ ...plan, title: { ...plan.title, showUntilSec } }, showUntilSec === 0 ? 'Title hidden' : showUntilSec === 'always' ? 'Title on the whole video' : 'Title at the start')
 }
 
-/** Steps to another saved version: its scenes and, when it kept one, its script. */
-const goToVersion = (step: -1 | 1) =>
-  state().updateProject((p) => {
-    const i = Math.max(0, Math.min(p.edits.length - 1, p.currentEdit + step))
-    const script = p.edits[i]?.script
-    return script ? { currentEdit: i, script } : { currentEdit: i }
-  })
+export const restoreGlobals = (p: Project, g: EditGlobals): Partial<Project> => ({ title: g.title, musicTrackId: g.musicTrackId, musicGainDb: g.musicGainDb, styleId: g.styleId, voice: g.voice, settings: { ...p.settings, targetSec: g.targetSec } })
 
-export const undo = () => goToVersion(-1)
-export const redo = () => goToVersion(1)
+/** What opening version `i` restores besides its scenes: its script and, when it kept them, its vlog-wide settings. */
+function restoreVersion(p: Project, index: number): Partial<Project> {
+  const i = Math.max(0, Math.min(p.edits.length - 1, index))
+  const { script, globals: g } = p.edits[i] ?? {}
+  return {
+    currentEdit: i,
+    ...(script && { script }),
+    ...(g && restoreGlobals(p, g)),
+  }
+}
+
+export const undo = () => state().updateProject((p) => restoreVersion(p, p.currentEdit - 1))
+export const redo = () => state().updateProject((p) => restoreVersion(p, p.currentEdit + 1))
 
 /** Opens any saved version (the version menu). */
-export const openVersion = (index: number) =>
-  state().updateProject((p) => {
-    const i = Math.max(0, Math.min(p.edits.length - 1, index))
-    const script = p.edits[i]?.script
-    return script ? { currentEdit: i, script } : { currentEdit: i }
-  })
+export const openVersion = (index: number) => state().updateProject((p) => restoreVersion(p, index))
 
 /** A copy of a scene's footage right after it, as its own scene (no line, so nothing is said twice). */
 export async function duplicateScene(index: number) {
@@ -500,4 +478,11 @@ export async function applyTemplate(id: TemplateId) {
   const next = stylize(plan, t, { bpm: trackById(project.musicTrackId)?.bpm, clipDurations: clipDurations() })
   await state().updateProject((p) => ({ styleId: t.styleId, settings: { ...p.settings, template: id } }))
   await commit(next, `${t.name} template`)
+}
+
+/** Drops a scene's line: its footage stays, with no voice or caption. */
+export async function removeLine(lineId: string) {
+  const { project, plan } = requireEdit()
+  if (project.script) await setScriptLines(project, project.script.lines.filter((l) => l.id !== lineId))
+  await commit({ ...plan, scenes: plan.scenes.map((s) => (s.lineId === lineId ? { ...s, lineId: undefined } : s)) }, 'Removed a line')
 }

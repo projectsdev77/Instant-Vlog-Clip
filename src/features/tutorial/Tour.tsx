@@ -22,7 +22,7 @@ export const TIPS: Tip[] = [
   { id: 'edit-preview', page: 'edit', target: 'preview', title: 'Your vlog', body: 'Tap to play. What you see here is exactly what you’ll export.' },
   { id: 'edit-scenes', page: 'edit', target: 'scenes', title: 'Change any scene', body: 'Tap a scene to change what’s said, trim or swap its clip, or set its speed, camera move and transition. Drag scenes to reorder them.' },
   { id: 'edit-look', page: 'edit', target: 'tab-look', title: 'Change the whole look', body: 'Switch templates, add a filter, or tweak color and fades. Your footage stays.' },
-  { id: 'edit-ai', page: 'edit', target: 'tell-ai', title: 'Or just ask', body: 'Ask the AI to change anything in plain words, like “make it punchier” or “open with the sunset”.' },
+  { id: 'edit-ai', page: 'edit', target: 'tell-ai', title: 'Or just ask', body: 'Ask the AI to change anything in plain words, like “make it punchier”, “slow down the beach part” or “make the intro funnier”.' },
   { id: 'edit-export', page: 'edit', target: 'export', title: 'Export', body: 'Made right on your device, sized for TikTok, Reels and Shorts. That’s it!' },
 ]
 

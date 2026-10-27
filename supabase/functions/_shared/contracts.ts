@@ -125,6 +125,106 @@ export type PlanResponse = {
   scenes: { lineId: string; shots: PlanShotWire[] }[]
 }
 
+/**
+ * "Ask AI" on the Edit page: the user's request plus the vlog as it is now.
+ * The answer is a short reply and a list of exact changes the app applies
+ * with its own edit tools, so everything not asked for stays as it is.
+ */
+export type EditRequest = {
+  request: string
+  /** the last few requests and replies, oldest first, so "more" or an answer to a question makes sense */
+  history: { request: string; reply: string }[]
+  language: string
+  voiceMode: 'ai' | 'recorded' | 'none'
+  vlog: EditStateWire
+  catalog: CatalogEntry[]
+  options: {
+    voices: { id: string; name: string; description: string }[]
+    music: { id: string; name: string; description: string }[]
+    templates: { id: string; name: string }[]
+    captions: { id: string; name: string; description: string }[]
+    filters: string[]
+  }
+}
+
+export type EditShotWire = {
+  clipId: string
+  in: number
+  out: number
+  seconds: number
+  speed: number
+  ramp: RampWire
+  motion: MotionWire
+  transitionIn: TransitionWire
+  clipAudio: 'mute' | 'duck' | 'full'
+  volume: number
+  fit: 'look' | 'fill' | 'blur'
+  frozen: boolean
+}
+
+export type EditStateWire = {
+  title: string
+  titleShow: 'off' | 'start' | 'always'
+  captions: string
+  music: string
+  musicLevelDb: number
+  voice: string
+  template: string
+  lengthSec: number
+  targetSec: number | 'auto'
+  look: { filter: string; brightness: number; contrast: number; saturation: number; warmth: number; vignette: number; grain: number; letterbox: boolean; fades: 'none' | 'in' | 'out' | 'both' }
+  /** locked: the user locked the scene from AI changes */
+  scenes: { ref: string; seconds: number; line: string; lineMuted: boolean; delivery: string; locked: boolean; shots: EditShotWire[] }[]
+}
+
+export const EDIT_OPS = [
+  'move-scene',
+  'delete-scene',
+  'duplicate-scene',
+  'add-scene',
+  'swap-footage',
+  'speed',
+  'camera',
+  'transition',
+  'clip-sound',
+  'clip-volume',
+  'frame',
+  'freeze-end',
+  'rewrite-line',
+  'add-line',
+  'remove-line',
+  'reread-line',
+  'mute-line',
+  'voice',
+  'filter',
+  'adjust',
+  'letterbox',
+  'fades',
+  'template',
+  'music',
+  'music-level',
+  'captions',
+  'title',
+  'title-show',
+  'length',
+] as const
+export type EditOpName = (typeof EDIT_OPS)[number]
+
+/** One change. Fields an operation doesn't use are "" or 0. */
+export type EditOpWire = {
+  op: EditOpName
+  /** scene ref ("s3"); "" for changes to the whole vlog */
+  scene: string
+  /** 1-based shot in the scene; 0 = every shot */
+  shot: number
+  /** move-scene: the new 1-based position */
+  to: number
+  value: string
+  amount: number
+}
+
+export type EditResponse = { reply: string; ops: EditOpWire[] }
+
 /** How a line is read: `natural` is the voice's own default. */
 export type Delivery = 'natural' | 'calm' | 'energetic' | 'slow'
 /** `seed` varies the reading, so "Read again" sounds different. */
@@ -140,7 +240,7 @@ export type TranscribeResponse = { text: string; words: WordWire[] }
  * the x-ai-version header; the app warns when the deployed function is older.
  * Bump it whenever the function's behaviour changes.
  */
-export const AI_FUNCTION_VERSION = '2026-10-24.11'
+export const AI_FUNCTION_VERSION = '2026-10-27.12'
 
 export type PolishRequest = { lines: string[]; language: string }
 export type PolishResponse = { lines: string[] }
@@ -150,6 +250,7 @@ export type AiAction =
   | { action: 'write-script'; payload: ScriptRequest }
   | { action: 'polish-lines'; payload: PolishRequest }
   | { action: 'plan-edit'; payload: PlanRequest }
+  | { action: 'edit-request'; payload: EditRequest }
   | { action: 'synthesize'; payload: SynthesizeRequest }
   | { action: 'transcribe'; payload: TranscribeRequest }
   | { action: 'list-voices'; payload?: undefined }

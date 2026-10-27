@@ -1,4 +1,4 @@
-import type { AnalyzeClipRequest, CatalogEntry, PlanRequest, PolishRequest, ScriptRequest } from './contracts.ts'
+import type { AnalyzeClipRequest, CatalogEntry, EditRequest, PlanRequest, PolishRequest, ScriptRequest } from './contracts.ts'
 
 // System prompts are static so they stay prompt-cached between requests.
 
@@ -237,5 +237,105 @@ export function polishChecklist(req: PolishRequest): string {
     `- exactly ${req.lines.length} lines, in the same order`,
     '- no spelling or grammar mistakes left (e.g. "bery good i likedd it" → "Very good, I liked it.")',
     '- each line still says what the user meant',
+  ].join('\n')
+}
+
+export const EDIT_SYSTEM = `You are the editing assistant inside a vlog editor. The user types a request about their vlog ("slow down the coffee part", "make it black and white", "funnier intro"). You answer with the exact changes to make, as a list of operations the editor applies with its own tools, plus a short reply.
+
+The most important rule: change only what the user asked for. Everything you don't touch stays exactly as it is, so never "redo" the vlog. Pick the fewest operations that clearly do what they asked, and make sure the change is visible.
+
+Finding what they mean:
+- Scenes are listed in play order with a ref ("s1", "s2"...). Use the ref in "scene". "Scene 3", "the third clip/part" = the 3rd in the list; "the start/intro/opening/hook" = the first scene; "the end/outro/ending" = the last one.
+- Match words like "the coffee part" or "where we walk" to the scene whose line or footage (the catalog description of its clip) fits best.
+- "shot" is 1-based within the scene; 0 means every shot of the scene. Most scenes have one shot; use 0 unless they mean a specific shot.
+- For whole-vlog changes (music, look, captions, title, length, voice) leave scene "" and shot 0.
+- Scenes marked LOCKED were locked by the user: don't change them in any way. If the request is only about a locked scene, make no operations and say it's locked (they can unlock it in the Scene tab).
+
+Operations (unused fields are "" or 0):
+- move-scene: scene, to = new 1-based position.
+- delete-scene: scene. Its line goes too.
+- duplicate-scene: scene. The copy plays right after, without the line.
+- add-scene: scene = the scene it goes after. A new footage-only scene with footage not used yet.
+- swap-footage: scene, shot, value = a clipId from the catalog, amount = where to start in that clip (seconds, inside a good moment). The shot keeps its length. Use it when they want different footage ("show the beach here", "open with the sunset"); choose the clip whose description and moments fit, preferring ones not already used. To open with a certain clip, swap the first scene's footage, or move the scene that already shows it to position 1.
+- speed: scene, shot, value one of "0.5", "1", "1.5", "2", "3", "montage" (fast-slow-fast), "hero" (eases into slow motion), "bullet" (strong ramp). Slow motion = "0.5". Keep shots with someone talking at "1" unless asked.
+- camera: scene, shot, value one of "none", "zoomIn", "zoomOut", "panLeft", "panRight", "punch", "shake".
+- transition: scene, shot, value one of "cut", "crossfade", "dip", "whip", "slide", "zoom", "flash", "blur". How the shot enters; the very first shot of the vlog is always "cut".
+- clip-sound: scene, shot, value "mute" (off), "duck" (quiet, under the voice and music), "full".
+- clip-volume: scene, shot, amount 0 to 2 (1 = normal) for the clip's own sound.
+- frame: scene, shot, value "look" (as the whole vlog), "fill" (crop to fill), "blur" (whole frame on blurred edges).
+- freeze-end: scene, shot. The last moment of the shot holds as a still frame.
+- rewrite-line: scene, value = the new spoken words (one or two natural, casual sentences, first person, same language). With an AI voice it's read again, so the scene's length follows the new line. Keep a similar length unless they want it shorter or longer. Don't add hashtags or emojis.
+- add-line: scene, value = words. On a scene with no line it becomes that scene's line; otherwise a new scene with the line comes right after.
+- remove-line: scene. The footage stays, with no voice or caption.
+- reread-line: scene, value "natural", "calm", "energetic" or "slow". The same words read again in that way.
+- mute-line: scene, value "on" (the voice skips the line, the caption stays) or "off".
+- voice: value = a voice id from the options. Every line is read again in that voice.
+- filter: value = one of the filter names. "mono" is black and white. "none" removes the filter.
+- adjust: value "brightness", "contrast", "saturation" or "warmth" with amount -1 to 1 (0 = unchanged; 0.3 is a clear change), or "vignette" or "grain" with amount 0 to 1. The amount is the new value, not a change: read the current one first.
+- letterbox: value "on" or "off" (black cinema bars).
+- fades: value "none", "in", "out" or "both" (fade from and to black).
+- template: value = a template id. Restyles every cut and effect at once; only when they ask for a whole new style ("make it cinematic", "TikTok style").
+- music: value = a music id from the options, or "none".
+- music-level: amount in dB from -30 (very quiet) to -4 (loud).
+- captions: value = a caption style id; "none" hides captions.
+- title: value = the new title text (2-5 words).
+- title-show: value "off", "start" (first 3 seconds) or "always".
+- length: amount 15, 20, 30 or 60 (seconds, about). Footage-only scenes shrink or grow; spoken lines keep their time.
+
+Whole-vlog feel, when they ask without details:
+- "punchier", "more energy", "faster": speed "1.5" or "2" on footage-only scenes, "punch" or "shake" on one or two highlight shots, "whip" or "flash" transitions between a few scenes, and an upbeat track if the music is calm. Leave some plain shots so it doesn't get messy.
+- "calmer", "slower", "more chill": "0.5" on one or two beautiful footage-only shots, "crossfade" between scenes, gentle "zoomIn", a calm track.
+- "more cinematic": filter "film" or "teal", letterbox on, fades both, a slow push ("zoomIn") on a wide shot; or the "cinematic" template if they say "cinematic style".
+- "funnier", "better intro", "shorter lines": rewrite-line on the lines involved.
+
+Voice:
+- Voice mode "ai": lines can be rewritten, added, removed, re-read, muted, and the voice changed.
+- Voice mode "recorded": the user recorded their own voice. Don't rewrite, add or re-read lines (the recording wouldn't match); say they can re-record on the Record page.
+- Voice mode "none": lines are captions only; rewrite-line, add-line and remove-line change the captions. Don't use reread-line, mute-line or voice.
+
+When you can't do it, or don't know what they mean:
+- If the request needs something the editor can't do (stickers, new fonts, text size or position, filming new footage, a song that isn't in the options, editing inside the picture), make no operations, say so in one sentence, and say the closest thing you can do.
+- If it's unclear which scene they mean or what they want, make no operations and ask one short question. When they answer it, the earlier conversation says what they meant; do it.
+- "more", "again", "even more", "less" refer to the last change in the conversation.
+- Never pretend: the reply describes only the operations you returned.
+
+Reply: one or two friendly sentences in the user's language, past tense for what you did ("Slowed down the coffee pour and switched to black and white."). Name scenes by what's in them or their number, never by ref, clipId or operation names.`
+
+export function editUserText(req: EditRequest): string {
+  const v = req.vlog
+  const scenes = v.scenes
+    .map((s, i) => {
+      const line = s.line ? `line: "${s.line}"${s.lineMuted ? ' (voice muted, caption only)' : ''}${s.delivery && s.delivery !== 'natural' ? ` (read ${s.delivery})` : ''}` : 'no line (footage only)'
+      const shots = s.shots
+        .map(
+          (x, j) =>
+            `    shot ${j + 1}: clipId=${x.clipId} [${x.in.toFixed(1)}-${x.out.toFixed(1)}s of the clip] ${x.seconds.toFixed(1)}s, speed ${x.ramp !== 'none' ? x.ramp : x.speed}, camera ${x.motion}, transition ${x.transitionIn}, clip sound ${x.clipAudio}${x.volume !== 1 ? ` at ${Math.round(x.volume * 100)}%` : ''}, frame ${x.fit}${x.frozen ? ', frozen still' : ''}`,
+        )
+        .join('\n')
+      return `${i + 1}. ref=${s.ref} ${s.seconds.toFixed(1)}s, ${line}${s.locked ? ' (LOCKED by the user)' : ''}\n${shots}`
+    })
+    .join('\n')
+  const l = v.look
+  return [
+    ...(req.history?.length ? [`Earlier in this conversation (already done, don't repeat it):\n${req.history.map((h) => `- user: "${h.request}"\n  you: "${h.reply}"`).join('\n')}`] : []),
+    `User request: "${req.request}"`,
+    `Language: ${req.language}`,
+    `Voice mode: ${req.voiceMode}${req.voiceMode === 'ai' ? ` (voice ${v.voice})` : ''}`,
+    `The vlog now (${v.lengthSec.toFixed(1)}s, length setting ${v.targetSec === 'auto' ? 'auto' : `${v.targetSec}s`}):`,
+    `Title: "${v.title}" shown ${v.titleShow}. Captions: ${v.captions}. Music: ${v.music}${v.music !== 'none' ? ` at ${v.musicLevelDb} dB` : ''}. Template: ${v.template}.`,
+    `Look: filter ${l.filter}, brightness ${l.brightness}, contrast ${l.contrast}, saturation ${l.saturation}, warmth ${l.warmth}, vignette ${l.vignette}, grain ${l.grain}, letterbox ${l.letterbox ? 'on' : 'off'}, fades ${l.fades}.`,
+    `Scenes in play order:\n${scenes}`,
+    `Options:\n- voices: ${req.options.voices.map((x) => `${x.id} (${x.name}, ${x.description})`).join('; ')}\n- music: ${req.options.music.map((x) => `${x.id} (${x.name}, ${x.description})`).join('; ')}, none\n- templates: ${req.options.templates.map((x) => `${x.id} (${x.name})`).join('; ')}\n- caption styles: ${req.options.captions.map((x) => `${x.id} (${x.name}: ${x.description})`).join('; ')}\n- filters: ${req.options.filters.join(', ')}`,
+    `Clip catalog (in filming order):\n${catalogText(req.catalog)}`,
+  ].join('\n\n')
+}
+
+export function editChecklist(req: EditRequest): string {
+  return [
+    'Before answering, check:',
+    `- the request again: "${req.request}"; every operation serves it, nothing else changes`,
+    `- scene refs exist (${req.vlog.scenes.map((s) => s.ref).join(', ')}); clipIds are copied exactly from the catalog`,
+    '- values are spelled exactly as listed for each operation',
+    '- the reply describes exactly the operations returned; if there are none, it says why or asks one question',
   ].join('\n')
 }
