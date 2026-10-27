@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
@@ -6,15 +5,20 @@ import { supabase } from '@/lib/supabase'
 /** Sign-in exists only when the app talks to real AI through Supabase. */
 export const authEnabled = !!supabase
 
+/** The signed-in session, shared by every component; `ready` is false until the first check is done. */
+const useAuthState = create<{ session: Session | null; ready: boolean }>(() => ({ session: null, ready: !supabase }))
+if (supabase) {
+  void supabase.auth.getSession().then(({ data }) => useAuthState.setState({ session: data.session, ready: true }))
+  supabase.auth.onAuthStateChange((_e, s) => useAuthState.setState({ session: s, ready: true }))
+}
+
 export function useSession(): Session | null {
-  const [session, setSession] = useState<Session | null>(null)
-  useEffect(() => {
-    if (!supabase) return
-    void supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => data.subscription.unsubscribe()
-  }, [])
-  return session
+  return useAuthState((s) => s.session)
+}
+
+/** False until the app knows whether someone is signed in (avoid sending a signed-in user to Log in). */
+export function useSessionReady(): boolean {
+  return useAuthState((s) => s.ready)
 }
 
 type SheetState = { open: boolean; reason?: string; show: (reason?: string) => void; hide: () => void }
@@ -47,6 +51,7 @@ function authMessage(e: { message?: string; status?: number; code?: string } | n
   const m = e?.message ?? ''
   if (e?.code === 'invalid_credentials' || /invalid login credentials/i.test(m)) return 'Wrong email or password.'
   if (e?.code === 'email_not_confirmed' || /email not confirmed/i.test(m)) return 'Confirm your email first: open the link we sent you.'
+  if (e?.code === 'email_exists' || /already been registered/i.test(m)) return 'Another account already uses this email.'
   if (e?.code === 'user_already_exists' || /already registered/i.test(m)) return 'There’s already an account with this email. Log in instead.'
   if (e?.code === 'weak_password' || /password should|weak password/i.test(m)) return 'Choose a stronger password: at least 8 characters, with an uppercase letter, a number and a special character.'
   if (e?.code === 'same_password' || /different from the old/i.test(m)) return 'Choose a password you haven’t used before.'
@@ -113,6 +118,17 @@ export function hasPassword(user: { identities?: { provider: string }[]; app_met
 export async function signInWithGoogle(returnTo = window.location.href) {
   const { error } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: returnTo } })
   fail(error, 'Google sign-in didn’t work. Use your email instead.')
+}
+
+/** Starts an email change: the new address gets a confirmation link (and the old one too, when Supabase's secure change is on). */
+export async function changeEmail(email: string) {
+  const { error } = await supabase!.auth.updateUser({ email }, { emailRedirectTo: `${window.location.origin}/settings/account` })
+  fail(error, 'Couldn’t change the email. Please try again.')
+}
+
+/** Signs out on every device (this one too). */
+export async function signOutEverywhere() {
+  await supabase?.auth.signOut({ scope: 'global' })
 }
 
 export async function signOut() {

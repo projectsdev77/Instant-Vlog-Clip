@@ -83,7 +83,7 @@ export function PricingPage() {
           ]}
           action={
             isPro ? (
-              <Button block onClick={() => navigate('/account')}>
+              <Button block onClick={() => navigate('/settings/plan')}>
                 You’re on Pro · manage
               </Button>
             ) : (

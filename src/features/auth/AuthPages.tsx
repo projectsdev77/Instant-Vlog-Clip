@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
 import { supabase } from '@/lib/supabase'
-import { authEnabled, setNewPassword, useSession } from './auth'
+import { authEnabled, setNewPassword, useSession, useSessionReady } from './auth'
 import { AUTH_TITLES, AuthForm, type AuthMode } from './AuthForm'
 import { PasswordRules, passwordOk } from './password'
 
@@ -33,11 +33,13 @@ function AuthLayout({ title, children }: { title: string; children: ReactNode })
 /** /login and /signup (?next=/somewhere): the same form, switching between the two. */
 export function AuthPage({ initial }: { initial: 'login' | 'signup' }) {
   const session = useSession()
+  const ready = useSessionReady()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const next = params.get('next')?.startsWith('/') ? params.get('next')! : '/'
   const [mode, setMode] = useState<AuthMode>(initial)
   if (!authEnabled || session) return <Navigate to={next} replace />
+  if (!ready) return null
   const switchTo = (m: AuthMode) => {
     setMode(m)
     if (m !== 'forgot') navigate(`/${m}${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`, { replace: true })

@@ -67,3 +67,20 @@ export async function restoreProject(file: Blob): Promise<Project> {
   await db.projects.put(restored)
   return restored
 }
+
+/** Downloads a backup file of every vlog on this device (one file each). Returns how many. */
+export async function downloadAllBackups(ids: string[]): Promise<number> {
+  let n = 0
+  for (const id of ids) {
+    const { blob, fileName } = await backupProject(id)
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = fileName
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000)
+    n++
+    // Browsers ask once before allowing several downloads; a short gap keeps them in order.
+    await new Promise((r) => setTimeout(r, 600))
+  }
+  return n
+}

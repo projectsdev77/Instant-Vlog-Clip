@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react'
-import { createBrowserRouter, Navigate, Outlet } from 'react-router'
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router'
 import { Spinner } from '@/components/ui/Spinner'
 import { UpgradeSheet } from '@/features/account/UpgradeSheet'
 import { AuthSheet } from '@/features/auth/AuthSheet'
@@ -57,10 +57,18 @@ export const router = createBrowserRouter([
       { path: '/reset-password', element: page(() => import('@/features/auth/AuthPages').then((m) => ({ default: m.ResetPasswordPage }))) },
       { path: '/signin', element: <Navigate to="/login" replace /> },
       { path: '/pricing', element: page(() => import('@/features/account/PricingPage').then((m) => ({ default: m.PricingPage }))) },
-      { path: '/account', element: page(() => import('@/features/account/AccountPage').then((m) => ({ default: m.AccountPage }))) },
+      { path: '/settings', element: page(() => import('@/features/account/SettingsPage').then((m) => ({ default: m.SettingsPage }))) },
+      { path: '/settings/:section', element: page(() => import('@/features/account/SettingsPage').then((m) => ({ default: m.SettingsPage }))) },
+      // Old address (and where Stripe used to send people back): the plan section, keeping ?checkout=success.
+      { path: '/account', element: <AccountRedirect /> },
       { path: '/terms', element: page(() => import('@/features/account/LegalPages').then((m) => ({ default: m.TermsPage }))) },
       { path: '/privacy', element: page(() => import('@/features/account/LegalPages').then((m) => ({ default: m.PrivacyPage }))) },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ])
+
+function AccountRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/settings/plan${search}`} replace />
+}

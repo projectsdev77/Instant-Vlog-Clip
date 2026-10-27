@@ -23,13 +23,13 @@ export const accountStatus = () => call<AccountStatus>({ action: 'status' })
 
 /** Sends the browser to Stripe Checkout for Pro. */
 export async function startCheckout(interval: BillingInterval) {
-  const { url } = await call<{ url: string }>({ action: 'checkout', interval, returnUrl: `${location.origin}/account` })
+  const { url } = await call<{ url: string }>({ action: 'checkout', interval, returnUrl: `${location.origin}/settings/plan` })
   location.assign(url)
 }
 
 /** Sends the browser to Stripe's billing portal (change plan, card, cancel, invoices). */
 export async function openBillingPortal() {
-  const { url } = await call<{ url: string }>({ action: 'portal', returnUrl: `${location.origin}/account` })
+  const { url } = await call<{ url: string }>({ action: 'portal', returnUrl: `${location.origin}/settings/plan` })
   location.assign(url)
 }
 

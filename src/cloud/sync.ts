@@ -192,3 +192,24 @@ export function deleteFromAccount(id: string): Promise<void> {
 }
 
 export const accountSpace = () => backend.space()
+
+/**
+ * Removes this account's vlogs from this device when they're saved in the
+ * account and up to date. Ones not saved yet stay. Returns how many went.
+ */
+export async function clearDevice(deleteLocal: (id: string) => Promise<void>): Promise<{ removed: number; kept: number }> {
+  const uid = await backend.userId()
+  if (!uid) return { removed: 0, kept: 0 }
+  let removed = 0
+  let kept = 0
+  for (const p of await db.projects.toArray()) {
+    if (p.ownerId !== uid) continue
+    const state = await db.sync.get(p.id)
+    if (state && p.updatedAt <= state.syncedAt) {
+      await deleteLocal(p.id)
+      await db.sync.delete(p.id)
+      removed++
+    } else kept++
+  }
+  return { removed, kept }
+}
