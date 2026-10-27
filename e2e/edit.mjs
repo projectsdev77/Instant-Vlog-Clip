@@ -103,12 +103,14 @@ try {
   ok('hold / freeze adds a frozen shot')
 
   // Motion: an option under More, then back to the main four
-  await page.getByLabel('More speed options').selectOption({ label: 'Montage' })
-  await page.waitForFunction(() => document.querySelector('select[aria-label="More speed options"]')?.value === 'montage')
+  await page.getByRole('button', { name: 'More speed options' }).click()
+  await page.getByRole('listbox', { name: 'More speed options' }).getByRole('option', { name: 'Montage' }).click()
+  await page.getByRole('button', { name: 'More speed options' }).filter({ hasText: 'Montage' }).waitFor()
   await page.getByRole('radiogroup', { name: 'Speed' }).getByRole('radio', { name: '2×' }).click()
   await page.getByRole('radiogroup', { name: 'Speed' }).getByRole('radio', { name: '2×', checked: true }).waitFor()
-  await page.getByLabel('More camera options').selectOption({ label: 'Shake' })
-  await page.waitForFunction(() => document.querySelector('select[aria-label="More camera options"]')?.value === 'shake')
+  await page.getByRole('button', { name: 'More camera options' }).click()
+  await page.getByRole('listbox', { name: 'More camera options' }).getByRole('option', { name: 'Shake' }).click()
+  await page.getByRole('button', { name: 'More camera options' }).filter({ hasText: 'Shake' }).waitFor()
   ok('effects under More (Montage, Shake) still work beside the main options')
 
   // Version menu: open an older version

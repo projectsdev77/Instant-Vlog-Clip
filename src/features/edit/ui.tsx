@@ -1,7 +1,7 @@
 // Building blocks for the Edit panel (design handoff "Edit Inspector"):
 // sections split by thin lines, label-left rows (label above on phones),
 // segmented controls of up to 4 options, option cards and fold-away sections.
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, ChevronDown, Pause, Play } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
@@ -75,31 +75,74 @@ export function Segmented<T extends string | number>({
           )
         })}
       </div>
-      {more && (
-        <label className={cn('relative flex h-[46px] shrink-0 items-center rounded-full text-[13px] md:h-11 md:pr-8 md:pl-3.5 md:text-[14px]', inMore ? 'bg-white pr-8 pl-3.5 font-bold text-ink' : 'w-[46px] justify-center bg-surface-2 font-medium text-white/72 md:w-auto md:justify-start')}>
-          {/* Phones: just the arrow until something under More is picked. */}
-          <span className={cn('pointer-events-none whitespace-nowrap', !inMore && 'max-md:sr-only')}>{inMore?.label ?? 'More'}</span>
-          <ChevronDown className={cn('pointer-events-none size-4', inMore ? 'absolute right-2.5' : 'md:absolute md:right-2.5')} strokeWidth={2.4} />
-          <select
-            aria-label={`More ${label.toLowerCase()} options`}
-            disabled={disabled}
-            value={inMore ? String(inMore.value) : ''}
-            onChange={(e) => {
-              const o = more.find((x) => String(x.value) === e.target.value)
-              if (o) onChange(o.value)
-            }}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            <option value="" disabled>
-              More
-            </option>
-            {more.map((o) => (
-              <option key={String(o.value)} value={String(o.value)}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      {more && <MoreMenu label={label} options={more} picked={inMore} disabled={disabled} onPick={onChange} />}
+    </div>
+  )
+}
+
+/** The "More ▾" pill: a small dark menu (not the browser's own white list) with the rest of the options. */
+function MoreMenu<T extends string | number>({ label, options, picked, disabled, onPick }: { label: string; options: SegOption<T>[]; picked?: SegOption<T>; disabled?: boolean; onPick: (v: T) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', close)
+    // keyboard users land on the picked option, or the first one
+    ref.current?.querySelector<HTMLButtonElement>('[role=option][aria-selected=true], [role=option]')?.focus()
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
+  const step = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>('[role=option]') ?? [])]
+    const i = items.indexOf(document.activeElement as HTMLButtonElement)
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
+  }
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`More ${label.toLowerCase()} options`}
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className={cn('flex h-[46px] items-center gap-1.5 rounded-full text-[13px] transition duration-150 ease-ember md:h-11 md:pr-3 md:pl-3.5 md:text-[14px] disabled:opacity-60', picked ? 'bg-white pr-3 pl-3.5 font-bold text-ink' : 'w-[46px] justify-center bg-surface-2 font-medium text-white/72 hover:text-fg md:w-auto')}
+      >
+        {/* Phones: just the arrow until something under More is picked. */}
+        <span className={cn('whitespace-nowrap', !picked && 'max-md:sr-only')}>{picked?.label ?? 'More'}</span>
+        <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} strokeWidth={2.4} />
+      </button>
+      {open && (
+        <ul role="listbox" aria-label={`More ${label.toLowerCase()} options`} onKeyDown={step} className="absolute top-[calc(100%+8px)] right-0 z-40 max-h-[50vh] min-w-[180px] overflow-y-auto rounded-[18px] bg-surface-2 p-1.5 shadow-lift">
+          {options.map((o) => {
+            const on = o.value === picked?.value
+            return (
+              <li key={String(o.value)}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={on}
+                  onClick={() => {
+                    setOpen(false)
+                    if (!on) onPick(o.value)
+                  }}
+                  className={cn('flex w-full items-center gap-2 rounded-[12px] px-3 py-2.5 text-left text-[14px] whitespace-nowrap transition hover:bg-white/6 focus-visible:bg-white/8 focus-visible:outline-none', on && 'bg-white/8 font-semibold')}
+                >
+                  <span className="flex-1">{o.label}</span>
+                  {on && <Check className="size-4 shrink-0 text-accent" strokeWidth={3} />}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )
