@@ -5,23 +5,21 @@ import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
-import { authEnabled, sendCode, signInWithGoogle, useAuthSheet, verifyCode } from './auth'
+import { authEnabled, sendLink, signInWithGoogle, useAuthSheet } from './auth'
 
 // Google is on unless turned off for a build that has no Google sign-in set up.
 const googleEnabled = import.meta.env.VITE_AUTH_GOOGLE !== 'false'
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const CODE_LENGTH = 6
-/** Seconds before another code can be sent. */
+/** Seconds before another email can be sent. */
 const RESEND_WAIT = 60
 
-type Step = 'email' | 'code'
+type Step = 'email' | 'sent'
 
 export function AuthSheet() {
   const { open, hide, reason } = useAuthSheet()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState<'send' | 'verify' | 'google' | null>(null)
+  const [busy, setBusy] = useState<'send' | 'google' | null>(null)
   const [error, setError] = useState('')
   const [wait, setWait] = useState(0)
 
@@ -36,7 +34,6 @@ export function AuthSheet() {
   const close = () => {
     hide()
     setStep('email')
-    setCode('')
     setError('')
   }
 
@@ -45,24 +42,9 @@ export function AuthSheet() {
     setBusy('send')
     setError('')
     try {
-      await sendCode(email.trim())
-      setStep('code')
-      setCode('')
+      await sendLink(email.trim())
+      setStep('sent')
       setWait(RESEND_WAIT)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const verify = async (value = code) => {
-    if (value.length !== CODE_LENGTH || busy) return
-    setBusy('verify')
-    setError('')
-    try {
-      await verifyCode(email.trim(), value)
-      close()
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -96,59 +78,22 @@ export function AuthSheet() {
   )
 
   return (
-    <Sheet open={open} title={step === 'code' ? 'Enter your code' : 'Sign in to keep going'} onClose={close}>
-      {step === 'code' ? (
+    <Sheet open={open} title={step === 'sent' ? 'Check your email' : 'Sign in to keep going'} onClose={close}>
+      {step === 'sent' ? (
         <div className="space-y-5">
           <span className="grid size-14 place-items-center rounded-full bg-[rgb(255_90_31/.14)] text-accent">
             <Mail className="size-6" strokeWidth={2.2} />
           </span>
           <p className="text-[16px] text-muted">
-            We sent a {CODE_LENGTH}-digit code to <b className="text-fg">{email.trim()}</b>. It may take a minute to arrive; check spam too.
+            We sent a sign-in link to <b className="text-fg">{email.trim()}</b>. Open it on this device. It may take a minute to arrive; check spam too.
           </p>
-          <form
-            className="space-y-3"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault()
-              void verify()
-            }}
-          >
-            <TextInput
-              autoFocus
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder={'0'.repeat(CODE_LENGTH)}
-              maxLength={CODE_LENGTH}
-              value={code}
-              invalid={!!error}
-              className="tabular h-14 text-center text-[24px] font-bold tracking-[0.4em]"
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH)
-                setCode(digits)
-                setError('')
-                // A pasted or autofilled code signs in straight away.
-                if (digits.length === CODE_LENGTH) void verify(digits)
-              }}
-              aria-label={`${CODE_LENGTH}-digit code`}
-              aria-invalid={!!error}
-            />
-            {error && <p className="text-[14px] font-medium text-danger">{error}</p>}
-            <Button type="submit" block className="h-14" disabled={busy === 'verify' || code.length !== CODE_LENGTH}>
-              {busy === 'verify' ? (
-                <>
-                  <Spinner /> Signing in…
-                </>
-              ) : (
-                'Sign in'
-              )}
-            </Button>
-          </form>
+          {error && <p className="text-[14px] font-medium text-danger">{error}</p>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             {wait > 0 ? (
-              <span className="tabular text-[14px] text-faint">Send a new code in {wait}s</span>
+              <span className="tabular text-[14px] text-faint">Send it again in {wait}s</span>
             ) : (
               <Button variant="link" size="sm" className="px-0" disabled={busy === 'send'} onClick={() => void send()}>
-                {busy === 'send' ? 'Sending…' : 'Send a new code'}
+                {busy === 'send' ? 'Sending…' : 'Send it again'}
               </Button>
             )}
             <Button
@@ -206,7 +151,7 @@ export function AuthSheet() {
                   <Spinner /> Sending…
                 </>
               ) : (
-                'Email me a code'
+                'Email me a sign-in link'
               )}
             </Button>
           </form>

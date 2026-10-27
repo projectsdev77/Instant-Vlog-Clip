@@ -176,22 +176,7 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 - **Site URL**: your Vercel address (later your domain).
 - **Redirect URLs**: `https://<your Vercel address>/**` and `http://localhost:5173/**`.
 
-**Sign-in codes.** The app signs people in with a 6-digit code from their email (no link to click). Two settings make the emails send the code:
-
-1. **Authentication → Sign In / Providers → Email**: set **Email OTP Length** to `6` (and leave **Email OTP Expiration** at 3600 seconds or less). Save.
-2. **Authentication → Emails → Templates**: in both **Magic Link** and **Confirm signup**, replace the body with a version that shows the code instead of a link, for example:
-
-   - Subject: `Your Instant Vlog Clip code: {{ .Token }}`
-   - Body:
-     ```html
-     <h2>Your sign-in code</h2>
-     <p>Enter this code in Instant Vlog Clip:</p>
-     <p style="font-size:32px;font-weight:700;letter-spacing:6px">{{ .Token }}</p>
-     <p>It works for one hour. If you didn't ask for it, you can ignore this email.</p>
-     ```
-   Remove `{{ .ConfirmationURL }}` so there's no link to click. Save each template.
-
-Test: sign in on the site with your email; the email should show 6 digits, and typing them signs you in. Supabase's built-in sender only sends a few emails an hour (see E), so space out your tests.
+**Sign-in emails** contain a link (Supabase only lets you change the email text once a custom email service is set up; see E). Optionally edit the subject under **Authentication → Emails → Templates** (**Magic Link** and **Confirm signup**). Supabase's built-in sender only sends a few emails an hour, and only to members of your Supabase team, so space out tests or use Google sign-in.
 
 ### D. Stripe
 

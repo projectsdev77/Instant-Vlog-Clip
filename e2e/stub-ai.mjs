@@ -86,7 +86,7 @@ function editAnswer({ request, vlog }) {
   return { reply: 'Which scene do you mean?', ops: [] }
 }
 
-// Sign-in with an emailed code: any address gets "a code"; 123456 is the right one.
+// Sign-in: any address gets "an email"; a code of 123456 would sign in (verify).
 function auth(url, body) {
   const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: body.email ?? 'test@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() }
   if (url.includes('/otp')) return [200, {}]

@@ -59,7 +59,7 @@ Each call's model and duration are in the `ai` function logs (Supabase → Edge 
 3. **Secrets** (Edge Functions → Secrets, or `supabase secrets set`):
    `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `ALLOWED_ORIGIN=https://<your domain>`, the Stripe ones from step 4. Make sure `QUOTAS_DISABLED` is **not** set.
 4. **Auth → URL configuration**: Site URL `https://<your domain>`; add `https://<your domain>/**` to Redirect URLs (sign-in links return to the page the user was on).
-5. **Auth → Emails**: set up custom SMTP (Supabase's built-in sender is rate-limited and meant for testing). The app signs people in with a 6-digit code: set Email OTP Length to 6 and use `{{ .Token }}` (not a link) in the Magic Link and Confirm signup templates (see docs/SETUP_GUIDE.md, part C).
+5. **Auth → Emails**: set up custom SMTP (Supabase's built-in sender is rate-limited and meant for testing). Then edit the Magic Link and Confirm signup templates with the app's name and tone (keep the `{{ .ConfirmationURL }}` link).
 6. **Google sign-in**: create an OAuth client in Google Cloud, add it under Auth → Providers → Google, and set `VITE_AUTH_GOOGLE=true` in Vercel (or remove the variable). Google reviews the consent screen before it shows your app name to everyone; start this early.
 
 ## 4. Stripe
