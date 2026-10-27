@@ -59,7 +59,7 @@ export async function importFiles(files: File[]): Promise<ImportReport> {
     accepted.push(clip)
     await useProject.getState().addClip(clip)
     void putMedia(clip.mediaKey, file) // persisted in the background; processing uses the File directly
-    processFile(clip, file, rejected)
+    processFile(clip, file)
   }
   return { added: accepted.length, rejected }
 }
@@ -68,8 +68,8 @@ const queue: (() => Promise<void>)[] = []
 let running = false
 
 /** Decoding is heavy; process one clip at a time. */
-function processFile(clip: Clip, file: Blob, rejected: string[]) {
-  queue.push(() => processOne(clip, file, rejected))
+function processFile(clip: Clip, file: Blob) {
+  queue.push(() => processOne(clip, file))
   if (!running) void drain()
 }
 
@@ -88,14 +88,14 @@ export function waitForImports(): Promise<void> {
   return running || queue.length ? new Promise((r) => idleWaiters.push(r)) : Promise.resolve()
 }
 
-async function processOne(clip: Clip, file: Blob, rejected: string[]) {
+async function processOne(clip: Clip, file: Blob) {
   const { updateClip } = useProject.getState()
   try {
     const meta = await probeVideo(file)
     const totalSec = useProject.getState().clips.reduce((a, c) => a + (c.id === clip.id ? 0 : c.durationSec), 0)
+    // Known only after reading the file, so the clip stays on the grid with the reason (a toast would already be gone).
     if (totalSec + meta.durationSec > LIMITS.maxTotalSec) {
-      rejected.push(`${clip.fileName}: total footage is over 10 minutes`)
-      await useProject.getState().removeClip(clip.id)
+      await updateClip(clip.id, { status: 'error', error: `Too long: all clips together can be up to ${LIMITS.maxTotalSec / 60} minutes. Remove this one or a longer clip.` })
       return
     }
     await updateClip(clip.id, { ...meta })
@@ -123,6 +123,6 @@ export async function resumePending(getBlob: (key: string) => Promise<Blob | nul
     if (c.status === 'ready' && c.signals) continue
     if (c.status === 'analyzed' || c.status === 'error') continue
     const blob = await getBlob(c.mediaKey)
-    if (blob) processFile(c, blob, [])
+    if (blob) processFile(c, blob)
   }
 }
