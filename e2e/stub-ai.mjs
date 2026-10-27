@@ -104,7 +104,8 @@ function auth(url, body) {
     return [400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }]
   }
   if (url.includes('/recover') || url.includes('/resend') || url.includes('/otp')) return [200, {}]
-  if (url.includes('/user')) return [200, user]
+  // Changing the password (or other details) returns the user with the new details.
+  if (url.includes('/user')) return [200, body.password ? { ...user, email: 'test@example.com', user_metadata: body.data ?? {} } : user]
   if (url.includes('/logout')) return [204, {}]
   return [404, { msg: 'stub: unknown auth call' }]
 }

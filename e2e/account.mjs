@@ -10,12 +10,12 @@ const ok = (m) => console.log(`✓ ${m}`)
 const errors = []
 
 // A signed-in session as supabase-js stores it (the stand-in doesn't check tokens).
-const fakeSession = (context) =>
-  context.addInitScript(() => {
+const fakeSession = (context, provider = 'email') =>
+  context.addInitScript((provider) => {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'test@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() }
+    const user = { id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'test@example.com', app_metadata: { provider, providers: [provider] }, identities: [{ id: '1', provider }], user_metadata: {}, created_at: new Date().toISOString() }
     localStorage.setItem('sb-localhost-auth-token', JSON.stringify({ access_token: 'test-token', token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'test-refresh', user }))
-  })
+  }, provider)
 
 try {
   // Signed out: plans show; starting the trial asks to sign in first
@@ -116,6 +116,42 @@ try {
   await page.getByText('Your password is changed.').waitFor()
   await context.close()
   ok('reset password: a new password is saved from the emailed link')
+  // Account → Password: a Google account sets one; an email account changes it (current password checked)
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await skipTutorial(context)
+  await fakeSession(context, 'google')
+  page = await context.newPage()
+  await page.goto(`${BASE}/account`)
+  const pw = page.getByRole('region', { name: 'Password' })
+  await pw.getByText('You log in with Google. Set a password to also log in with your email.').waitFor()
+  await pw.getByRole('button', { name: 'Set a password' }).click()
+  await pw.getByLabel('New password', { exact: true }).fill('weak')
+  await pw.getByRole('button', { name: 'Set password' }).click()
+  await pw.getByText('Your new password doesn’t meet all the requirements yet.').waitFor()
+  await pw.getByLabel('New password', { exact: true }).fill('Strong-passw0rd')
+  await pw.getByRole('button', { name: 'Set password' }).click()
+  await page.getByText('Password set. You can now also log in with your email.').waitFor()
+  await pw.getByRole('button', { name: 'Change password' }).waitFor()
+  await context.close()
+  ok('password: a Google account sets one, then sees Change password')
+
+  context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await skipTutorial(context)
+  await fakeSession(context, 'email')
+  page = await context.newPage()
+  await page.goto(`${BASE}/account`)
+  const pw2 = page.getByRole('region', { name: 'Password' })
+  await pw2.getByRole('button', { name: 'Change password' }).click()
+  await pw2.getByLabel('Current password', { exact: true }).fill('not-it')
+  await pw2.getByLabel('New password', { exact: true }).fill('Newer-passw0rd')
+  await pw2.getByRole('button', { name: 'Change password' }).click()
+  await pw2.getByText('Your current password is wrong.').waitFor()
+  await pw2.getByLabel('Current password', { exact: true }).fill('correct-horse-9')
+  await pw2.getByRole('button', { name: 'Change password' }).click()
+  await page.getByText('Your password is changed.').waitFor()
+  await pw2.getByRole('button', { name: 'Forgot your current password?' }).waitFor({ state: 'detached' })
+  await context.close()
+  ok('password: an email account changes it after the current one is checked')
 } catch (e) {
   console.log('✗', e.message)
   process.exitCode = 1

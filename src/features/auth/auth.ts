@@ -90,10 +90,24 @@ export async function sendPasswordReset(email: string) {
   fail(error, 'Couldn’t send the email. Please try again.')
 }
 
-/** Sets a new password for the signed-in user (after following a reset link). */
+/** Sets a new password for the signed-in user (after a reset link, or from Account). */
 export async function setNewPassword(password: string) {
-  const { error } = await supabase!.auth.updateUser({ password })
+  // has_password: Google accounts get a password this way; it lets Account offer "Change" next time.
+  const { error } = await supabase!.auth.updateUser({ password, data: { has_password: true } })
   fail(error, 'Couldn’t change the password. Please try again.')
+}
+
+/** Changes the password after checking the current one. */
+export async function changePassword(email: string, current: string, next: string) {
+  const check = await supabase!.auth.signInWithPassword({ email, password: current })
+  if (check.error) throw new Error(/invalid login credentials/i.test(check.error.message) || check.error.code === 'invalid_credentials' ? 'Your current password is wrong.' : authMessage(check.error, 'Couldn’t check your password. Please try again.'))
+  await setNewPassword(next)
+}
+
+/** Whether the account can log in with a password (signed up with email, or set one later). */
+export function hasPassword(user: { identities?: { provider: string }[]; app_metadata?: { providers?: string[] }; user_metadata?: Record<string, unknown> } | null | undefined): boolean {
+  if (!user) return false
+  return !!user.user_metadata?.has_password || !!user.identities?.some((i) => i.provider === 'email') || !!user.app_metadata?.providers?.includes('email')
 }
 
 export async function signInWithGoogle(returnTo = window.location.href) {

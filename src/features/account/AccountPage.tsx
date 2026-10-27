@@ -10,6 +10,7 @@ import { authEnabled, signOut, useSession } from '@/features/auth/auth'
 import { db } from '@/lib/db'
 import { deleteProject } from '@/store/projectStore'
 import { SitePage } from './SiteLayout'
+import { PasswordSection } from './PasswordSection'
 import { deleteAccount, openBillingPortal, useAccountStatus } from './billing'
 import { refreshAccount, useCloud } from '@/cloud/autoSync'
 import { formatBytes } from '@/lib/format'
@@ -133,6 +134,8 @@ export function AccountPage() {
             </p>
           </section>
         )}
+
+        <PasswordSection user={session.user} />
 
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-panel)] bg-surface p-6">
           <p className="text-[15px] text-muted">Signed in as {session.user.email}</p>
