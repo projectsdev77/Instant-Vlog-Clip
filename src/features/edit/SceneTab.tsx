@@ -32,7 +32,7 @@ import {
   updateShot,
 } from './editActions'
 import { useFilmstrip } from './filmstrip'
-import { Fold, Row, Section, Segmented, Slider, type SegOption } from './ui'
+import { Row, Section, Segmented, Slider, type SegOption } from './ui'
 
 const DELIVERIES: Delivery[] = ['natural', 'calm', 'energetic', 'slow']
 
@@ -287,13 +287,13 @@ export function SceneTab({ project, plan, clips, index, onIndex, timeline, now }
         <Row label={<span className="text-[15px] font-bold text-fg">Clip sound</span>}>
           <Segmented label="Clip sound" options={SOUND} value={shot.clipAudio} disabled={!!busy} onChange={(m) => act('audio', () => setShotAudio(index, si, m))} />
         </Row>
-      </Section>
-
-      <Fold title="More for this clip" summary={moreSummary(shot, plan.look?.fit ?? 'fill')}>
         {!shot.hold && shot.clipAudio !== 'mute' && (
           <ClipVolume key={shot.id} value={shot.volume ?? 1} onChange={(v) => void setShotVolume(index, si, v)} />
         )}
-        <Row label="Frame">
+      </Section>
+
+      <Section>
+        <Row label={<span className="text-[15px] font-bold text-fg">Frame</span>}>
           <Segmented<Fit | 'look'>
             label="Frame"
             options={[
@@ -306,7 +306,7 @@ export function SceneTab({ project, plan, clips, index, onIndex, timeline, now }
             onChange={(f) => act('tool', () => updateShot(index, si, { fit: f === 'look' ? undefined : f }, f === 'blur' ? 'Blurred background' : f === 'fill' ? 'Fill the frame' : 'Frame as in Look'))}
           />
         </Row>
-      </Fold>
+      </Section>
     </div>
   )
 }
@@ -316,12 +316,6 @@ function sayHelper(mode: Project['voice']['mode'], muted: boolean): string {
   if (mode === 'none') return 'Shown as the caption. Leave it empty for a music-only moment.'
   if (muted) return 'The AI voice skips this line. It still shows as the caption.'
   return 'Read aloud and shown as the caption. Leave it empty for a music-only moment.'
-}
-
-function moreSummary(shot: Shot, lookFit: Fit): string {
-  const vol = shot.clipAudio === 'mute' ? 'Clip sound off' : `Clip volume ${Math.round((shot.volume ?? 1) * 100)}%`
-  const fit = (shot.fit ?? lookFit) === 'blur' ? 'blurred edges' : 'fill'
-  return `${vol} · ${fit}${shot.fit ? '' : ' (as in Look)'}`
 }
 
 /** The line, saved when you leave the field or press Enter. Empty = music only. */
