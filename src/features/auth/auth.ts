@@ -53,13 +53,13 @@ function authMessage(e: { message?: string; status?: number; code?: string } | n
 }
 
 /** Emails a sign-in link that brings the user back to this page, signed in (a new account is made on first sign-in). */
-export async function sendLink(email: string) {
-  const { error } = await supabase!.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: window.location.href } })
+export async function sendLink(email: string, returnTo = window.location.href) {
+  const { error } = await supabase!.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: returnTo } })
   if (error) throw new Error(authMessage(error, 'We couldn’t send the email. Please try again.'))
 }
 
-export async function signInWithGoogle() {
-  const { error } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+export async function signInWithGoogle(returnTo = window.location.href) {
+  const { error } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: returnTo } })
   if (error) throw new Error(authMessage(error, 'Google sign-in didn’t work. Use your email instead.'))
 }
 

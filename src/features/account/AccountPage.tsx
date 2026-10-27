@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/Progress'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextInput } from '@/components/ui/TextField'
 import { toast } from '@/components/ui/Toast'
-import { authEnabled, signOut, useAuthSheet, useSession } from '@/features/auth/auth'
+import { authEnabled, signOut, useSession } from '@/features/auth/auth'
 import { db } from '@/lib/db'
 import { deleteProject } from '@/store/projectStore'
 import { SitePage } from './SiteLayout'
@@ -49,7 +49,7 @@ export function AccountPage() {
   if (!session)
     return (
       <SitePage title="Account" lead="Sign in to see your plan and usage.">
-        <Button onClick={() => useAuthSheet.getState().show()}>Sign in</Button>
+        <Button onClick={() => navigate('/signin?next=/account')}>Sign in</Button>
       </SitePage>
     )
 

@@ -1,15 +1,16 @@
-import { Link } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { authEnabled, useAuthSheet, useSession } from './auth'
+import { authEnabled, useSession } from './auth'
 
 export function AccountButton() {
   const session = useSession()
-  const show = useAuthSheet((s) => s.show)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
   if (!authEnabled) return null
   if (!session)
     return (
-      <Button size="sm" className="h-10" onClick={() => show()}>
+      <Button size="sm" className="h-10" onClick={() => navigate(`/signin?next=${encodeURIComponent(pathname)}`)}>
         Sign in
       </Button>
     )
