@@ -13,7 +13,7 @@ Stripe and Google rename their menus now and then. If a menu isn't where this gu
 1. A signed-in user taps **Start 7-day free trial** on the Plans page.
 2. The app's `account` server function asks Stripe for a payment page (Stripe Checkout) and sends the user there. They enter a card. Nothing is charged during the trial.
 3. Stripe sends the result to the `stripe-webhook` server function, which records the subscription in the `subscriptions` table. The user's limits go up straight away.
-4. **Manage billing** on the Account page opens Stripe's own billing page (the customer portal), where they change card, switch monthly/yearly, see invoices or cancel.
+4. **Manage billing** in Settings → Plan & usage opens Stripe's own billing page (the customer portal), where they change card, switch monthly/yearly, see invoices or cancel.
 5. Every later change (renewal, failed payment, cancel) reaches the app the same way, through the webhook.
 
 The app never sees card details. Prices are set in Stripe; the app only displays them (from [`plans.ts`](../supabase/functions/_shared/plans.ts)), so keep the two the same.
@@ -131,7 +131,7 @@ Do this once Step 9 passes and the legal pages are final (Part 2, step G).
 2. Leave the sandbox (account menu → your live account).
 3. Repeat Steps 3–7 in live mode. Sandbox products, the portal, the webhook and billing settings aren't copied over. Some product pages have a **Copy to live mode** button.
 4. In Supabase, replace the four secrets with the **live** values: `sk_live_…`, the live webhook's `whsec_…`, and the live price IDs.
-5. Buy Pro once with your own real card, check the Account page, then refund yourself in Stripe (**Payments → the payment → Refund**) and cancel the subscription.
+5. Buy Pro once with your own real card, check Settings → Plan & usage, then refund yourself in Stripe (**Payments → the payment → Refund**) and cancel the subscription.
 
 ---
 
